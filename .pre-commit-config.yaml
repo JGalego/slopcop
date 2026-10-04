@@ -7,6 +7,12 @@ repos:
         language: system
         types: [rust]
         pass_filenames: false
+      - id: cargo-clippy
+        name: Rust Clippy
+        entry: cargo clippy --all-targets --all-features --locked -- -W clippy::all -W clippy::pedantic -D warnings
+        language: system
+        files: '(^|/)(Cargo\.(toml|lock)|[^/]+\.rs)$'
+        pass_filenames: false
       - id: slopcop
         name: slopcop
         entry: cargo run --quiet -- --

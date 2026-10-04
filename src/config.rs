@@ -73,10 +73,10 @@ impl Default for PathFilter {
 }
 
 impl PathFilter {
-    fn new(base: PathBuf, includes: &[String], excludes: &[String]) -> Result<Self, ConfigError> {
+    fn new(base: &Path, includes: &[String], excludes: &[String]) -> Result<Self, ConfigError> {
         let cwd = std::env::current_dir().unwrap_or_else(|_| PathBuf::from("."));
         let cwd = absolute_path(&cwd, &cwd);
-        let base = absolute_path(&base, &cwd);
+        let base = absolute_path(base, &cwd);
         Ok(Self {
             cwd,
             includes: Arc::new(build_globs(&base, includes)?),
@@ -315,7 +315,7 @@ impl Config {
             .parent()
             .unwrap_or_else(|| Path::new("."))
             .to_path_buf();
-        let path_filter = PathFilter::new(base, &section.files.include, &excludes)?;
+        let path_filter = PathFilter::new(&base, &section.files.include, &excludes)?;
 
         Ok(Self {
             source_path: Some(path),
