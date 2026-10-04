@@ -1,0 +1,1 @@
+Perhaps it may generally work. It might often help, arguably, and could potentially fit in many cases.

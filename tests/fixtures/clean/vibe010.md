@@ -1,0 +1,1 @@
+Workers read each file once. The resulting analysis is shared by every enabled rule, which avoids repeating tokenization across thirty detectors. Findings retain byte offsets. Reporters then sort those findings by path, line, column, and stable rule identifier before emitting output.

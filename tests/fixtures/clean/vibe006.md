@@ -1,0 +1,1 @@
+First parse the header. Then validate its checksum before allocating the payload buffer.

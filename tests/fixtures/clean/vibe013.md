@@ -1,0 +1,1 @@
+The deployment landscape contains three regions. Each ecosystem is an isolated Kubernetes cluster with a separate trust root.

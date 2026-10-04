@@ -1,0 +1,1 @@
+The cache may be stale after a network partition. Measurements might therefore include one expired response.

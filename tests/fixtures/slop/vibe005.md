@@ -1,0 +1,1 @@
+Not only is it fast, but it is also clear. Not only is it small, but it is also tested.

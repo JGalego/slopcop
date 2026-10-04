@@ -1,0 +1,1 @@
+Keep in mind that this endpoint permanently deletes the selected object and its retained versions.

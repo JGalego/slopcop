@@ -1,0 +1,6 @@
+/target/
+*.profraw
+*.sarif
+.DS_Store
+.idea/
+.vscode/

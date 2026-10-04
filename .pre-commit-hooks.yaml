@@ -1,0 +1,5 @@
+- id: slopcop
+  name: slopcop
+  description: Lint selected repository artifacts for low-quality patterns
+  entry: slopcop --
+  language: rust

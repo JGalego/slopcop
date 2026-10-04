@@ -1,0 +1,20 @@
+[slopcop]
+fail-level = "warning"
+max-file-size = 1000000
+
+[slopcop.deadweight]
+enabled = true
+
+[slopcop.vibecheck]
+enabled = true
+
+[slopcop.rules]
+
+[slopcop.ignore]
+paths = [
+  "tests/fixtures/slop/**",
+]
+
+[slopcop.files]
+include = []
+exclude = []

@@ -1,0 +1,7 @@
+repos:
+  - repo: local
+    hooks:
+      - id: slopcop
+        name: slopcop
+        entry: cargo run --quiet -- --
+        language: system

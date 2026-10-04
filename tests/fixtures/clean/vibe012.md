@@ -1,0 +1,1 @@
+This approach uses a radix tree; lookup remains logarithmic as the rule set grows.

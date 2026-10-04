@@ -1,0 +1,1 @@
+The parser reads one token at a time and reports the first invalid byte.

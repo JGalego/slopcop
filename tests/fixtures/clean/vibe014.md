@@ -1,0 +1,1 @@
+Use the covering index to streamline this query and remove the table lookup.

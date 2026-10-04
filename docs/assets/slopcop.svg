@@ -1,0 +1,10 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 160 160" role="img" aria-labelledby="title description">
+  <title id="title">slopcop</title>
+  <desc id="description">A poo emoji behind a prohibition sign.</desc>
+  <circle cx="80" cy="80" r="68" fill="#ffffff"/>
+  <text x="80" y="105" text-anchor="middle" font-family="Apple Color Emoji, Segoe UI Emoji, Noto Color Emoji, sans-serif" font-size="88">💩</text>
+  <g fill="none" stroke="#e53935" stroke-width="11">
+    <circle cx="80" cy="80" r="68"/>
+    <path d="M32 32 L128 128"/>
+  </g>
+</svg>

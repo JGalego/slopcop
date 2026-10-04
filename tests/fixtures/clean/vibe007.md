@@ -1,0 +1,1 @@
+The request may be retried — but only before any bytes are written — when the server closes an idle connection.

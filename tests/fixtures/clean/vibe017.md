@@ -1,0 +1,1 @@
+The scanner reads files in parallel. Reporters sort findings by path and source location.

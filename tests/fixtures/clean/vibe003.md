@@ -1,0 +1,1 @@
+The robust mutex recovers ownership after a panic. This detail is important because poisoned state remains observable.

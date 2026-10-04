@@ -1,0 +1,1 @@
+This system reads source files. This system classifies each source. This system runs every rule. This system sorts every finding. Other reporters consume the result. Tests verify stable output.

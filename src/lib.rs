@@ -1,0 +1,17 @@
+#![forbid(unsafe_code)]
+
+pub mod analysis;
+pub mod benchmark;
+pub mod config;
+pub mod discovery;
+pub mod git;
+pub mod init;
+pub mod language;
+pub mod model;
+pub mod reporting;
+pub mod rules;
+pub mod scanner;
+pub mod suppression;
+
+pub use model::{Confidence, Finding, Module, RuleMetadata, Severity};
+pub use scanner::{ScanOptions, ScanResult, SourceFile, scan_paths, scan_sources};

@@ -1,0 +1,1 @@
+The binary is small, but startup latency matters more for this hook.

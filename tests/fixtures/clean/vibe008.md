@@ -1,0 +1,1 @@
+Fields use the form `name: value`. Unknown fields are rejected before parsing begins.

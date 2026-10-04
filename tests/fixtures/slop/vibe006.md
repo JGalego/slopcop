@@ -1,0 +1,1 @@
+Firstly, inspect it. Secondly, test it. Thirdly, ship it. In this section, we proceed. To summarize, it works.

@@ -1,0 +1,1 @@
+The scanner reads every tracked source file in parallel during repository checks. Every tracked source file is read in parallel by the scanner during repository checks.
