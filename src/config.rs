@@ -138,7 +138,9 @@ pub(crate) fn absolute_path(path: &Path, cwd: &Path) -> PathBuf {
         match component {
             #[cfg(windows)]
             Component::Prefix(prefix) => match prefix.kind() {
-                std::path::Prefix::VerbatimDisk(drive) => normalized.push(format!("{}:", char::from(drive))),
+                std::path::Prefix::VerbatimDisk(drive) => {
+                    normalized.push(format!("{}:", char::from(drive)))
+                }
                 std::path::Prefix::VerbatimUNC(server, share) => {
                     let mut unc = std::ffi::OsString::from("\\\\");
                     unc.push(server);
@@ -413,8 +415,14 @@ mod tests {
     #[cfg(windows)]
     fn windows_canonical_paths_match_regular_paths() {
         let cwd = Path::new(r"C:\repo");
-        assert_eq!(absolute_path(Path::new(r"\\?\C:\repo\src\app.rs"), cwd), PathBuf::from(r"C:\repo\src\app.rs"));
-        assert_eq!(absolute_path(Path::new(r"\\?\UNC\server\repo\app.rs"), cwd), PathBuf::from(r"\\server\repo\app.rs"));
+        assert_eq!(
+            absolute_path(Path::new(r"\\?\C:\repo\src\app.rs"), cwd),
+            PathBuf::from(r"C:\repo\src\app.rs")
+        );
+        assert_eq!(
+            absolute_path(Path::new(r"\\?\UNC\server\repo\app.rs"), cwd),
+            PathBuf::from(r"\\server\repo\app.rs")
+        );
     }
 
     #[test]

@@ -1,6 +1,12 @@
 repos:
   - repo: local
     hooks:
+      - id: cargo-fmt
+        name: Rust formatting
+        entry: cargo fmt --all -- --check
+        language: system
+        types: [rust]
+        pass_filenames: false
       - id: slopcop
         name: slopcop
         entry: cargo run --quiet -- --
