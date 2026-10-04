@@ -132,6 +132,6 @@ mod tests {
 
         EmptyExceptionHandler.check(&context, &mut findings);
 
-        assert!(findings.is_empty());
+        assert_eq!(findings, [] as [crate::model::Finding; 0]);
     }
 }

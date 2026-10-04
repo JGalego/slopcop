@@ -42,7 +42,7 @@ jobs:
 
   quality:
     name: Quality and self-lint
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     steps:
       - uses: actions/checkout@v5
       - uses: dtolnay/rust-toolchain@stable

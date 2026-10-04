@@ -57,5 +57,5 @@ fn configuration_values_do_not_receive_prose_rules() {
 
     let result = scan_paths(&[path], &ScanOptions::default()).expect("scan succeeds");
 
-    assert!(result.findings.is_empty());
+    assert_eq!(result.findings, [] as [slopcop::Finding; 0]);
 }

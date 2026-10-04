@@ -82,7 +82,7 @@ mod tests {
             "# slopcop: ignore DEAD004 -- compatibility probe\nreturn None\n",
             &mut valid,
         );
-        assert!(valid.is_empty());
+        assert_eq!(valid, [] as [crate::model::Finding; 0]);
 
         let mut no_reason = vec![finding(2)];
         apply("# slopcop: ignore DEAD004\nreturn None\n", &mut no_reason);

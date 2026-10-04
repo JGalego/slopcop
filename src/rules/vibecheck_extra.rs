@@ -1126,7 +1126,7 @@ mod tests {
         );
         let mut results = Vec::new();
         check_openings(&context, &VIBE009, &mut results);
-        assert!(results.is_empty());
+        assert_eq!(results, [] as [crate::model::Finding; 0]);
     }
 
     #[test]

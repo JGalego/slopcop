@@ -465,11 +465,7 @@ mod tests {
         assert!(!prose.contains("hidden"));
         assert!(prose.contains("Visible prose"));
         assert_eq!(prose.len(), source.len());
-        assert!(
-            code_view(source, SourceType::Documentation)
-                .trim()
-                .is_empty()
-        );
+        assert_eq!(code_view(source, SourceType::Documentation).trim(), "");
     }
 
     #[test]
