@@ -1,0 +1,74 @@
+name: Rule or feature proposal
+description: Propose a deterministic rule or product improvement
+title: "proposal: "
+body:
+  - type: dropdown
+    id: area
+    attributes:
+      label: Area
+      options:
+        - New deadweight rule
+        - New vibecheck rule
+        - Existing rule behavior
+        - CLI or reporting
+        - Configuration or Git integration
+        - Performance
+        - Other
+    validations:
+      required: true
+
+  - type: textarea
+    id: problem
+    attributes:
+      label: Observable problem
+      description: Describe the concrete quality or workflow problem without making authorship claims.
+    validations:
+      required: true
+
+  - type: textarea
+    id: proposal
+    attributes:
+      label: Proposed behavior
+      description: Explain what slopcop should detect or do.
+    validations:
+      required: true
+
+  - type: textarea
+    id: positive
+    attributes:
+      label: Positive examples
+      description: For a rule, provide examples that should trigger. For another feature, provide representative inputs and outputs.
+      render: text
+    validations:
+      required: true
+
+  - type: textarea
+    id: quiet
+    attributes:
+      label: Quiet cases
+      description: Provide similar cases that must not trigger or change behavior.
+      render: text
+    validations:
+      required: true
+
+  - type: textarea
+    id: signal
+    attributes:
+      label: Deterministic signal or design
+      description: For a rule, state what is counted and why the threshold separates positive and quiet cases. Otherwise, explain the implementation constraints.
+
+  - type: textarea
+    id: cost
+    attributes:
+      label: Performance and dependency impact
+      description: Note extra analysis passes, allocations, startup cost, binary size, or runtime dependencies.
+
+  - type: checkboxes
+    id: checks
+    attributes:
+      label: Checks
+      options:
+        - label: I searched existing issues and the rule index for similar behavior.
+          required: true
+        - label: This proposal is deterministic and requires no network request, model, or telemetry during normal scans.
+          required: true

@@ -1,0 +1,76 @@
+name: False positive
+description: Report a finding that should remain quiet
+title: "false positive: "
+body:
+  - type: markdown
+    attributes:
+      value: |
+        A useful false-positive report identifies the observed signal and a narrow quiet boundary that preserves true positives.
+
+  - type: input
+    id: rule
+    attributes:
+      label: Rule ID
+      placeholder: DEAD001 or VIBE008
+    validations:
+      required: true
+
+  - type: input
+    id: version
+    attributes:
+      label: slopcop version
+      description: Paste the output of `slopcop --version`.
+      placeholder: slopcop 0.1.0
+    validations:
+      required: true
+
+  - type: input
+    id: context
+    attributes:
+      label: File type and context
+      description: Include the language or format and whether the file is source, test, generated, or documentation.
+      placeholder: Python test fixture
+    validations:
+      required: true
+
+  - type: textarea
+    id: snippet
+    attributes:
+      label: Minimal flagged example
+      description: Include only the smallest non-sensitive excerpt that triggers the rule.
+      render: text
+    validations:
+      required: true
+
+  - type: textarea
+    id: finding
+    attributes:
+      label: Finding output
+      description: Include the rule, location, message, and observation from slopcop.
+      render: text
+    validations:
+      required: true
+
+  - type: textarea
+    id: legitimate
+    attributes:
+      label: Why this case is legitimate
+      description: Explain the useful behavior or information that the rule currently mistakes for slop.
+    validations:
+      required: true
+
+  - type: textarea
+    id: boundary
+    attributes:
+      label: Proposed quiet boundary
+      description: Suggest the narrowest deterministic distinction from a true positive, if known.
+
+  - type: checkboxes
+    id: checks
+    attributes:
+      label: Checks
+      options:
+        - label: I confirmed this finding with the latest slopcop release.
+          required: true
+        - label: I removed secrets, credentials, and private source from this report.
+          required: true
