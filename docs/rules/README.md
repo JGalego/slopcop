@@ -51,6 +51,7 @@ Confidence describes how directly the rule observes its quality smell. It never 
 | `VIBE016` | warning | high | Three unquoted conclusion markers, with at least two in the latter half | Quoted examples, one closing section, or independent chapter conclusions |
 | `VIBE017` | warning | high | Adjacent substantial sentences with at least seven shared content words and 75 percent set overlap | Definitions and neighboring sentences that add distinct facts |
 | `VIBE018` | info | low | Five substantial consecutive paragraphs whose word counts remain within a 20 percent band | Paragraphs sized by their evidence or a constrained publication format |
+| `VIBE019` | warning | high | One unquoted chatbot identity, cutoff, or browsing-disclaimer artifact | Quoted examples and stored chat transcripts |
 
 ## Configuration
 

@@ -240,6 +240,19 @@ static VIBE018: RuleMetadata = RuleMetadata {
     false_positives: "Edited publications, slide notes, and constrained layouts may enforce paragraph length intentionally.",
 };
 
+static VIBE019: RuleMetadata = RuleMetadata {
+    id: "VIBE019",
+    module: Module::Vibecheck,
+    description: "Chatbot response residue",
+    default_severity: Severity::Warning,
+    default_confidence: Confidence::High,
+    message: "Repository prose contains an unmistakable chatbot response artifact.",
+    suggestion: "Remove the assistant identity or runtime disclaimer and keep only repository-specific information.",
+    rationale: "Chatbot identity, cutoff, and browsing disclaimers are interface residue rather than useful project documentation.",
+    examples: &["As an AI language model, I do not have access to real-time information."],
+    false_positives: "Double-quoted examples are excluded; stored chat transcripts may need a named suppression.",
+};
+
 pub(super) fn rules() -> Vec<Box<dyn Rule>> {
     vec![
         boxed(&VIBE002, check_assistant_framing),
@@ -259,6 +272,7 @@ pub(super) fn rules() -> Vec<Box<dyn Rule>> {
         boxed(&VIBE016, check_conclusions),
         boxed(&VIBE017, check_restatement),
         boxed(&VIBE018, check_paragraph_symmetry),
+        boxed(&VIBE019, check_chatbot_residue),
     ]
 }
 
@@ -907,6 +921,39 @@ fn check_paragraph_symmetry(
     }
 }
 
+fn check_chatbot_residue(
+    context: &ScanContext<'_>,
+    metadata: &'static RuleMetadata,
+    findings: &mut Vec<crate::model::Finding>,
+) {
+    const PHRASES: &[&str] = &[
+        "as an ai language model",
+        "as an ai assistant",
+        "as of my last knowledge update",
+        "my knowledge cutoff",
+        "i do not have access to real-time information",
+        "i don't have access to real-time information",
+        "i cannot browse the internet",
+        "i can't browse the internet",
+    ];
+    if !is_prose(context) {
+        return;
+    }
+    let hits = context_phrase_hits(context, PHRASES);
+    if let Some((offset, phrase)) = hits.first() {
+        emit(
+            context,
+            metadata,
+            findings,
+            *offset,
+            Some(format!(
+                "observed {} chatbot residue phrase(s), beginning with \"{phrase}\"",
+                hits.len()
+            )),
+        );
+    }
+}
+
 fn check_word_density(
     context: &ScanContext<'_>,
     metadata: &'static RuleMetadata,
@@ -1233,6 +1280,31 @@ mod tests {
         assert_eq!(findings("VIBE018", &symmetrical), 1);
         assert_eq!(
             findings("VIBE018", "A short note.\n\nA second short note."),
+            0
+        );
+    }
+
+    #[test]
+    fn chatbot_residue_needs_only_one_unquoted_artifact() {
+        assert_eq!(
+            findings(
+                "VIBE019",
+                "As an AI language model, I cannot browse the internet."
+            ),
+            1
+        );
+        assert_eq!(
+            findings(
+                "VIBE019",
+                r#"Avoid the phrase "as an AI language model" in generated documentation."#
+            ),
+            0
+        );
+        assert_eq!(
+            findings(
+                "VIBE019",
+                "The model card records the training-data cutoff and evaluation date."
+            ),
             0
         );
     }

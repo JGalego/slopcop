@@ -1,0 +1,1 @@
+The model card records its training cutoff and links every evaluation dataset.
