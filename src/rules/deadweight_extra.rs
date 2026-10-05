@@ -230,6 +230,19 @@ static DEAD017: RuleMetadata = RuleMetadata {
     false_positives: "Result constructors and test factories may intentionally create success values; recognized test files are excluded and only action-like names trigger.",
 };
 
+static DEAD018: RuleMetadata = RuleMetadata {
+    id: "DEAD018",
+    module: Module::Deadweight,
+    description: "Repeated procedural step comments",
+    default_severity: Severity::Warning,
+    default_confidence: Confidence::Medium,
+    message: "Code comments repeatedly narrate numbered implementation steps.",
+    suggestion: "Remove procedural narration, or extract real phases into functions whose names preserve the intent.",
+    rationale: "Step-by-step comments often restate control flow and become stale as the implementation changes.",
+    examples: &["// Step 1: Load data\nload();\n// Step 2: Save data\nsave();"],
+    false_positives: "Algorithms with a standardized sequence may need numbered phases; one isolated phase label does not trigger.",
+};
+
 pub(super) fn rules() -> Vec<Box<dyn Rule>> {
     vec![
         boxed(&DEAD002, check_placeholder_marker),
@@ -248,6 +261,7 @@ pub(super) fn rules() -> Vec<Box<dyn Rule>> {
         boxed(&DEAD015, check_log_only_handler),
         boxed(&DEAD016, check_empty_event_handler),
         boxed(&DEAD017, check_canned_success),
+        boxed(&DEAD018, check_procedural_comments),
     ]
 }
 
@@ -940,6 +954,46 @@ fn canned_success_matcher() -> &'static Regex {
     })
 }
 
+fn check_procedural_comments(
+    context: &ScanContext<'_>,
+    metadata: &'static RuleMetadata,
+    findings: &mut Vec<crate::model::Finding>,
+) {
+    let SourceType::Code(language) = context.source_type else {
+        return;
+    };
+    let mut hits = Vec::new();
+    let mut offset = 0;
+    for line in context.source.split_inclusive('\n') {
+        if is_standalone_line_comment(line, language) {
+            let prose_line = context.prose()[offset..offset + line.len()].trim();
+            if line_comment_content(prose_line, language)
+                .is_some_and(|content| procedural_comment_matcher().is_match(content))
+            {
+                hits.push(offset);
+            }
+        }
+        offset += line.len();
+    }
+    if hits.len() >= 2 {
+        emit(
+            context,
+            metadata,
+            findings,
+            hits[0],
+            Some(format!("observed {} numbered step comments", hits.len())),
+        );
+    }
+}
+
+fn procedural_comment_matcher() -> &'static Regex {
+    static MATCHER: OnceLock<Regex> = OnceLock::new();
+    MATCHER.get_or_init(|| {
+        Regex::new(r"(?i)^[-=*#~ \t]*(?:step|phase)[ \t]+\d+[ \t]*(?:[:.)=–—-]|$)")
+            .expect("DEAD018 procedural-comment regex must compile")
+    })
+}
+
 fn inventory_count_matcher() -> &'static Regex {
     static MATCHER: OnceLock<Regex> = OnceLock::new();
     MATCHER.get_or_init(|| {
@@ -1476,6 +1530,66 @@ mod tests {
                 "DEAD017",
                 "tests/publish.test.ts",
                 "function publish() { return { ok: true }; }\n"
+            ),
+            0
+        );
+    }
+
+    #[test]
+    fn procedural_comments_require_repeated_numbered_steps() {
+        assert_eq!(
+            findings(
+                "DEAD018",
+                "src/pipeline.ts",
+                "// Step 1: Load records\nloadRecords();\n// Step 2: Save records\nsaveRecords();\n"
+            ),
+            1
+        );
+        assert_eq!(
+            findings(
+                "DEAD018",
+                "src/pipeline.py",
+                "# Phase 1 - Parse input\nparse_input()\n# Phase 2 - Write output\nwrite_output()\n"
+            ),
+            1
+        );
+        assert_eq!(
+            findings(
+                "DEAD018",
+                "src/pipeline.ts",
+                "// ===== Step 1: Setup =====\nsetup();\n// --- Step 2) Run ---\nrun();\n// Step 3\nfinish();\n"
+            ),
+            1
+        );
+        assert_eq!(
+            findings(
+                "DEAD018",
+                "src/pipeline.rs",
+                "/// Step 1: Documented algorithm stage.\n/// Step 2: Documented algorithm stage.\nfn run() {}\n"
+            ),
+            0
+        );
+        assert_eq!(
+            findings(
+                "DEAD018",
+                "src/pipeline.ts",
+                "// Step 1 of the handshake is optional.\nhello();\n// Step 2 depends on the server certificate.\nverify();\n"
+            ),
+            0
+        );
+        assert_eq!(
+            findings(
+                "DEAD018",
+                "src/pipeline.ts",
+                "// Phase 1: Parse untrusted input before validation.\nparseInput();\n"
+            ),
+            0
+        );
+        assert_eq!(
+            findings(
+                "DEAD018",
+                "src/pipeline.ts",
+                "// Parse before validation because decoding changes byte offsets.\nparseInput();\n// Persist only after every record validates.\nsaveRecords();\n"
             ),
             0
         );
