@@ -581,8 +581,22 @@ fn check_trivial_test(
 fn trivial_test_matcher() -> &'static Regex {
     static MATCHER: OnceLock<Regex> = OnceLock::new();
     MATCHER.get_or_init(|| {
-        Regex::new(r"(?im)(?:^[ \t]*assert[ \t]+(?:True|1[ \t]*==[ \t]*1)[ \t]*$|expect\(true\)\.toBe\(true\)|assert!\(true\))")
-            .expect("DEAD010 test regex must compile")
+        Regex::new(concat!(
+            r#"(?im)(?:"#,
+            r#"^[ \t]*assert[ \t]+(?:True|1[ \t]*==[ \t]*1)[ \t]*$"#,
+            r#"|expect\s*\(\s*(?:"#,
+            r#"true\s*\)\s*\.\s*to(?:Be|Equal)\s*\(\s*true"#,
+            r#"|false\s*\)\s*\.\s*to(?:Be|Equal)\s*\(\s*false"#,
+            r#"|0\s*\)\s*\.\s*to(?:Be|Equal)\s*\(\s*0"#,
+            r#"|1\s*\)\s*\.\s*to(?:Be|Equal)\s*\(\s*1"#,
+            r#")\s*\)"#,
+            r#"|assert!\s*\(\s*true\s*\)"#,
+            r#"|assert\.ok\s*\(\s*true\s*\)"#,
+            r#"|assert\.(?:equal|strictEqual)\s*\(\s*(?:true\s*,\s*true|false\s*,\s*false|0\s*,\s*0|1\s*,\s*1)\s*\)"#,
+            r#"|assert_eq!\s*\(\s*(?:true\s*,\s*true|false\s*,\s*false|0\s*,\s*0|1\s*,\s*1)\s*\)"#,
+            r#")"#,
+        ))
+        .expect("DEAD010 test regex must compile")
     })
 }
 
@@ -1029,6 +1043,28 @@ mod tests {
         check_trivial_test(&context, &DEAD010, &mut results);
         assert_eq!(results.len(), 1);
         assert_eq!(results[0].location.line, 3);
+    }
+
+    #[test]
+    fn trivial_assertions_cover_common_test_frameworks() {
+        for (path, source) in [
+            ("app.test.ts", "expect(false).toBe(false);\n"),
+            ("app.test.ts", "expect(1).toEqual(1);\n"),
+            ("app.test.js", "assert.ok(true);\n"),
+            ("app.test.js", "assert.strictEqual(1, 1);\n"),
+            ("tests/app.rs", "assert_eq!(false, false);\n"),
+        ] {
+            assert_eq!(findings("DEAD010", path, source), 1, "{source}");
+        }
+
+        for source in [
+            "expect(result).toBe(true);\n",
+            "expect(false).toBe(true);\n",
+            "assert.strictEqual(actual, expected);\n",
+            "assert_eq!(actual, expected);\n",
+        ] {
+            assert_eq!(findings("DEAD010", "app.test.ts", source), 0, "{source}");
+        }
     }
 
     #[test]
