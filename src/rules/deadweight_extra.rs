@@ -4,7 +4,7 @@ use std::sync::OnceLock;
 
 use regex::Regex;
 
-use super::{BuiltinRule, Rule, ScanContext, emit};
+use super::{BuiltinRule, Rule, ScanContext, emit, matched_source_has_explanatory_comment};
 use crate::analysis::{preceding_text, python_block_ends_at, word_count, words};
 use crate::language::{Language, SourceType};
 use crate::model::{Confidence, Module, RuleMetadata, Severity};
@@ -52,7 +52,7 @@ static DEAD004: RuleMetadata = RuleMetadata {
         "except Exception:\n    return None",
         "catch (error) { return null; }",
     ],
-    false_positives: "Compatibility probes may intentionally use a documented empty fallback for a narrow exception type.",
+    false_positives: "Compatibility probes with an explanatory body comment are excluded.",
 };
 
 static DEAD005: RuleMetadata = RuleMetadata {
@@ -65,7 +65,7 @@ static DEAD005: RuleMetadata = RuleMetadata {
     suggestion: "Implement the function, remove it, or declare the containing interface abstract.",
     rationale: "Empty concrete functions create an API surface that promises behavior but performs none.",
     examples: &["def publish(event):\n    pass", "function publish() {}"],
-    false_positives: "Framework hooks can intentionally be empty; suppress the finding with a reason at that hook.",
+    false_positives: "Framework hooks with an explanatory body comment are excluded.",
 };
 
 static DEAD006: RuleMetadata = RuleMetadata {
@@ -91,7 +91,7 @@ static DEAD007: RuleMetadata = RuleMetadata {
     suggestion: "Keep one explanation at the narrowest scope where it remains accurate.",
     rationale: "Repeated comments are common residue from generated edits and drift independently from the code.",
     examples: &["// Validate the request\n// Validate the request"],
-    false_positives: "Repeated visual separators are ignored unless they contain meaningful words.",
+    false_positives: "Inline shape annotations, type directives, and visual separators are not standalone comment candidates.",
 };
 
 static DEAD008: RuleMetadata = RuleMetadata {
@@ -208,16 +208,16 @@ fn check_unimplemented(
         return;
     }
     let lower = context.code().to_ascii_lowercase();
-    let candidates = [
-        "todo!",
-        "unimplemented!",
-        "notimplementederror",
-        "notimplementedexception",
-    ];
+    let candidates = ["todo!", "unimplemented!"];
     let mut offsets: Vec<_> = candidates
         .iter()
         .flat_map(|value| lower.match_indices(value).map(|(offset, _)| offset))
         .collect();
+    offsets.extend(
+        unimplemented_exception_matcher()
+            .find_iter(context.code())
+            .map(|found| found.start()),
+    );
 
     for marker in ["throw new error", "panic!(", "panic("] {
         for (found, _) in lower.match_indices(marker) {
@@ -243,6 +243,14 @@ fn check_unimplemented(
     }
 }
 
+fn unimplemented_exception_matcher() -> &'static Regex {
+    static MATCHER: OnceLock<Regex> = OnceLock::new();
+    MATCHER.get_or_init(|| {
+        Regex::new(r"(?i)\b(?:raise|throw[ \t]+new)[ \t]+NotImplemented(?:Error|Exception)\b")
+            .expect("DEAD003 exception regex must compile")
+    })
+}
+
 fn check_exception_fallback(
     context: &ScanContext<'_>,
     metadata: &'static RuleMetadata,
@@ -254,6 +262,9 @@ fn check_exception_fallback(
         _ => return,
     };
     for found in matcher.find_iter(context.code()) {
+        if matched_source_has_explanatory_comment(context, found.start(), found.end()) {
+            continue;
+        }
         emit(context, metadata, findings, found.start(), None::<String>);
     }
 }
@@ -287,6 +298,9 @@ fn check_empty_function(
         _ => return,
     };
     for found in matcher.find_iter(context.code()) {
+        if matched_source_has_explanatory_comment(context, found.start(), found.end()) {
+            continue;
+        }
         if context.source_type == SourceType::Code(Language::Python)
             && !python_block_ends_at(context.code(), found.start(), found.end())
         {
@@ -328,6 +342,10 @@ fn check_redundant_comment(
     let lines: Vec<_> = context.source.split_inclusive('\n').collect();
     let mut offset = 0;
     for pair in lines.windows(2) {
+        if !is_standalone_line_comment(pair[0], language) {
+            offset += pair[0].len();
+            continue;
+        }
         let comment = context.prose()[offset..offset + pair[0].len()].trim();
         let code = pair[1].trim();
         if let Some(content) = line_comment_content(comment, language) {
@@ -385,6 +403,13 @@ fn check_duplicate_comment(
     let mut previous: Option<(String, usize, usize)> = None;
     let mut offset = 0;
     for (line_number, line) in context.source.split_inclusive('\n').enumerate() {
+        if !is_standalone_line_comment(line, language) {
+            if !line.trim().is_empty() {
+                previous = None;
+            }
+            offset += line.len();
+            continue;
+        }
         if let Some(content) = line_comment_content(
             context.prose()[offset..offset + line.len()].trim(),
             language,
@@ -402,6 +427,14 @@ fn check_duplicate_comment(
             previous = None;
         }
         offset += line.len();
+    }
+}
+
+fn is_standalone_line_comment(line: &str, language: Language) -> bool {
+    let trimmed = line.trim_start();
+    match language {
+        Language::Python | Language::Ruby | Language::Shell => trimmed.starts_with('#'),
+        _ => trimmed.starts_with("//"),
     }
 }
 
@@ -534,7 +567,7 @@ fn check_trivial_test(
 fn trivial_test_matcher() -> &'static Regex {
     static MATCHER: OnceLock<Regex> = OnceLock::new();
     MATCHER.get_or_init(|| {
-        Regex::new(r"(?im)(?:^\s*assert\s+(?:True|1\s*==\s*1)\s*$|expect\(true\)\.toBe\(true\)|assert!\(true\))")
+        Regex::new(r"(?im)(?:^[ \t]*assert[ \t]+(?:True|1[ \t]*==[ \t]*1)[ \t]*$|expect\(true\)\.toBe\(true\)|assert!\(true\))")
             .expect("DEAD010 test regex must compile")
     })
 }
@@ -572,7 +605,9 @@ fn check_duplicate_block(
         .map(|line| line.split_whitespace().collect::<Vec<_>>().join(" "))
         .collect();
     let mut seen: HashMap<String, usize> = HashMap::new();
+    let mut reported_keys = HashSet::new();
     let mut reported_end = 0;
+    let mut reported_pair_end = None;
     for start in 0..=normalized.len().saturating_sub(BLOCK_LINES) {
         if start < reported_end {
             continue;
@@ -586,17 +621,24 @@ fn check_duplicate_block(
         let key = window.join("\n");
         if let Some(previous) = seen.get(&key) {
             if start >= previous + BLOCK_LINES {
-                emit(
-                    context,
-                    metadata,
-                    findings,
-                    offsets.get(start).copied().unwrap_or(0),
-                    Some(format!(
-                        "ten-line block first appears at line {}",
-                        previous + 1
-                    )),
-                );
+                let first_report = reported_keys.insert(key.clone());
+                let continuation = reported_pair_end.is_some_and(|(previous_end, repeated_end)| {
+                    *previous == previous_end && start == repeated_end
+                });
+                if first_report && !continuation {
+                    emit(
+                        context,
+                        metadata,
+                        findings,
+                        offsets.get(start).copied().unwrap_or(0),
+                        Some(format!(
+                            "ten-line block first appears at line {}",
+                            previous + 1
+                        )),
+                    );
+                }
                 reported_end = start + BLOCK_LINES;
+                reported_pair_end = Some((previous + BLOCK_LINES, start + BLOCK_LINES));
             }
         } else {
             seen.insert(key, start);
@@ -645,7 +687,11 @@ fn markdown_heading(line: &str) -> Option<(usize, &str)> {
     if hashes == 0 || trimmed.as_bytes().get(hashes) != Some(&b' ') {
         return None;
     }
-    Some((hashes, trimmed[hashes + 1..].trim()))
+    let title = trimmed[hashes + 1..].trim();
+    title
+        .chars()
+        .any(char::is_alphanumeric)
+        .then_some((hashes, title))
 }
 
 fn restates_heading(title: &str, body: &str) -> bool {
@@ -695,6 +741,8 @@ fn find_words(haystack: &str, needle: &str) -> Vec<usize> {
 
 #[cfg(test)]
 mod tests {
+    use std::fmt::Write as _;
+
     use super::*;
 
     fn findings(rule_id: &str, path: &str, source: &str) -> usize {
@@ -788,6 +836,64 @@ mod tests {
     }
 
     #[test]
+    fn repeated_inline_annotations_are_not_duplicate_comments() {
+        let source = "keys = project(x)  # (batch, tokens, groups, width)\nvalues = project(y)  # (batch, tokens, groups, width)\n";
+        assert_eq!(findings("DEAD007", "model.py", source), 0);
+    }
+
+    #[test]
+    fn documented_fallbacks_and_empty_functions_are_not_deadweight() {
+        assert_eq!(
+            findings(
+                "DEAD004",
+                "app.py",
+                "try:\n    probe()\nexcept CompatibilityError:\n    return None  # Optional compatibility probe.\n"
+            ),
+            0
+        );
+        assert_eq!(
+            findings(
+                "DEAD004",
+                "app.js",
+                "try { probe(); } catch (error) { /* Optional compatibility probe. */ return null; }\n"
+            ),
+            0
+        );
+        assert_eq!(
+            findings(
+                "DEAD005",
+                "app.py",
+                "def on_shutdown():\n    pass  # Framework lifecycle hook.\n"
+            ),
+            0
+        );
+        assert_eq!(
+            findings(
+                "DEAD005",
+                "app.js",
+                "function onShutdown() { /* Framework lifecycle hook. */ }\n"
+            ),
+            0
+        );
+        assert_eq!(
+            findings(
+                "DEAD004",
+                "app.py",
+                "try:\n    probe()\nexcept CompatibilityError:\n    return None  # TODO\n"
+            ),
+            1
+        );
+        assert_eq!(
+            findings(
+                "DEAD005",
+                "app.py",
+                "def on_shutdown():\n    pass  # TODO\n"
+            ),
+            1
+        );
+    }
+
+    #[test]
     fn local_rules_report_every_occurrence_and_respect_quiet_boundaries() {
         assert_eq!(
             findings(
@@ -804,6 +910,22 @@ mod tests {
                 "fn run() -> &'static str { todo!() }\n"
             ),
             1
+        );
+        assert_eq!(
+            findings(
+                "DEAD003",
+                "app.py",
+                "raise NotImplementedError(\"missing behavior\")\n"
+            ),
+            1
+        );
+        assert_eq!(
+            findings(
+                "DEAD003",
+                "app.py",
+                "try:\n    run()\nexcept NotImplementedError:\n    recover()\nmock.side_effect = NotImplementedError\nwith pytest.raises(NotImplementedError):\n    run()\n"
+            ),
+            0
         );
         assert_eq!(
             findings("DEAD005", "app.py", "def run():\n    pass\n    execute()\n"),
@@ -853,6 +975,20 @@ mod tests {
     }
 
     #[test]
+    fn trivial_assertion_location_starts_on_the_assertion() {
+        let source = "def test_contract():\n    \"\"\"Document the contract under test.\"\"\"\n    assert True\n";
+        let context = ScanContext::new(
+            Path::new("tests/test_contract.py"),
+            source,
+            SourceType::Code(Language::Python),
+        );
+        let mut results = Vec::new();
+        check_trivial_test(&context, &DEAD010, &mut results);
+        assert_eq!(results.len(), 1);
+        assert_eq!(results[0].location.line, 3);
+    }
+
+    #[test]
     fn unicode_windows_preserve_source_offsets() {
         let prefix = "fn main() { let é = 1; ";
         let offset = prefix.find('é').expect("identifier") + 1 + 240;
@@ -883,14 +1019,32 @@ mod tests {
             findings("DEAD011", "app.rs", "fn one() {\n    execute();\n}\n"),
             0
         );
+
+        let long_block = (0..20).fold(String::new(), |mut block, index| {
+            writeln!(
+                block,
+                "let value_{index} = transform(input_{index}, validation_context_{index});"
+            )
+            .expect("write test block");
+            block
+        });
+        let source = format!("fn first() {{\n{long_block}}}\nfn second() {{\n{long_block}}}\n");
+        assert_eq!(findings("DEAD011", "app.rs", &source), 1);
+
+        let source = format!(
+            "fn first() {{\n{block}}}\nfn second() {{\n{block}}}\nfn third() {{\n{block}}}\n"
+        );
+        assert_eq!(findings("DEAD011", "app.rs", &source), 1);
     }
 
     #[test]
     fn documentation_sections_may_contain_subsections_or_code() {
         let nested = "## Release\n\n### Added\n\n- New scanner\n";
         let code_only = "## Example\n\n```sh\nslopcop .\n```\n";
+        let decorative = "# QUICK LINKS\n# --------------\nOfficial website: https://example.com\n";
 
         assert_eq!(findings("DEAD012", "CHANGELOG.md", nested), 0);
         assert_eq!(findings("DEAD012", "README.md", code_only), 0);
+        assert_eq!(findings("DEAD012", "README.md", decorative), 0);
     }
 }

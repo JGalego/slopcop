@@ -165,12 +165,13 @@ fn scan_bytes(
     let Ok(source) = std::str::from_utf8(bytes) else {
         return FileOutcome::Skipped;
     };
-    if looks_generated(source) {
+    let source_type = classify(path);
+    if looks_generated(source) || looks_minified(source, source_type) {
         return FileOutcome::Skipped;
     }
 
     let display_path = options.config.path_filter.display_path(path);
-    let context = ScanContext::new(&display_path, source, classify(path));
+    let context = ScanContext::new(&display_path, source, source_type);
     let mut findings = Vec::new();
     for rule in rules {
         rule.check(&context, &mut findings);
@@ -209,6 +210,26 @@ fn looks_generated(source: &str) -> bool {
         || header.contains("automatically generated") && header.contains("do not edit")
 }
 
+fn looks_minified(source: &str, source_type: crate::language::SourceType) -> bool {
+    if !matches!(
+        source_type,
+        crate::language::SourceType::Code(
+            crate::language::Language::JavaScript | crate::language::Language::TypeScript
+        )
+    ) {
+        return false;
+    }
+    let mut lines = 0;
+    let mut total_length = 0;
+    let mut has_extreme_line = false;
+    for line in source.lines() {
+        lines += 1;
+        total_length += line.len();
+        has_extreme_line |= line.len() >= 2_000;
+    }
+    has_extreme_line && lines > 0 && total_length / lines >= 200
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -229,5 +250,31 @@ mod tests {
             "x".repeat(100)
         );
         assert!(!looks_generated(&source));
+    }
+
+    #[test]
+    fn minified_javascript_is_skipped_without_hiding_formatted_source() {
+        let minified = "const value=compute(input);".repeat(100);
+        assert!(looks_minified(
+            &minified,
+            crate::language::SourceType::Code(crate::language::Language::JavaScript)
+        ));
+        assert!(!looks_minified(
+            "const value = compute(input);\nreturn value;\n",
+            crate::language::SourceType::Code(crate::language::Language::JavaScript)
+        ));
+        let embedded_asset = format!(
+            "const data = \"{}\";\n{}",
+            "x".repeat(2_100),
+            "const value = compute(input);\n".repeat(100)
+        );
+        assert!(!looks_minified(
+            &embedded_asset,
+            crate::language::SourceType::Code(crate::language::Language::JavaScript)
+        ));
+        assert!(!looks_minified(
+            &minified,
+            crate::language::SourceType::Code(crate::language::Language::Python)
+        ));
     }
 }

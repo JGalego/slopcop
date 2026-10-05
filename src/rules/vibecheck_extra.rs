@@ -15,7 +15,7 @@ static VIBE002: RuleMetadata = RuleMetadata {
     suggestion: "Remove conversational service framing and state the useful information directly.",
     rationale: "Phrases that offer help, praise the question, or announce a guided tour are usually interface residue rather than repository documentation.",
     examples: &["Great question. Let's dive in. Feel free to ask for more."],
-    false_positives: "Chat transcripts and support templates can contain this language intentionally.",
+    false_positives: "Double-quoted examples are excluded; unquoted chat transcripts and support templates may still need configuration.",
 };
 
 static VIBE003: RuleMetadata = RuleMetadata {
@@ -209,7 +209,7 @@ static VIBE016: RuleMetadata = RuleMetadata {
     suggestion: "Keep one conclusion and remove intermediate summaries that repeat established claims.",
     rationale: "Multiple in-summary and in-conclusion turns are a strong sign that prose has been expanded beyond its information content.",
     examples: &["In summary ... In conclusion ... All in all ..."],
-    false_positives: "A compiled document containing several independent chapters may have a conclusion per chapter.",
+    false_positives: "Double-quoted examples are excluded; a compiled document containing several independent chapters may still have a conclusion per chapter.",
 };
 
 static VIBE017: RuleMetadata = RuleMetadata {
@@ -372,8 +372,8 @@ fn check_balance(
     if !is_prose(context) {
         return;
     }
-    let hits = phrase_hits(
-        context.lower_prose(),
+    let hits = context_phrase_hits(
+        context,
         &["not only", "also", "on the one hand", "on the other hand"],
     );
     let count = hits
@@ -805,7 +805,7 @@ fn check_conclusions(
     if !is_prose(context) {
         return;
     }
-    let hits = phrase_hits(context.lower_prose(), PHRASES);
+    let hits = context_phrase_hits(context, PHRASES);
     let latter = hits
         .iter()
         .filter(|(offset, _)| *offset >= context.prose().len() / 2)
@@ -955,7 +955,7 @@ fn check_phrase_cluster(
     if !is_prose(context) {
         return;
     }
-    let hits = phrase_hits(context.lower_prose(), phrases);
+    let hits = context_phrase_hits(context, phrases);
     if hits.len() >= minimum
         && (words_per_hit == 0 || hits.len() * words_per_hit >= context.prose_word_count())
     {
@@ -991,7 +991,7 @@ fn check_distinct_cluster(
     if !is_prose(context) {
         return;
     }
-    let hits = phrase_hits(context.lower_prose(), phrases);
+    let hits = context_phrase_hits(context, phrases);
     let distinct: HashSet<_> = hits.iter().map(|(_, phrase)| *phrase).collect();
     if hits.len() >= thresholds.minimum
         && distinct.len() >= thresholds.distinct_minimum
@@ -1030,6 +1030,28 @@ fn phrase_hits<'a>(haystack: &str, phrases: &'a [&str]) -> Vec<(usize, &'a str)>
     }
     hits.sort_by_key(|(offset, _)| *offset);
     hits
+}
+
+fn context_phrase_hits<'a>(
+    context: &ScanContext<'_>,
+    phrases: &'a [&str],
+) -> Vec<(usize, &'a str)> {
+    phrase_hits(context.lower_prose(), phrases)
+        .into_iter()
+        .filter(|(offset, _)| !inside_double_quotes(context.prose(), *offset))
+        .collect()
+}
+
+fn inside_double_quotes(source: &str, offset: usize) -> bool {
+    let line_start = source[..offset].rfind('\n').map_or(0, |index| index + 1);
+    let prefix = &source[line_start..offset];
+    let mut quoted = false;
+    for character in prefix.chars() {
+        if character == '"' {
+            quoted = !quoted;
+        }
+    }
+    quoted || prefix.rfind('“') > prefix.rfind('”')
 }
 
 fn find_word(haystack: &str, needle: &str) -> Option<usize> {
@@ -1114,6 +1136,24 @@ mod tests {
             assert_eq!(findings(rule, bad), 1, "{rule} should trigger");
             assert_eq!(findings(rule, clean), 0, "{rule} should stay quiet");
         }
+    }
+
+    #[test]
+    fn quoted_phrase_examples_do_not_count_as_author_voice() {
+        let assistant_examples =
+            r#"Say \"That's a great question.\" Then say \"I would be happy to help.\""#;
+        assert_eq!(findings("VIBE002", assistant_examples), 0);
+        assert_eq!(
+            findings(
+                "VIBE002",
+                "Great question. I would be happy to walk through the answer."
+            ),
+            1
+        );
+
+        let conclusion_examples =
+            r#"Avoid \"In conclusion\", \"In summary\", and \"Ultimately\" in one passage."#;
+        assert_eq!(findings("VIBE016", conclusion_examples), 0);
     }
 
     #[test]

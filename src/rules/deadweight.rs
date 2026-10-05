@@ -2,7 +2,7 @@ use std::sync::OnceLock;
 
 use regex::Regex;
 
-use super::{Rule, ScanContext};
+use super::{Rule, ScanContext, matched_source_has_explanatory_comment};
 use crate::analysis::python_block_ends_at;
 use crate::language::{Language, SourceType};
 use crate::model::{Confidence, Finding, Module, RuleMetadata, Severity};
@@ -19,7 +19,7 @@ static METADATA: RuleMetadata = RuleMetadata {
     suggestion: "Handle the failure, rethrow it, or document a narrow and intentional exception.",
     rationale: "Silent exception handling hides failures and turns debugging evidence into an unexplained fallback.",
     examples: &["except NetworkError:\n    pass", "catch (error) {}"],
-    false_positives: "A deliberately ignored, narrowly typed exception may be valid when the reason is documented.",
+    false_positives: "A deliberately ignored exception with an explanatory body comment is excluded; undocumented handlers remain findings.",
 };
 
 impl Rule for EmptyExceptionHandler {
@@ -35,6 +35,9 @@ impl Rule for EmptyExceptionHandler {
         };
 
         for matched in matcher.find_iter(context.code()) {
+            if matched_source_has_explanatory_comment(context, matched.start(), matched.end()) {
+                continue;
+            }
             if context.source_type == SourceType::Code(Language::Python)
                 && !python_block_ends_at(context.code(), matched.start(), matched.end())
             {
@@ -112,12 +115,32 @@ mod tests {
                 "example = \"\"\"except Exception:\n    pass\n\"\"\"\n",
                 Language::Python,
             ),
+            (
+                "app.js",
+                "try { run(); } catch (error) {\n  // Optional cache cleanup.\n}\n",
+                Language::JavaScript,
+            ),
+            (
+                "app.py",
+                "try:\n    run()\nexcept FileNotFoundError:\n    pass  # Optional cache cleanup.\n",
+                Language::Python,
+            ),
         ] {
             let context = ScanContext::new(Path::new(path), source, SourceType::Code(language));
             let mut findings = Vec::new();
             EmptyExceptionHandler.check(&context, &mut findings);
             assert!(findings.is_empty(), "{source}");
         }
+
+        let source = "try:\n    run()\nexcept Exception:\n    pass  # TODO\n";
+        let context = ScanContext::new(
+            Path::new("app.py"),
+            source,
+            SourceType::Code(Language::Python),
+        );
+        let mut findings = Vec::new();
+        EmptyExceptionHandler.check(&context, &mut findings);
+        assert_eq!(findings.len(), 1);
     }
 
     #[test]

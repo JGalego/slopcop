@@ -1,3 +1,0 @@
-fn load() {
-    storage::load();
-}

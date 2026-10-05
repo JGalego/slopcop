@@ -143,9 +143,34 @@ fn blank(source: &str) -> String {
 fn mask_markdown_code(source: &str) -> String {
     let mut output = source.as_bytes().to_vec();
     let mut fence: Option<(u8, usize)> = None;
+    let mut front_matter = false;
+    let mut html_comment = false;
+    let mut first_line = true;
     let mut offset = 0;
 
     for line in source.split_inclusive('\n') {
+        let trimmed_line = line.trim();
+        if first_line && line.trim_start_matches('\u{feff}').trim().eq("---") {
+            front_matter = true;
+            mask_range(&mut output, offset, offset + line.len());
+            first_line = false;
+            offset += line.len();
+            continue;
+        }
+        first_line = false;
+        if front_matter {
+            mask_range(&mut output, offset, offset + line.len());
+            if matches!(trimmed_line, "---" | "...") {
+                front_matter = false;
+            }
+            offset += line.len();
+            continue;
+        }
+        if html_comment || line.contains("<!--") {
+            mask_html_comments(&mut output, line, offset, &mut html_comment);
+            offset += line.len();
+            continue;
+        }
         let trimmed = line.trim_start();
         let delimiter = markdown_fence(line);
         if let Some((marker, length)) = fence {
@@ -167,12 +192,30 @@ fn mask_markdown_code(source: &str) -> String {
     String::from_utf8(output).expect("masking preserves valid UTF-8")
 }
 
-fn markdown_fence(line: &str) -> Option<(u8, usize)> {
-    let indentation = line.bytes().take_while(|byte| *byte == b' ').count();
-    if indentation > 3 {
-        return None;
+fn mask_html_comments(output: &mut [u8], line: &str, line_offset: usize, in_comment: &mut bool) {
+    let mut index = 0;
+    while index < line.len() {
+        if *in_comment {
+            if let Some(relative_end) = line[index..].find("-->") {
+                let end = index + relative_end + 3;
+                mask_range(output, line_offset + index, line_offset + end);
+                *in_comment = false;
+                index = end;
+            } else {
+                mask_range(output, line_offset + index, line_offset + line.len());
+                break;
+            }
+        } else if let Some(relative_start) = line[index..].find("<!--") {
+            index += relative_start;
+            *in_comment = true;
+        } else {
+            break;
+        }
     }
-    let trimmed = &line[indentation..];
+}
+
+fn markdown_fence(line: &str) -> Option<(u8, usize)> {
+    let trimmed = line.trim_start();
     let marker = *trimmed.as_bytes().first()?;
     if !matches!(marker, b'`' | b'~') {
         return None;
@@ -445,6 +488,20 @@ mod tests {
     }
 
     #[test]
+    fn masks_markdown_front_matter_and_html_comments() {
+        let source = "---\ntitle: Hidden metadata\nsummary: Ultimately hidden.\n---\nVisible prose.\n<!-- END MANUAL: hidden marker.\nStill hidden. -->\nStill visible.\n";
+        let prose = prose_view(source, SourceType::Documentation);
+
+        assert_eq!(prose.len(), source.len());
+        assert!(!prose.contains("Hidden metadata"));
+        assert!(!prose.contains("Ultimately hidden"));
+        assert!(!prose.contains("END MANUAL"));
+        assert!(!prose.contains("Still hidden"));
+        assert!(prose.contains("Visible prose"));
+        assert!(prose.contains("Still visible"));
+    }
+
+    #[test]
     fn preserves_rust_lifetimes_and_masks_raw_strings() {
         let source = "fn run() -> &'static str { todo!() }\nlet text = r###\"quoted \" // TODO hidden\"###;\nlet byte = br#\"/* hidden */\"#;\nlet letter = 'é';\n// TODO visible\n";
         let kind = SourceType::Code(Language::Rust);
@@ -466,6 +523,17 @@ mod tests {
         assert!(prose.contains("Visible prose"));
         assert_eq!(prose.len(), source.len());
         assert_eq!(code_view(source, SourceType::Documentation).trim(), "");
+    }
+
+    #[test]
+    fn masks_indented_markdown_fences() {
+        let source = "<details>\n\n    ```yaml\n    # Hidden configuration comment\n    value: hidden\n    ```\n\n</details>\nVisible prose.\n";
+        let prose = prose_view(source, SourceType::Documentation);
+
+        assert_eq!(prose.len(), source.len());
+        assert!(!prose.contains("Hidden configuration comment"));
+        assert!(!prose.contains("value: hidden"));
+        assert!(prose.contains("Visible prose"));
     }
 
     #[test]

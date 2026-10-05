@@ -8,7 +8,7 @@ use std::cell::OnceCell;
 use std::path::Path;
 
 use crate::analysis::{Span, code_view, paragraph_spans, prose_view, sentence_spans, word_count};
-use crate::language::SourceType;
+use crate::language::{Language, SourceType};
 use crate::model::{Finding, Location, RuleMetadata};
 
 pub trait Rule: Send + Sync {
@@ -145,6 +145,40 @@ pub(super) fn emit(
         observation: observation.into(),
         suggestion: metadata.suggestion,
     });
+}
+
+pub(super) fn matched_source_has_explanatory_comment(
+    context: &ScanContext<'_>,
+    start: usize,
+    end: usize,
+) -> bool {
+    let source = &context.source[start..end];
+    match context.source_type {
+        SourceType::Code(Language::Python) => source
+            .lines()
+            .filter_map(|line| line.split_once('#').map(|(_, comment)| comment))
+            .any(is_explanatory_comment),
+        SourceType::Code(Language::JavaScript | Language::TypeScript) => {
+            source
+                .lines()
+                .filter_map(|line| line.split_once("//").map(|(_, comment)| comment))
+                .any(is_explanatory_comment)
+                || source.split("/*").skip(1).any(|comment| {
+                    comment
+                        .split_once("*/")
+                        .is_some_and(|(comment, _)| is_explanatory_comment(comment))
+                })
+        }
+        _ => false,
+    }
+}
+
+fn is_explanatory_comment(comment: &str) -> bool {
+    let comment = comment.trim().to_ascii_lowercase();
+    !["todo", "fixme", "hack", "xxx"]
+        .iter()
+        .any(|marker| comment.starts_with(marker))
+        && word_count(&comment) >= 3
 }
 
 #[must_use]

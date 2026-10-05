@@ -4,6 +4,10 @@ This project records user-visible changes in this file and follows Semantic Vers
 
 ## Unreleased
 
+### Fixed
+
+- Reduced false positives from documented no-op handlers, constant fallbacks, framework hooks, non-executable `NotImplementedError` references, inline annotations, repeated duplicate-block reports, Markdown metadata, nested fences, decorative headings, and minified JavaScript bundles.
+
 ### Added
 
 - Initial `deadweight` and `vibecheck` modules with 30 stable rules.
