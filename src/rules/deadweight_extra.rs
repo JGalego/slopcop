@@ -204,6 +204,19 @@ static DEAD015: RuleMetadata = RuleMetadata {
     false_positives: "Best-effort batch processing and interactive command loops may intentionally report one failure and continue.",
 };
 
+static DEAD016: RuleMetadata = RuleMetadata {
+    id: "DEAD016",
+    module: Module::Deadweight,
+    description: "Empty interaction handler",
+    default_severity: Severity::Error,
+    default_confidence: Confidence::High,
+    message: "A user-facing event handler is present but performs no action.",
+    suggestion: "Implement the interaction or remove the control until it has real behavior.",
+    rationale: "An empty JSX event callback creates an interface that appears interactive while silently doing nothing.",
+    examples: &["<button onClick={() => {}}>Save</button>"],
+    false_positives: "Story fixtures and component tests may use no-op handlers; recognized test files are excluded.",
+};
+
 pub(super) fn rules() -> Vec<Box<dyn Rule>> {
     vec![
         boxed(&DEAD002, check_placeholder_marker),
@@ -220,6 +233,7 @@ pub(super) fn rules() -> Vec<Box<dyn Rule>> {
         boxed(&DEAD013, check_inventory_count),
         boxed(&DEAD014, check_redundant_rethrow),
         boxed(&DEAD015, check_log_only_handler),
+        boxed(&DEAD016, check_empty_event_handler),
     ]
 }
 
@@ -643,6 +657,20 @@ fn is_test_path(path: &Path) -> bool {
         || normalized.contains(".spec.")
 }
 
+fn is_named_test_file(path: &Path) -> bool {
+    let name = path
+        .file_name()
+        .and_then(|value| value.to_str())
+        .unwrap_or("")
+        .to_ascii_lowercase();
+    name.starts_with("test_")
+        || name.contains("_test.")
+        || name.contains(".test.")
+        || name.contains("_spec.")
+        || name.contains(".spec.")
+        || name.contains(".stories.")
+}
+
 fn check_duplicate_block(
     context: &ScanContext<'_>,
     metadata: &'static RuleMetadata,
@@ -836,6 +864,33 @@ fn brace_log_only_matcher() -> &'static Regex {
     MATCHER.get_or_init(|| {
         Regex::new(r"(?s)catch\s*(?:\([^)]*\))?\s*\{\s*console\.(?:log|warn|error)\s*\([^;{}]*\)\s*;?\s*\}")
             .expect("DEAD015 brace regex must compile")
+    })
+}
+
+fn check_empty_event_handler(
+    context: &ScanContext<'_>,
+    metadata: &'static RuleMetadata,
+    findings: &mut Vec<crate::model::Finding>,
+) {
+    if !matches!(
+        context.source_type,
+        SourceType::Code(Language::JavaScript | Language::TypeScript)
+    ) || is_named_test_file(context.path)
+    {
+        return;
+    }
+    for found in empty_event_handler_matcher().find_iter(context.code()) {
+        emit(context, metadata, findings, found.start(), None::<String>);
+    }
+}
+
+fn empty_event_handler_matcher() -> &'static Regex {
+    static MATCHER: OnceLock<Regex> = OnceLock::new();
+    MATCHER.get_or_init(|| {
+        Regex::new(
+            r"(?s)\bon[A-Z][A-Za-z0-9_]*\s*=\s*\{\s*(?:async\s+)?\([^)]*\)\s*=>\s*\{\s*\}\s*\}",
+        )
+        .expect("DEAD016 event-handler regex must compile")
     })
 }
 
@@ -1311,6 +1366,34 @@ mod tests {
                 "DEAD015",
                 "app.py",
                 "try:\n    run()\nexcept OSError as error:\n    logger.exception(\"run failed\")\n"
+            ),
+            0
+        );
+    }
+
+    #[test]
+    fn empty_jsx_handlers_exclude_tests_and_real_callbacks() {
+        assert_eq!(
+            findings(
+                "DEAD016",
+                "src/button.tsx",
+                "export const Button = () => <button onClick={() => {}}>Save</button>;\n"
+            ),
+            1
+        );
+        assert_eq!(
+            findings(
+                "DEAD016",
+                "src/button.tsx",
+                "export const Button = () => <button onClick={() => save()}>Save</button>;\n"
+            ),
+            0
+        );
+        assert_eq!(
+            findings(
+                "DEAD016",
+                "tests/button.test.tsx",
+                "const control = <button onClick={() => {}}>Save</button>;\n"
             ),
             0
         );

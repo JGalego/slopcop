@@ -23,6 +23,7 @@ Confidence describes how directly the rule observes its quality smell. It never 
 | `DEAD013` | info | medium | An exact count of a mutable repository inventory such as rules, commands, or integrations | Release snapshots, generated summaries, compatibility limits, and fixed protocol cardinalities |
 | `DEAD014` | warning | high | A Python handler that only uses bare `raise`, or a JS/TS handler that throws the same caught identifier | Exception translation, cleanup, recovery, or added context |
 | `DEAD015` | warning | medium | A Python handler that only calls `print`, or a JS/TS handler that only calls `console.log`, `warn`, or `error` | Best-effort batch processing and interactive command loops that intentionally continue |
+| `DEAD016` | error | high | A production JSX event property whose arrow callback has an empty body | Recognized test files; implemented callbacks |
 
 ## papertrail
 

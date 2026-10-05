@@ -1,0 +1,1 @@
+export const SaveButton = () => <button onClick={() => {}}>Save</button>;
