@@ -172,6 +172,22 @@ static DEAD013: RuleMetadata = RuleMetadata {
     false_positives: "Release snapshots, compatibility limits, generated summaries, and fixed protocol cardinalities may require exact counts.",
 };
 
+static DEAD014: RuleMetadata = RuleMetadata {
+    id: "DEAD014",
+    module: Module::Deadweight,
+    description: "Redundant exception rethrow",
+    default_severity: Severity::Warning,
+    default_confidence: Confidence::High,
+    message: "An exception handler only rethrows the same failure without adding behavior.",
+    suggestion: "Remove the handler, or add the translation, cleanup, or context that justifies it.",
+    rationale: "Catch-and-rethrow scaffolding adds indentation and suggests handling while preserving the original control flow unchanged.",
+    examples: &[
+        "catch (error) { throw error; }",
+        "except NetworkError:\n    raise",
+    ],
+    false_positives: "A temporary debugger breakpoint may use this shape during local diagnosis but should not remain committed.",
+};
+
 pub(super) fn rules() -> Vec<Box<dyn Rule>> {
     vec![
         boxed(&DEAD002, check_placeholder_marker),
@@ -186,6 +202,7 @@ pub(super) fn rules() -> Vec<Box<dyn Rule>> {
         boxed(&DEAD011, check_duplicate_block),
         boxed(&DEAD012, check_empty_doc_section),
         boxed(&DEAD013, check_inventory_count),
+        boxed(&DEAD014, check_redundant_rethrow),
     ]
 }
 
@@ -722,6 +739,50 @@ fn check_inventory_count(
     }
 }
 
+fn check_redundant_rethrow(
+    context: &ScanContext<'_>,
+    metadata: &'static RuleMetadata,
+    findings: &mut Vec<crate::model::Finding>,
+) {
+    match context.source_type {
+        SourceType::Code(Language::Python) => {
+            for found in python_rethrow_matcher().find_iter(context.code()) {
+                if python_block_ends_at(context.code(), found.start(), found.end()) {
+                    emit(context, metadata, findings, found.start(), None::<String>);
+                }
+            }
+        }
+        SourceType::Code(Language::JavaScript | Language::TypeScript) => {
+            for captures in brace_rethrow_matcher().captures_iter(context.code()) {
+                if captures.name("caught").map(|value| value.as_str())
+                    != captures.name("thrown").map(|value| value.as_str())
+                {
+                    continue;
+                }
+                let found = captures.get(0).expect("whole rethrow match");
+                emit(context, metadata, findings, found.start(), None::<String>);
+            }
+        }
+        _ => {}
+    }
+}
+
+fn python_rethrow_matcher() -> &'static Regex {
+    static MATCHER: OnceLock<Regex> = OnceLock::new();
+    MATCHER.get_or_init(|| {
+        Regex::new(r"(?mR)^[ \t]*except(?:[^\r\n:]*)?:[ \t]*\r?\n[ \t]+raise[ \t]*$")
+            .expect("DEAD014 Python regex must compile")
+    })
+}
+
+fn brace_rethrow_matcher() -> &'static Regex {
+    static MATCHER: OnceLock<Regex> = OnceLock::new();
+    MATCHER.get_or_init(|| {
+        Regex::new(r"(?s)catch\s*\(\s*(?P<caught>[A-Za-z_$][\w$]*)\s*\)\s*\{\s*throw\s+(?P<thrown>[A-Za-z_$][\w$]*)\s*;?\s*\}")
+            .expect("DEAD014 brace regex must compile")
+    })
+}
+
 fn inventory_count_matcher() -> &'static Regex {
     static MATCHER: OnceLock<Regex> = OnceLock::new();
     MATCHER.get_or_init(|| {
@@ -1125,5 +1186,41 @@ mod tests {
         assert_eq!(findings("DEAD012", "CHANGELOG.md", nested), 0);
         assert_eq!(findings("DEAD012", "README.md", code_only), 0);
         assert_eq!(findings("DEAD012", "README.md", decorative), 0);
+    }
+
+    #[test]
+    fn redundant_rethrows_add_no_exception_behavior() {
+        assert_eq!(
+            findings(
+                "DEAD014",
+                "app.py",
+                "try:\n    run()\nexcept NetworkError:\n    raise\n"
+            ),
+            1
+        );
+        assert_eq!(
+            findings(
+                "DEAD014",
+                "app.ts",
+                "try { run(); } catch (error) { throw error; }\n"
+            ),
+            1
+        );
+        assert_eq!(
+            findings(
+                "DEAD014",
+                "app.ts",
+                "try { run(); } catch (error) { throw new RetryError(error); }\n"
+            ),
+            0
+        );
+        assert_eq!(
+            findings(
+                "DEAD014",
+                "app.py",
+                "try:\n    run()\nexcept NetworkError:\n    cleanup()\n    raise\n"
+            ),
+            0
+        );
     }
 }

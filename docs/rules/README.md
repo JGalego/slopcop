@@ -21,6 +21,7 @@ Confidence describes how directly the rule observes its quality smell. It never 
 | `DEAD011` | warning | medium | Ten substantial, identical, non-empty source lines repeated later in one file | Short scaffolding, blocks with literal differences, generated files, and intentionally distinct logic; each exact duplicate group reports once |
 | `DEAD012` | warning | medium | An empty Markdown section or a short body that only restates its heading | Sections containing concrete prose, nested sections, lists, fenced examples, or decorative heading underlines |
 | `DEAD013` | info | medium | An exact count of a mutable repository inventory such as rules, commands, or integrations | Release snapshots, generated summaries, compatibility limits, and fixed protocol cardinalities |
+| `DEAD014` | warning | high | A Python handler that only uses bare `raise`, or a JS/TS handler that throws the same caught identifier | Exception translation, cleanup, recovery, or added context |
 
 ## papertrail
 
