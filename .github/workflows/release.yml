@@ -3,10 +3,10 @@ name: Release
 on:
   push:
     tags:
-      - "v[0-9]+.[0-9]+.[0-9]+*"
+      - "v*.*.*"
 
 permissions:
-  contents: write
+  contents: read
 
 env:
   CARGO_TERM_COLOR: always
@@ -14,7 +14,7 @@ env:
 jobs:
   verify:
     name: Verify release source
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     steps:
       - uses: actions/checkout@v5
       - uses: dtolnay/rust-toolchain@stable
@@ -32,10 +32,21 @@ jobs:
       - run: cargo package --locked
       - run: cargo run --release --locked -- .
 
+  msrv:
+    name: Minimum Rust (1.85)
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v5
+      - uses: dtolnay/rust-toolchain@stable
+        with:
+          toolchain: "1.85.0"
+      - uses: Swatinem/rust-cache@v2
+      - run: cargo test --all-targets --all-features --locked
+
   publish:
     name: Publish to crates.io
-    needs: verify
-    runs-on: ubuntu-latest
+    needs: [verify, msrv, binaries]
+    runs-on: ubuntu-24.04
     permissions:
       contents: read
     steps:
@@ -47,13 +58,15 @@ jobs:
 
   binaries:
     name: ${{ matrix.target }}
-    needs: verify
+    needs: [verify, msrv]
+    permissions:
+      contents: write
     strategy:
       fail-fast: false
       matrix:
         include:
           - target: x86_64-unknown-linux-gnu
-            os: ubuntu-latest
+            os: ubuntu-24.04
           - target: aarch64-unknown-linux-gnu
             os: ubuntu-24.04-arm
           - target: x86_64-apple-darwin

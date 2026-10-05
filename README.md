@@ -131,7 +131,7 @@ repos:
       - id: slopcop-commit-msg
 ```
 
-    The normal hook scans filenames supplied by pre-commit, which hides unstaged edits during commit checks. The `commit-msg` hook checks the proposed subject but deliberately allows `fixup!` and `squash!` while a series is being prepared. `slopcop history --base REV` checks committed branch history and reports those autosquash markers. Install both stages with `pre-commit install --hook-type pre-commit --hook-type commit-msg`. `pre-commit run --all-files` checks all tracked files. This repository uses local entries; `make bootstrap` builds the binary and installs both hook types with `pre-commit` or `uvx`.
+  The normal hook scans filenames supplied by pre-commit, which hides unstaged edits during commit checks. The `commit-msg` hook checks the proposed subject but deliberately allows `fixup!` and `squash!` while a series is being prepared. `slopcop history --base REV` checks committed branch history and reports those autosquash markers. Install both stages with `pre-commit install --hook-type pre-commit --hook-type commit-msg`. `pre-commit run --all-files` checks all tracked files. This repository uses local entries; `make bootstrap` builds the binary and installs both hook types with `pre-commit` or `uvx`.
 
 ## CI and machine output
 
