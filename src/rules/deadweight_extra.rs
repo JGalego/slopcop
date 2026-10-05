@@ -217,6 +217,19 @@ static DEAD016: RuleMetadata = RuleMetadata {
     false_positives: "Story fixtures and component tests may use no-op handlers; recognized test files are excluded.",
 };
 
+static DEAD017: RuleMetadata = RuleMetadata {
+    id: "DEAD017",
+    module: Module::Deadweight,
+    description: "Canned-success action stub",
+    default_severity: Severity::Warning,
+    default_confidence: Confidence::Medium,
+    message: "An action-named function returns a literal success result without doing work.",
+    suggestion: "Implement the action, or expose an explicit test fixture instead of a production success stub.",
+    rationale: "A hard-coded successful response can make an unfinished operation appear complete to callers and tests.",
+    examples: &["async function publish(event) { return { ok: true }; }"],
+    false_positives: "Result constructors and test factories may intentionally create success values; recognized test files are excluded and only action-like names trigger.",
+};
+
 pub(super) fn rules() -> Vec<Box<dyn Rule>> {
     vec![
         boxed(&DEAD002, check_placeholder_marker),
@@ -234,6 +247,7 @@ pub(super) fn rules() -> Vec<Box<dyn Rule>> {
         boxed(&DEAD014, check_redundant_rethrow),
         boxed(&DEAD015, check_log_only_handler),
         boxed(&DEAD016, check_empty_event_handler),
+        boxed(&DEAD017, check_canned_success),
     ]
 }
 
@@ -872,6 +886,15 @@ fn check_empty_event_handler(
     metadata: &'static RuleMetadata,
     findings: &mut Vec<crate::model::Finding>,
 ) {
+    check_javascript_matcher(context, metadata, findings, empty_event_handler_matcher());
+}
+
+fn check_javascript_matcher(
+    context: &ScanContext<'_>,
+    metadata: &'static RuleMetadata,
+    findings: &mut Vec<crate::model::Finding>,
+    matcher: &Regex,
+) {
     if !matches!(
         context.source_type,
         SourceType::Code(Language::JavaScript | Language::TypeScript)
@@ -879,7 +902,7 @@ fn check_empty_event_handler(
     {
         return;
     }
-    for found in empty_event_handler_matcher().find_iter(context.code()) {
+    for found in matcher.find_iter(context.code()) {
         emit(context, metadata, findings, found.start(), None::<String>);
     }
 }
@@ -891,6 +914,29 @@ fn empty_event_handler_matcher() -> &'static Regex {
             r"(?s)\bon[A-Z][A-Za-z0-9_]*\s*=\s*\{\s*(?:async\s+)?\([^)]*\)\s*=>\s*\{\s*\}\s*\}",
         )
         .expect("DEAD016 event-handler regex must compile")
+    })
+}
+
+fn check_canned_success(
+    context: &ScanContext<'_>,
+    metadata: &'static RuleMetadata,
+    findings: &mut Vec<crate::model::Finding>,
+) {
+    check_javascript_matcher(context, metadata, findings, canned_success_matcher());
+}
+
+fn canned_success_matcher() -> &'static Regex {
+    static MATCHER: OnceLock<Regex> = OnceLock::new();
+    MATCHER.get_or_init(|| {
+        Regex::new(concat!(
+            r"(?ms)^[ \t]*",
+            r"(?:(?:export|public|private|protected|static)[ \t]+)*",
+            r"(?:async[ \t]+)?(?:function[ \t]+)?",
+            r"(?:handle[A-Z][A-Za-z0-9_$]*|save|submit|create|update|remove|send|publish|process|execute)",
+            r"\s*\([^)]*\)(?:\s*:\s*[^\n{]+)?\s*\{\s*",
+            r"return\s*\{\s*(?:ok|success)\s*:\s*true\s*,?\s*\}\s*;?\s*\}",
+        ))
+        .expect("DEAD017 canned-success regex must compile")
     })
 }
 
@@ -1394,6 +1440,42 @@ mod tests {
                 "DEAD016",
                 "tests/button.test.tsx",
                 "const control = <button onClick={() => {}}>Save</button>;\n"
+            ),
+            0
+        );
+    }
+
+    #[test]
+    fn canned_success_requires_an_action_name_and_empty_behavior() {
+        assert_eq!(
+            findings(
+                "DEAD017",
+                "src/publish.ts",
+                "export async function publish(event) { return { ok: true }; }\n"
+            ),
+            1
+        );
+        assert_eq!(
+            findings(
+                "DEAD017",
+                "src/publish.ts",
+                "export async function publish(event) { await broker.send(event); return { ok: true }; }\n"
+            ),
+            0
+        );
+        assert_eq!(
+            findings(
+                "DEAD017",
+                "src/results.ts",
+                "function success() { return { ok: true }; }\n"
+            ),
+            0
+        );
+        assert_eq!(
+            findings(
+                "DEAD017",
+                "tests/publish.test.ts",
+                "function publish() { return { ok: true }; }\n"
             ),
             0
         );
