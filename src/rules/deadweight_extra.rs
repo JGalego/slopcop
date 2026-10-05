@@ -261,7 +261,7 @@ fn check_exception_fallback(
 fn python_fallback_matcher() -> &'static Regex {
     static MATCHER: OnceLock<Regex> = OnceLock::new();
     MATCHER.get_or_init(|| {
-        Regex::new(r"(?m)^[ \t]*except(?:[^\n:]*)?:[ \t]*\n[ \t]+return[ \t]+(?:None|False|\[\]|\{\})[ \t]*$")
+        Regex::new(r"(?mR)^[ \t]*except(?:[^\r\n:]*)?:[ \t]*\r?\n[ \t]+return[ \t]+(?:None|False|\[\]|\{\})[ \t]*$")
             .expect("DEAD004 Python regex must compile")
     })
 }
@@ -304,7 +304,7 @@ fn check_empty_function(
 fn python_empty_function_matcher() -> &'static Regex {
     static MATCHER: OnceLock<Regex> = OnceLock::new();
     MATCHER.get_or_init(|| {
-        Regex::new(r"(?m)^[ \t]*(?:async[ \t]+)?def[ \t]+[A-Za-z_]\w*\([^\n]*\):[ \t]*\n[ \t]+(?:pass|\.\.\.)[ \t]*$")
+        Regex::new(r"(?mR)^[ \t]*(?:async[ \t]+)?def[ \t]+[A-Za-z_]\w*\([^\r\n]*\):[ \t]*\r?\n[ \t]+(?:pass|\.\.\.)[ \t]*$")
             .expect("DEAD005 Python regex must compile")
     })
 }
@@ -452,7 +452,7 @@ fn check_delegating_wrapper(
 fn python_delegate_matcher() -> &'static Regex {
     static MATCHER: OnceLock<Regex> = OnceLock::new();
     MATCHER.get_or_init(|| {
-        Regex::new(r"(?m)^[ \t]*(?:async[ \t]+)?def[ \t]+(?P<name>[A-Za-z_]\w*)\((?P<params>[^\n)]*)\):[ \t]*\n[ \t]+return[ \t]+(?:await[ \t]+)?(?:[A-Za-z_]\w*\.)*(?P<call>[A-Za-z_]\w*)\((?P<args>[^\n)]*)\)[ \t]*$")
+        Regex::new(r"(?mR)^[ \t]*(?:async[ \t]+)?def[ \t]+(?P<name>[A-Za-z_]\w*)\((?P<params>[^\r\n)]*)\):[ \t]*\r?\n[ \t]+return[ \t]+(?:await[ \t]+)?(?:[A-Za-z_]\w*\.)*(?P<call>[A-Za-z_]\w*)\((?P<args>[^\r\n)]*)\)[ \t]*$")
             .expect("DEAD008 Python regex must compile")
     })
 }
@@ -505,7 +505,7 @@ fn check_boolean_branch(
 fn python_boolean_matcher() -> &'static Regex {
     static MATCHER: OnceLock<Regex> = OnceLock::new();
     MATCHER.get_or_init(|| {
-        Regex::new(r"(?m)^[ \t]*if[^\n]+:[ \t]*\n[ \t]+return[ \t]+(?P<first>True|False)[ \t]*\n[ \t]*else:[ \t]*\n[ \t]+return[ \t]+(?P<second>False|True)[ \t]*$")
+        Regex::new(r"(?mR)^[ \t]*if[^\r\n]+:[ \t]*\r?\n[ \t]+return[ \t]+(?P<first>True|False)[ \t]*\r?\n[ \t]*else:[ \t]*\r?\n[ \t]+return[ \t]+(?P<second>False|True)[ \t]*$")
             .expect("DEAD009 Python regex must compile")
     })
 }

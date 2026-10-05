@@ -59,7 +59,7 @@ impl Rule for EmptyExceptionHandler {
 fn python_matcher() -> &'static Regex {
     static MATCHER: OnceLock<Regex> = OnceLock::new();
     MATCHER.get_or_init(|| {
-        Regex::new(r"(?m)^[ \t]*except(?:[^\n:]*)?:[ \t]*(?:#[^\n]*)?\n[ \t]+(?:pass|\.\.\.)[ \t]*(?:#[^\n]*)?$")
+        Regex::new(r"(?mR)^[ \t]*except(?:[^\r\n:]*)?:[ \t]*(?:#[^\r\n]*)?\r?\n[ \t]+(?:pass|\.\.\.)[ \t]*(?:#[^\r\n]*)?$")
             .expect("DEAD001 Python regex must compile")
     })
 }
