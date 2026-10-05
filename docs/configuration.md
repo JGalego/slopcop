@@ -12,6 +12,9 @@ max-file-size = 1000000
 [slopcop.deadweight]
 enabled = true
 
+[slopcop.papertrail]
+enabled = true
+
 [slopcop.vibecheck]
 enabled = true
 
@@ -39,7 +42,7 @@ exclude = ["docs/archive/**"]
 
 ## Modules and rules
 
-Both modules are enabled by default. A module switch prevents all of its rules from running, which avoids their analysis cost as well as their findings. A project may override an individual rule with `info`, `warning`, `error`, or `off`.
+All modules are enabled by default. `deadweight` and `vibecheck` inspect repository artifacts; `papertrail` inspects commit messages and history through its explicit commands. A module switch prevents all of its rules from running, which avoids their analysis cost as well as their findings. A project may override an individual rule with `info`, `warning`, `error`, or `off`.
 
 Rule IDs are validated while loading configuration. A typo is a usage error rather than a silently ignored setting. Configuration that leaves no enabled rules is also rejected.
 

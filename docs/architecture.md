@@ -5,7 +5,7 @@
 ## Data flow
 
 ```text
-paths or Git selection
+paths, commit message, or Git selection
         |
         v
 ignore-aware discovery / index blob loading
@@ -40,6 +40,8 @@ text / JSON / SARIF / GitHub reporter
 `scanner` rejects oversized, binary, invalid UTF-8, generated, and conservatively detected minified JavaScript or TypeScript files before analysis. Rayon distributes independent files across workers. Rules run sequentially within one file and share lazily cached lowercase text, sentence spans, paragraph spans, and word counts.
 
 `rules` owns the registry and the `Rule` trait. The CLI does not contain detection logic. Metadata travels with each rule and powers `rules`, `explain`, SARIF descriptors, configuration validation, and fixture coverage checks.
+
+`papertrail` reads one `commit-msg` file or NUL-delimited commit records from `git log`. Its rules share metadata, severity overrides, reporters, and exit thresholds with artifact rules, but use a commit-specific context so file discovery remains unchanged.
 
 `git` reads staged content directly from the index. Working-tree comparisons read local content, while base comparisons read committed `HEAD` blobs. Both parse zero-context diff hunks and retain findings whose source line intersects an added range. Selection, configuration, and hunk lookup use normalized absolute paths; reports use invocation-relative paths where possible.
 

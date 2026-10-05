@@ -107,3 +107,39 @@ fn explain_includes_complete_rule_metadata() {
     assert!(stdout.contains("False positives:"));
     assert!(stdout.contains("VIBE001 = \"info|warning|error|off\""));
 }
+
+#[test]
+fn commit_message_checks_placeholder_subjects_but_allows_autosquash_authoring() {
+    let directory = tempfile::tempdir().expect("temporary directory");
+    let message = directory.path().join("COMMIT_EDITMSG");
+
+    fs::write(&message, "# Commit subject\n\nWIP\n").expect("write placeholder message");
+    let output = slopcop(
+        directory.path(),
+        &["commit-message", "COMMIT_EDITMSG", "--format", "json"],
+    );
+    assert_eq!(output.status.code(), Some(1));
+    let report: serde_json::Value =
+        serde_json::from_slice(&output.stdout).expect("valid JSON report");
+    assert_eq!(report["findings"][0]["rule_id"], "TRAIL001");
+    assert_eq!(report["findings"][0]["module"], "papertrail");
+
+    fs::write(&message, "fixup! Handle empty input\n").expect("write fixup message");
+    let output = slopcop(
+        directory.path(),
+        &["commit-message", "COMMIT_EDITMSG", "--quiet"],
+    );
+    assert_eq!(output.status.code(), Some(0));
+
+    fs::write(
+        directory.path().join(".slopcop.toml"),
+        "[slopcop.papertrail]\nenabled = false\n",
+    )
+    .expect("write config");
+    fs::write(&message, "WIP\n").expect("restore placeholder message");
+    let output = slopcop(
+        directory.path(),
+        &["commit-message", "COMMIT_EDITMSG", "--quiet"],
+    );
+    assert_eq!(output.status.code(), Some(0));
+}

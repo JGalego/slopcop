@@ -8,6 +8,7 @@ pub mod git;
 pub mod init;
 pub mod language;
 pub mod model;
+pub mod papertrail;
 pub mod reporting;
 pub mod rules;
 pub mod scanner;

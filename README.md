@@ -60,6 +60,8 @@ slopcop src/ README.md
 slopcop --staged
 slopcop --diff
 slopcop --changed --base origin/main
+slopcop commit-message .git/COMMIT_EDITMSG
+slopcop history --base origin/main
 slopcop explain VIBE001
 slopcop rules
 slopcop benchmark
@@ -71,9 +73,11 @@ Exit code `0` means clean or below the configured failure threshold. Findings at
 
 **deadweight** finds code and prose that appear to exist without doing useful work: swallowed exceptions, escaped placeholders, empty concrete functions, trivial assertions, redundant comments, pointless Boolean branches, duplicated blocks, and empty documentation sections.
 
+**papertrail** checks commit messages and branch history for placeholder subjects and autosquash commits that should not reach an integration branch.
+
 **vibecheck** measures patterns in prose and code comments: clustered stock transitions, assistant framing, generic modifier density, repeated sentence openings, forced symmetry, restatement, disclaimer clusters, and unusually uniform rhythm. One use of “robust” or “ultimately” is not a finding. Density and repetition are.
 
-The initial registry contains 30 stable rules. `slopcop explain RULE_ID` prints rationale, examples, false-positive notes, and configuration guidance. See [the rule index](docs/rules/README.md) for the full list.
+The rule index documents every stable rule. `slopcop explain RULE_ID` prints rationale, examples, false-positive notes, and configuration guidance.
 
 ## Configuration
 
@@ -85,6 +89,9 @@ fail-level = "warning"
 max-file-size = 1000000
 
 [slopcop.deadweight]
+enabled = true
+
+[slopcop.papertrail]
 enabled = true
 
 [slopcop.vibecheck]
@@ -121,9 +128,10 @@ repos:
     rev: v0.1.0
     hooks:
       - id: slopcop
+      - id: slopcop-commit-msg
 ```
 
-The hook scans filenames supplied by pre-commit, which hides unstaged edits during normal commit checks. `pre-commit run --all-files` checks all tracked files. This repository uses a local entry; `make bootstrap` builds the binary and installs the hook with `pre-commit` or `uvx`.
+    The normal hook scans filenames supplied by pre-commit, which hides unstaged edits during commit checks. The `commit-msg` hook checks the proposed subject but deliberately allows `fixup!` and `squash!` while a series is being prepared. `slopcop history --base REV` checks committed branch history and reports those autosquash markers. Install both stages with `pre-commit install --hook-type pre-commit --hook-type commit-msg`. `pre-commit run --all-files` checks all tracked files. This repository uses local entries; `make bootstrap` builds the binary and installs both hook types with `pre-commit` or `uvx`.
 
 ## CI and machine output
 

@@ -56,6 +56,7 @@ pub enum Confidence {
 #[serde(rename_all = "lowercase")]
 pub enum Module {
     Deadweight,
+    Papertrail,
     Vibecheck,
 }
 
@@ -63,6 +64,7 @@ impl std::fmt::Display for Module {
     fn fmt(&self, formatter: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match self {
             Self::Deadweight => formatter.write_str("deadweight"),
+            Self::Papertrail => formatter.write_str("papertrail"),
             Self::Vibecheck => formatter.write_str("vibecheck"),
         }
     }

@@ -3,9 +3,9 @@
 bootstrap:
 	cargo build --locked
 	@if command -v pre-commit >/dev/null 2>&1; then \
-		pre-commit install; \
+		pre-commit install --hook-type pre-commit --hook-type commit-msg; \
 	elif command -v uvx >/dev/null 2>&1; then \
-		uvx pre-commit install; \
+		uvx pre-commit install --hook-type pre-commit --hook-type commit-msg; \
 	else \
 		echo "Install pre-commit or uv, then run make bootstrap again." >&2; \
 		exit 1; \

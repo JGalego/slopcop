@@ -4,7 +4,7 @@ use std::path::{Path, PathBuf};
 
 use slopcop::config::Config;
 use slopcop::discovery::discover;
-use slopcop::rules::registry;
+use slopcop::rules::metadata_registry;
 use slopcop::{ScanOptions, scan_paths};
 
 fn validate_coverage(root: &Path, config: &Config) -> Result<(), String> {
@@ -51,6 +51,7 @@ fn self_lint_keeps_every_module_enabled_and_source_in_scope() {
     let config = Config::load(Some(&config_path)).expect("valid self-lint config");
 
     assert!(config.deadweight_enabled, "deadweight must remain enabled");
+    assert!(config.papertrail_enabled, "papertrail must remain enabled");
     assert!(config.vibecheck_enabled, "vibecheck must remain enabled");
     validate_coverage(root, &config)
         .expect("self-lint must scan all source and documentation artifacts");
@@ -60,11 +61,11 @@ fn self_lint_keeps_every_module_enabled_and_source_in_scope() {
             .includes_file(&root.join("tests/fixtures/slop/dead001.py")),
         "intentional positive fixtures should be excluded from self-lint"
     );
-    for rule in registry() {
+    for metadata in metadata_registry() {
         assert!(
-            config.rule_enabled(rule.metadata().id, rule.metadata().module),
+            config.rule_enabled(metadata.id, metadata.module),
             "self-lint disabled {}",
-            rule.metadata().id
+            metadata.id
         );
     }
 }

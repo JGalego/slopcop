@@ -10,7 +10,8 @@ This project records user-visible changes in this file and follows Semantic Vers
 
 ### Added
 
-- Initial `deadweight` and `vibecheck` modules with 30 stable rules.
+- `papertrail` commit-message and history checks with `commit-message` and `history` commands plus a `commit-msg` pre-commit hook.
+- Initial `deadweight` and `vibecheck` modules with their stable rule catalogs.
 - Ignore-aware parallel discovery for code, documentation, text, and configuration files.
 - Exact staged-blob scanning and changed-hunk filtering for Git workflows.
 - Text, JSON, SARIF 2.1.0, and GitHub annotation reporters.

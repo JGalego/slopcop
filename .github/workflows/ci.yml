@@ -58,6 +58,10 @@ jobs:
         run: |
           python -m pip install pre-commit
           pre-commit run --all-files
+          message_file="$(mktemp)"
+          printf 'Describe Papertrail behavior\n' > "$message_file"
+          pre-commit run slopcop-commit-msg --hook-stage commit-msg --commit-msg-filename "$message_file"
+          rm -f "$message_file"
       - name: Benchmark smoke test
         run: cargo run --release --locked -- benchmark | tee benchmark-output.txt
       - uses: actions/upload-artifact@v4

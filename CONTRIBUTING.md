@@ -40,6 +40,8 @@ A rule contribution includes:
 
 Read the [rule development guide](docs/contributing-rules.md) before choosing an ID or threshold.
 
+Papertrail rules use focused commit-message tests and Git integration tests instead of file fixtures.
+
 ## Pull requests
 
 Describe the observable problem, the chosen signal, and the cases that should remain quiet. Include measurements for performance work. Avoid claims about who authored an artifact; findings must describe what the scanner observed.

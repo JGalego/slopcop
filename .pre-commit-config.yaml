@@ -17,3 +17,8 @@ repos:
         name: slopcop
         entry: cargo run --quiet -- --
         language: system
+      - id: slopcop-commit-msg
+        name: slopcop commit message
+        entry: cargo run --quiet --locked -- commit-message
+        language: system
+        stages: [commit-msg]

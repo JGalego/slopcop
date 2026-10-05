@@ -8,6 +8,8 @@ Use `DEAD` for artifacts that add little behavior or information: placeholders, 
 
 Use `VIBE` for measurable prose structure: phrase clusters, density, repetition, punctuation, sentence rhythm, paragraph shape, or local restatement.
 
+Use `TRAIL` for deterministic commit-message or history hygiene. Message-file checks must remain compatible with `commit-msg` hooks; history-only checks may inspect commit ranges but must not block creation of temporary autosquash commits.
+
 Do not add syntax, formatting, type, or unused-import checks already owned by compilers and mainstream linters.
 
 ## Choose a signal
@@ -42,7 +44,7 @@ Confidence describes the rule's observation, not authorship. Use `low` for weak 
 
 ## Prove behavior
 
-Add a focused unit test with at least one positive and negative case. Add one file named after the lowercased rule ID to both fixture directories:
+Add a focused unit test with at least one positive and negative case. For `DEAD` and `VIBE` rules, add one file named after the lowercased rule ID to both fixture directories:
 
 ```text
 tests/fixtures/slop/vibe019.md
@@ -52,6 +54,8 @@ tests/fixtures/clean/vibe019.md
 The registry-driven corpus test fails when either file is missing, the positive file does not emit its rule, any rule fires on its own clean control, the aggregate clean corpus has a cross-rule finding, or the aggregate slop corpus misses a registered ID.
 
 Add a regression fixture for a real false positive. Do not solve repository self-lint by disabling the rule or excluding source; anti-bypass tests reject that shortcut.
+
+For `TRAIL` rules, add commit-context unit tests and a Git integration test when the rule depends on history. History-only rules must stay quiet in the `commit-message` command.
 
 ## Document and measure
 

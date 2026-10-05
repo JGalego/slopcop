@@ -29,6 +29,7 @@ impl Default for ScanOptions {
 #[derive(Debug)]
 pub struct ScanResult {
     pub scanned_files: usize,
+    pub scanned_commits: usize,
     pub skipped_files: usize,
     pub findings: Vec<Finding>,
 }
@@ -125,6 +126,7 @@ fn finish_scan(outcomes: Vec<FileOutcome>) -> ScanResult {
 
     ScanResult {
         scanned_files,
+        scanned_commits: 0,
         skipped_files,
         findings,
     }

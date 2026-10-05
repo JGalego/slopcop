@@ -203,3 +203,46 @@ fn diff_mode_reports_only_changed_hunk_lines() {
         .collect();
     assert_eq!(ids, ["DEAD002"]);
 }
+
+#[test]
+fn history_mode_checks_branch_commits_after_the_merge_base() {
+    let directory = tempfile::tempdir().expect("temporary directory");
+    init_repository(directory.path());
+    fs::write(directory.path().join("app.py"), "run()\n").expect("write source");
+    command(directory.path(), "git", &["add", "app.py"]);
+    command(
+        directory.path(),
+        "git",
+        &["commit", "--quiet", "-m", "Add initial behavior"],
+    );
+    let base = command(directory.path(), "git", &["rev-parse", "HEAD"]);
+    let base = String::from_utf8(base.stdout).expect("commit ID");
+
+    fs::write(directory.path().join("app.py"), "run_once()\n").expect("change source");
+    command(directory.path(), "git", &["add", "app.py"]);
+    command(directory.path(), "git", &["commit", "--quiet", "-m", "WIP"]);
+    fs::write(directory.path().join("app.py"), "run_twice()\n").expect("change source again");
+    command(directory.path(), "git", &["add", "app.py"]);
+    command(
+        directory.path(),
+        "git",
+        &["commit", "--quiet", "-m", "fixup! Add initial behavior"],
+    );
+
+    let output = slopcop(
+        directory.path(),
+        &["history", "--base", base.trim(), "--format", "json"],
+    );
+    assert_eq!(output.status.code(), Some(1));
+    let report: serde_json::Value =
+        serde_json::from_slice(&output.stdout).expect("valid JSON report");
+    assert_eq!(report["summary"]["scanned_files"], 0);
+    assert_eq!(report["summary"]["scanned_commits"], 2);
+    let ids: std::collections::BTreeSet<_> = report["findings"]
+        .as_array()
+        .expect("findings array")
+        .iter()
+        .map(|finding| finding["rule_id"].as_str().expect("rule ID"))
+        .collect();
+    assert_eq!(ids, ["TRAIL001", "TRAIL002"].into_iter().collect());
+}

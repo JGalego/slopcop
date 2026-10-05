@@ -13,6 +13,9 @@ max-file-size = 1000000
 [slopcop.deadweight]
 enabled = true
 
+[slopcop.papertrail]
+enabled = true
+
 [slopcop.vibecheck]
 enabled = true
 
@@ -34,6 +37,7 @@ const PRE_COMMIT: &str = r"repos:
     rev: v0.1.0
     hooks:
       - id: slopcop
+            - id: slopcop-commit-msg
 ";
 
 #[derive(Clone, Debug)]
@@ -127,5 +131,8 @@ mod tests {
             fs::read_to_string(directory.path().join(CONFIG_FILE_NAME)).expect("read config"),
             "custom = true\n"
         );
+        let hooks = fs::read_to_string(directory.path().join(".pre-commit-config.yaml"))
+            .expect("read hook config");
+        assert!(hooks.contains("id: slopcop-commit-msg"));
     }
 }

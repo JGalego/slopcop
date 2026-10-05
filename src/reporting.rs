@@ -6,7 +6,7 @@ use serde::Serialize;
 use serde_json::json;
 
 use crate::model::{Finding, Severity};
-use crate::rules::registry;
+use crate::rules::metadata_registry;
 use crate::scanner::ScanResult;
 
 /// Writes the human-readable report.
@@ -81,6 +81,7 @@ struct JsonReport<'a> {
 #[derive(Serialize)]
 struct JsonSummary {
     scanned_files: usize,
+    scanned_commits: usize,
     skipped_files: usize,
     findings: usize,
 }
@@ -96,6 +97,7 @@ pub fn write_json(mut writer: impl Write, result: &ScanResult) -> serde_json::Re
         findings: &result.findings,
         summary: JsonSummary {
             scanned_files: result.scanned_files,
+            scanned_commits: result.scanned_commits,
             skipped_files: result.skipped_files,
             findings: result.findings.len(),
         },
@@ -110,10 +112,9 @@ pub fn write_json(mut writer: impl Write, result: &ScanResult) -> serde_json::Re
 ///
 /// Returns an error when serialization or writing fails.
 pub fn write_sarif(mut writer: impl Write, result: &ScanResult) -> serde_json::Result<()> {
-    let rules: Vec<_> = registry()
+    let rules: Vec<_> = metadata_registry()
         .into_iter()
-        .map(|rule| {
-            let metadata = rule.metadata();
+        .map(|metadata| {
             json!({
                 "id": metadata.id,
                 "shortDescription": { "text": metadata.description },
@@ -253,6 +254,7 @@ mod tests {
     fn result() -> ScanResult {
         ScanResult {
             scanned_files: 1,
+            scanned_commits: 0,
             skipped_files: 0,
             findings: vec![Finding {
                 path: "README.md".into(),

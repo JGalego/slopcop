@@ -159,6 +159,19 @@ static DEAD012: RuleMetadata = RuleMetadata {
     false_positives: "Outline documents may intentionally contain empty headings while actively being drafted.",
 };
 
+static DEAD013: RuleMetadata = RuleMetadata {
+    id: "DEAD013",
+    module: Module::Deadweight,
+    description: "Brittle inventory count",
+    default_severity: Severity::Info,
+    default_confidence: Confidence::Medium,
+    message: "Documentation repeats an exact count of a mutable repository inventory.",
+    suggestion: "Name the capabilities or link to the maintained inventory instead of repeating its current size.",
+    rationale: "Counts of rules, commands, integrations, and similar catalogs become stale whenever the inventory changes while rarely helping a reader make a decision.",
+    examples: &["The registry contains 32 stable rules."],
+    false_positives: "Release snapshots, compatibility limits, generated summaries, and fixed protocol cardinalities may require exact counts.",
+};
+
 pub(super) fn rules() -> Vec<Box<dyn Rule>> {
     vec![
         boxed(&DEAD002, check_placeholder_marker),
@@ -172,6 +185,7 @@ pub(super) fn rules() -> Vec<Box<dyn Rule>> {
         boxed(&DEAD010, check_trivial_test),
         boxed(&DEAD011, check_duplicate_block),
         boxed(&DEAD012, check_empty_doc_section),
+        boxed(&DEAD013, check_inventory_count),
     ]
 }
 
@@ -681,6 +695,29 @@ fn check_empty_doc_section(
     }
 }
 
+fn check_inventory_count(
+    context: &ScanContext<'_>,
+    metadata: &'static RuleMetadata,
+    findings: &mut Vec<crate::model::Finding>,
+) {
+    if context.source_type != SourceType::Documentation {
+        return;
+    }
+    for found in inventory_count_matcher().find_iter(context.prose()) {
+        emit(context, metadata, findings, found.start(), None::<String>);
+    }
+}
+
+fn inventory_count_matcher() -> &'static Regex {
+    static MATCHER: OnceLock<Regex> = OnceLock::new();
+    MATCHER.get_or_init(|| {
+        Regex::new(
+            r"(?i)\b(?:contains?|includes?|provides?|offers?|supports?|ships[ \t]+with|has)[ \t]+(?:exactly[ \t]+)?\d{1,4}(?:[ \t]+(?:stable|built-in|default|supported|available|bundled|deterministic|official|first-party)){0,2}[ \t]+(?:rules?|commands?|integrations?|plugins?|templates?|examples?|checks?|detectors?|modules?|providers?|adapters?|workflows?|features?)\b",
+        )
+        .expect("DEAD013 inventory regex must compile")
+    })
+}
+
 fn markdown_heading(line: &str) -> Option<(usize, &str)> {
     let trimmed = line.trim();
     let hashes = trimmed.bytes().take_while(|byte| *byte == b'#').count();
@@ -819,6 +856,12 @@ mod tests {
                 "README.md",
                 "## Configuration\nThis section describes configuration.\n",
                 "## Configuration\nSet `timeout` to the request deadline in milliseconds.\n",
+            ),
+            (
+                "DEAD013",
+                "README.md",
+                "The registry contains 32 stable rules.\n",
+                "The rule index documents every stable rule.\n",
             ),
         ];
 

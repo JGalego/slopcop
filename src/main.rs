@@ -8,9 +8,10 @@ use clap::{Args, Parser, Subcommand, ValueEnum};
 use slopcop::config::Config;
 use slopcop::git;
 use slopcop::init;
+use slopcop::papertrail;
 use slopcop::reporting::{write_github, write_json, write_sarif, write_text};
-use slopcop::rules::registry;
-use slopcop::{ScanOptions, scan_paths, scan_sources};
+use slopcop::rules::metadata_registry;
+use slopcop::{ScanOptions, ScanResult, Severity, scan_paths, scan_sources};
 
 #[derive(Debug, Parser)]
 #[command(name = "slopcop", version, about = "Slop stops here.")]
@@ -29,9 +30,38 @@ struct Cli {
 enum Command {
     Benchmark,
     Check(CheckArgs),
+    CommitMessage(CommitMessageArgs),
     Explain { rule_id: String },
+    History(HistoryArgs),
     Init,
     Rules,
+}
+
+#[derive(Debug, Args)]
+struct CommitMessageArgs {
+    #[arg(value_name = "FILE")]
+    message_file: PathBuf,
+
+    #[arg(long, value_enum, default_value_t = OutputFormat::Text)]
+    format: OutputFormat,
+
+    #[arg(long)]
+    quiet: bool,
+}
+
+#[derive(Debug, Args)]
+struct HistoryArgs {
+    #[arg(long, value_name = "REV")]
+    base: Option<String>,
+
+    #[arg(long, default_value_t = 50, value_name = "COUNT")]
+    max_count: usize,
+
+    #[arg(long, value_enum, default_value_t = OutputFormat::Text)]
+    format: OutputFormat,
+
+    #[arg(long)]
+    quiet: bool,
 }
 
 #[derive(Debug, Args)]
@@ -77,7 +107,11 @@ fn main() -> ExitCode {
     match cli.command {
         Some(Command::Benchmark) => run_benchmark(),
         Some(Command::Check(args)) => load_and_check(&args, cli.config.as_deref()),
+        Some(Command::CommitMessage(args)) => {
+            load_and_check_commit_message(&args, cli.config.as_deref())
+        }
         Some(Command::Explain { rule_id }) => explain(&rule_id),
+        Some(Command::History(args)) => load_and_check_history(&args, cli.config.as_deref()),
         Some(Command::Init) => initialize(),
         Some(Command::Rules) => list_rules(),
         None => load_and_check(&cli.scan, cli.config.as_deref()),
@@ -125,14 +159,45 @@ fn initialize() -> ExitCode {
 }
 
 fn load_and_check(args: &CheckArgs, config_path: Option<&std::path::Path>) -> ExitCode {
-    let config = match Config::load(config_path) {
-        Ok(config) => config,
-        Err(error) => {
-            eprintln!("slopcop: {error}");
-            return ExitCode::from(2);
-        }
+    let Ok(config) = load_config(config_path) else {
+        return ExitCode::from(2);
     };
     run_check(args, config)
+}
+
+fn load_and_check_commit_message(
+    args: &CommitMessageArgs,
+    config_path: Option<&std::path::Path>,
+) -> ExitCode {
+    let Ok(config) = load_config(config_path) else {
+        return ExitCode::from(2);
+    };
+    let result = match papertrail::scan_message_file(&args.message_file, &config) {
+        Ok(result) => result,
+        Err(error) => return papertrail_error(&error),
+    };
+    write_result(&result, args.format, args.quiet, config.fail_level)
+}
+
+fn load_and_check_history(args: &HistoryArgs, config_path: Option<&std::path::Path>) -> ExitCode {
+    if args.max_count == 0 {
+        eprintln!("slopcop: --max-count must be greater than zero");
+        return ExitCode::from(2);
+    }
+    let Ok(config) = load_config(config_path) else {
+        return ExitCode::from(2);
+    };
+    let result = match papertrail::scan_history(args.base.as_deref(), args.max_count, &config) {
+        Ok(result) => result,
+        Err(error) => return papertrail_error(&error),
+    };
+    write_result(&result, args.format, args.quiet, config.fail_level)
+}
+
+fn load_config(path: Option<&std::path::Path>) -> Result<Config, ()> {
+    Config::load(path).map_err(|error| {
+        eprintln!("slopcop: {error}");
+    })
 }
 
 fn run_check(args: &CheckArgs, config: Config) -> ExitCode {
@@ -188,15 +253,24 @@ fn run_check(args: &CheckArgs, config: Config) -> ExitCode {
         });
     }
 
+    write_result(&result, args.format, args.quiet, fail_level)
+}
+
+fn write_result(
+    result: &ScanResult,
+    format: OutputFormat,
+    quiet: bool,
+    fail_level: Severity,
+) -> ExitCode {
     let stdout = io::stdout();
     let color = stdout.is_terminal() && std::env::var_os("NO_COLOR").is_none();
-    let output = match args.format {
+    let output = match format {
         OutputFormat::Text => {
-            write_text(stdout.lock(), &result, args.quiet, color).map_err(|error| error.to_string())
+            write_text(stdout.lock(), result, quiet, color).map_err(|error| error.to_string())
         }
-        OutputFormat::Json => write_json(stdout.lock(), &result).map_err(|error| error.to_string()),
+        OutputFormat::Json => write_json(stdout.lock(), result).map_err(|error| error.to_string()),
         OutputFormat::Sarif => {
-            write_sarif(stdout.lock(), &result).map_err(|error| error.to_string())
+            write_sarif(stdout.lock(), result).map_err(|error| error.to_string())
         }
         OutputFormat::Github => {
             write_github(stdout.lock(), &result.findings).map_err(|error| error.to_string())
@@ -223,16 +297,20 @@ fn git_error(error: &git::GitError) -> ExitCode {
     ExitCode::from(2)
 }
 
+fn papertrail_error(error: &papertrail::PapertrailError) -> ExitCode {
+    eprintln!("slopcop: {error}");
+    ExitCode::from(2)
+}
+
 fn explain(rule_id: &str) -> ExitCode {
-    let rules = registry();
-    let Some(rule) = rules
+    let rules = metadata_registry();
+    let Some(metadata) = rules
         .iter()
-        .find(|rule| rule.metadata().id.eq_ignore_ascii_case(rule_id))
+        .find(|metadata| metadata.id.eq_ignore_ascii_case(rule_id))
     else {
         eprintln!("slopcop: unknown rule {rule_id}");
         return ExitCode::from(2);
     };
-    let metadata = rule.metadata();
     println!("{}: {}", metadata.id, metadata.description);
     println!("module: {}", metadata.module);
     println!("default severity: {}", metadata.default_severity);
@@ -251,8 +329,7 @@ fn explain(rule_id: &str) -> ExitCode {
 }
 
 fn list_rules() -> ExitCode {
-    for rule in registry() {
-        let metadata = rule.metadata();
+    for metadata in metadata_registry() {
         println!(
             "{}\t{}\t{}",
             metadata.id, metadata.default_severity, metadata.description

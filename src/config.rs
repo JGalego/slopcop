@@ -9,7 +9,7 @@ use serde::Deserialize;
 use thiserror::Error;
 
 use crate::model::{Module, Severity};
-use crate::rules::registry;
+use crate::rules::metadata_registry;
 
 pub const CONFIG_FILE_NAME: &str = ".slopcop.toml";
 
@@ -25,6 +25,7 @@ pub struct Config {
     pub fail_level: Severity,
     pub max_file_size: u64,
     pub deadweight_enabled: bool,
+    pub papertrail_enabled: bool,
     pub vibecheck_enabled: bool,
     pub rules: BTreeMap<String, RuleSetting>,
     pub path_filter: PathFilter,
@@ -37,6 +38,7 @@ impl Default for Config {
             fail_level: Severity::Warning,
             max_file_size: 1_000_000,
             deadweight_enabled: true,
+            papertrail_enabled: true,
             vibecheck_enabled: true,
             rules: BTreeMap::new(),
             path_filter: PathFilter::default(),
@@ -209,6 +211,8 @@ struct Section {
     #[serde(default)]
     deadweight: ModuleSection,
     #[serde(default)]
+    papertrail: ModuleSection,
+    #[serde(default)]
     vibecheck: ModuleSection,
     #[serde(default)]
     rules: BTreeMap<String, String>,
@@ -283,9 +287,9 @@ impl Config {
             })?,
             None => Severity::Warning,
         };
-        let known_rules: HashSet<_> = registry()
+        let known_rules: HashSet<_> = metadata_registry()
             .into_iter()
-            .map(|rule| rule.metadata().id.to_owned())
+            .map(|metadata| metadata.id.to_owned())
             .collect();
         let mut rules = BTreeMap::new();
         for (rule_id, value) in section.rules {
@@ -308,14 +312,16 @@ impl Config {
         }
 
         let deadweight_enabled = section.deadweight.enabled;
+        let papertrail_enabled = section.papertrail.enabled;
         let vibecheck_enabled = section.vibecheck.enabled;
-        let enabled_count = registry()
+        let enabled_count = metadata_registry()
             .into_iter()
-            .filter(|rule| match rule.metadata().module {
+            .filter(|metadata| match metadata.module {
                 Module::Deadweight => deadweight_enabled,
+                Module::Papertrail => papertrail_enabled,
                 Module::Vibecheck => vibecheck_enabled,
             })
-            .filter(|rule| rules.get(rule.metadata().id) != Some(&RuleSetting::Disabled))
+            .filter(|metadata| rules.get(metadata.id) != Some(&RuleSetting::Disabled))
             .count();
         if enabled_count == 0 {
             return Err(ConfigError::NoRulesEnabled);
@@ -334,6 +340,7 @@ impl Config {
             fail_level,
             max_file_size: section.max_file_size.unwrap_or(1_000_000),
             deadweight_enabled,
+            papertrail_enabled,
             vibecheck_enabled,
             rules,
             path_filter,
@@ -344,6 +351,7 @@ impl Config {
     pub fn rule_enabled(&self, rule_id: &str, module: Module) -> bool {
         let module_enabled = match module {
             Module::Deadweight => self.deadweight_enabled,
+            Module::Papertrail => self.papertrail_enabled,
             Module::Vibecheck => self.vibecheck_enabled,
         };
         module_enabled && self.rules.get(rule_id) != Some(&RuleSetting::Disabled)
@@ -398,7 +406,7 @@ mod tests {
         let path = directory.path().join(CONFIG_FILE_NAME);
         fs::write(
             &path,
-            "[slopcop]\nfail-level = \"error\"\nmax-file-size = 42\n\n[slopcop.vibecheck]\nenabled = false\n\n[slopcop.rules]\nDEAD002 = \"info\"\n\n[slopcop.ignore]\npaths = [\"generated/**\"]\n",
+            "[slopcop]\nfail-level = \"error\"\nmax-file-size = 42\n\n[slopcop.vibecheck]\nenabled = false\n\n[slopcop.rules]\nDEAD002 = \"info\"\nTRAIL001 = \"off\"\n\n[slopcop.ignore]\npaths = [\"generated/**\"]\n",
         )
         .expect("write config");
 
@@ -407,6 +415,7 @@ mod tests {
         assert_eq!(config.fail_level, Severity::Error);
         assert_eq!(config.max_file_size, 42);
         assert!(!config.vibecheck_enabled);
+        assert!(!config.rule_enabled("TRAIL001", Module::Papertrail));
         assert_eq!(
             config.severity_for("DEAD002", Severity::Warning),
             Severity::Info
@@ -506,7 +515,7 @@ mod tests {
 
         fs::write(
             &path,
-            "[slopcop.deadweight]\nenabled = false\n[slopcop.vibecheck]\nenabled = false\n",
+            "[slopcop.deadweight]\nenabled = false\n[slopcop.papertrail]\nenabled = false\n[slopcop.vibecheck]\nenabled = false\n",
         )
         .expect("write config");
         assert!(matches!(

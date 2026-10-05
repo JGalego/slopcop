@@ -149,7 +149,7 @@ pub fn diff(path_filters: &[PathBuf], base: Option<&str>) -> Result<Selection, G
     })
 }
 
-fn repository_root() -> Result<PathBuf, GitError> {
+pub(crate) fn repository_root() -> Result<PathBuf, GitError> {
     let output = Command::new("git")
         .args(["rev-parse", "--show-toplevel"])
         .output()?;
@@ -160,7 +160,7 @@ fn repository_root() -> Result<PathBuf, GitError> {
     Ok(resolved_path(Path::new(&root), &std::env::current_dir()?))
 }
 
-fn git_output(root: &Path, args: &[&str]) -> Result<Output, GitError> {
+pub(crate) fn git_output(root: &Path, args: &[&str]) -> Result<Output, GitError> {
     let output = Command::new("git").current_dir(root).args(args).output()?;
     if output.status.success() {
         Ok(output)

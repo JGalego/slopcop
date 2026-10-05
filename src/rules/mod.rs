@@ -1,5 +1,6 @@
 mod deadweight;
 mod deadweight_extra;
+pub(crate) mod papertrail;
 mod vibecheck;
 mod vibecheck_extra;
 
@@ -191,4 +192,16 @@ pub fn registry() -> Vec<Box<dyn Rule>> {
     rules.extend(vibecheck_extra::rules());
     rules.sort_by_key(|rule| rule.metadata().id);
     rules
+}
+
+#[must_use]
+pub fn metadata_registry() -> Vec<&'static RuleMetadata> {
+    let mut metadata: Vec<_> = registry().into_iter().map(|rule| rule.metadata()).collect();
+    metadata.extend(
+        papertrail::registry()
+            .into_iter()
+            .map(|rule| rule.metadata()),
+    );
+    metadata.sort_by_key(|metadata| metadata.id);
+    metadata
 }

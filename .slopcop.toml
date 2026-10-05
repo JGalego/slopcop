@@ -5,6 +5,9 @@ max-file-size = 1000000
 [slopcop.deadweight]
 enabled = true
 
+[slopcop.papertrail]
+enabled = true
+
 [slopcop.vibecheck]
 enabled = true
 

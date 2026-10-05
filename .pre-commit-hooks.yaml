@@ -3,3 +3,9 @@
   description: Lint selected repository artifacts for low-quality patterns
   entry: slopcop --
   language: rust
+- id: slopcop-commit-msg
+  name: slopcop commit message
+  description: Lint the commit message with Papertrail rules
+  entry: slopcop commit-message
+  language: rust
+  stages: [commit-msg]

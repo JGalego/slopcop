@@ -1,6 +1,6 @@
 # Rule index
 
-The registry contains 30 deterministic rules. Defaults are conservative and can be changed under `[slopcop.rules]`. Run `slopcop explain RULE_ID` for examples, rationale, a suggestion, and complete false-positive notes.
+Every registered rule is deterministic. Defaults are conservative and can be changed under `[slopcop.rules]`. Run `slopcop explain RULE_ID` for examples, rationale, a suggestion, and complete false-positive notes.
 
 Confidence describes how directly the rule observes its quality smell. It never estimates who wrote the artifact.
 
@@ -20,6 +20,14 @@ Confidence describes how directly the rule observes its quality smell. It never 
 | `DEAD010` | error | high | A test-path assertion that can only pass, such as `assert True` | Assertions over produced values or side effects |
 | `DEAD011` | warning | medium | Ten substantial, identical, non-empty source lines repeated later in one file | Short scaffolding, blocks with literal differences, generated files, and intentionally distinct logic; each exact duplicate group reports once |
 | `DEAD012` | warning | medium | An empty Markdown section or a short body that only restates its heading | Sections containing concrete prose, nested sections, lists, fenced examples, or decorative heading underlines |
+| `DEAD013` | info | medium | An exact count of a mutable repository inventory such as rules, commands, or integrations | Release snapshots, generated summaries, compatibility limits, and fixed protocol cardinalities |
+
+## papertrail
+
+| Rule | Default | Confidence | Trigger | Quiet boundary |
+| --- | --- | --- | --- | --- |
+| `TRAIL001` | warning | high | A commit subject consisting only of a placeholder such as `WIP`, `fix`, or `update` | A specific subject that summarizes the observable change |
+| `TRAIL002` | error | high | A `fixup!`, `squash!`, or `amend!` commit in inspected history | Commit-message hooks while an autosquash series is still being prepared |
 
 ## vibecheck
 
@@ -52,6 +60,7 @@ Override a default or disable one named rule:
 [slopcop.rules]
 VIBE010 = "warning"
 DEAD008 = "off"
+TRAIL001 = "error"
 ```
 
 Unknown IDs are rejected. The self-hosting repository keeps every rule enabled and excludes only the deliberate positive fixture directory.
