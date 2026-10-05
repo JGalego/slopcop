@@ -188,6 +188,22 @@ static DEAD014: RuleMetadata = RuleMetadata {
     false_positives: "A temporary debugger breakpoint may use this shape during local diagnosis but should not remain committed.",
 };
 
+static DEAD015: RuleMetadata = RuleMetadata {
+    id: "DEAD015",
+    module: Module::Deadweight,
+    description: "Log-only exception recovery",
+    default_severity: Severity::Warning,
+    default_confidence: Confidence::Medium,
+    message: "An exception handler only prints the failure and then continues.",
+    suggestion: "Handle or propagate the failure, or document why continuing after this specific error is safe.",
+    rationale: "Printing an exception without changing control flow can make a failed operation look successful to its caller.",
+    examples: &[
+        "catch (error) { console.error(error); }",
+        "except OSError as error:\n    print(error)",
+    ],
+    false_positives: "Best-effort batch processing and interactive command loops may intentionally report one failure and continue.",
+};
+
 pub(super) fn rules() -> Vec<Box<dyn Rule>> {
     vec![
         boxed(&DEAD002, check_placeholder_marker),
@@ -203,6 +219,7 @@ pub(super) fn rules() -> Vec<Box<dyn Rule>> {
         boxed(&DEAD012, check_empty_doc_section),
         boxed(&DEAD013, check_inventory_count),
         boxed(&DEAD014, check_redundant_rethrow),
+        boxed(&DEAD015, check_log_only_handler),
     ]
 }
 
@@ -783,6 +800,45 @@ fn brace_rethrow_matcher() -> &'static Regex {
     })
 }
 
+fn check_log_only_handler(
+    context: &ScanContext<'_>,
+    metadata: &'static RuleMetadata,
+    findings: &mut Vec<crate::model::Finding>,
+) {
+    let (matcher, require_block_end) = match context.source_type {
+        SourceType::Code(Language::Python) => (python_log_only_matcher(), true),
+        SourceType::Code(Language::JavaScript | Language::TypeScript) => {
+            (brace_log_only_matcher(), false)
+        }
+        _ => return,
+    };
+    for found in matcher.find_iter(context.code()) {
+        let documented =
+            matched_source_has_explanatory_comment(context, found.start(), found.end());
+        let incomplete_match =
+            require_block_end && !python_block_ends_at(context.code(), found.start(), found.end());
+        if !documented && !incomplete_match {
+            emit(context, metadata, findings, found.start(), None::<String>);
+        }
+    }
+}
+
+fn python_log_only_matcher() -> &'static Regex {
+    static MATCHER: OnceLock<Regex> = OnceLock::new();
+    MATCHER.get_or_init(|| {
+        Regex::new(r"(?mR)^[ \t]*except(?:[^\r\n:]*)?:[ \t]*\r?\n[ \t]+print\([^\r\n]*\)[ \t]*$")
+            .expect("DEAD015 Python regex must compile")
+    })
+}
+
+fn brace_log_only_matcher() -> &'static Regex {
+    static MATCHER: OnceLock<Regex> = OnceLock::new();
+    MATCHER.get_or_init(|| {
+        Regex::new(r"(?s)catch\s*(?:\([^)]*\))?\s*\{\s*console\.(?:log|warn|error)\s*\([^;{}]*\)\s*;?\s*\}")
+            .expect("DEAD015 brace regex must compile")
+    })
+}
+
 fn inventory_count_matcher() -> &'static Regex {
     static MATCHER: OnceLock<Regex> = OnceLock::new();
     MATCHER.get_or_init(|| {
@@ -1219,6 +1275,42 @@ mod tests {
                 "DEAD014",
                 "app.py",
                 "try:\n    run()\nexcept NetworkError:\n    cleanup()\n    raise\n"
+            ),
+            0
+        );
+    }
+
+    #[test]
+    fn log_only_handlers_are_distinct_from_real_recovery() {
+        assert_eq!(
+            findings(
+                "DEAD015",
+                "app.py",
+                "try:\n    run()\nexcept OSError as error:\n    print(error)\n"
+            ),
+            1
+        );
+        assert_eq!(
+            findings(
+                "DEAD015",
+                "app.js",
+                "try { run(); } catch (error) { console.error(error); }\n"
+            ),
+            1
+        );
+        assert_eq!(
+            findings(
+                "DEAD015",
+                "app.js",
+                "try { run(); } catch (error) { console.error(error); recover(error); }\n"
+            ),
+            0
+        );
+        assert_eq!(
+            findings(
+                "DEAD015",
+                "app.py",
+                "try:\n    run()\nexcept OSError as error:\n    logger.exception(\"run failed\")\n"
             ),
             0
         );
