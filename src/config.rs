@@ -115,7 +115,15 @@ impl PathFilter {
 
     #[must_use]
     pub fn absolute(&self, path: &Path) -> PathBuf {
-        absolute_path(path, &self.cwd)
+        let absolute = absolute_path(path, &self.cwd);
+        for ancestor in absolute.ancestors() {
+            if let (Ok(canonical), Ok(suffix)) =
+                (fs::canonicalize(ancestor), absolute.strip_prefix(ancestor))
+            {
+                return absolute_path(&canonical.join(suffix), &self.cwd);
+            }
+        }
+        absolute
     }
 
     pub(crate) fn display_path(&self, path: &Path) -> PathBuf {
@@ -450,6 +458,35 @@ mod tests {
             !config
                 .path_filter
                 .includes_file(&directory.path().join("docs/app.py"))
+        );
+    }
+
+    #[test]
+    #[cfg(unix)]
+    fn filters_resolve_symlinked_config_directories() {
+        let directory = tempfile::tempdir().expect("temporary directory");
+        let real = directory.path().join("real");
+        let alias = directory.path().join("alias");
+        fs::create_dir(&real).expect("create directory");
+        std::os::unix::fs::symlink(&real, &alias).expect("create symlink");
+        fs::write(
+            real.join(CONFIG_FILE_NAME),
+            "[slopcop.files]\ninclude = [\"src/**\"]\nexclude = [\"generated/\"]\n",
+        )
+        .expect("write config");
+        let config = Config::load(Some(&alias.join(CONFIG_FILE_NAME))).expect("load config");
+
+        assert!(config.path_filter.includes_file(&alias.join("src/app.py")));
+        assert!(config.path_filter.includes_file(&real.join("src/app.py")));
+        assert!(
+            !config
+                .path_filter
+                .includes_file(&alias.join("src/generated/app.py"))
+        );
+        assert!(
+            !config
+                .path_filter
+                .allows_directory(&alias.join("src/generated"))
         );
     }
 
