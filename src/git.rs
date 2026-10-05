@@ -5,7 +5,7 @@ use std::process::{Command, Output};
 
 use thiserror::Error;
 
-use crate::config::absolute_path;
+use crate::config::resolved_path;
 use crate::scanner::SourceFile;
 
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
@@ -77,7 +77,7 @@ pub fn staged(path_filters: &[PathBuf]) -> Result<Selection, GitError> {
         let spec = format!(":{}", path.to_string_lossy());
         let output = git_output(&root, &["show", "--no-textconv", &spec])?;
         sources.push(SourceFile {
-            path: root.join(path),
+            path: resolved_path(&root.join(path), &cwd),
             bytes: output.stdout,
         });
     }
@@ -115,7 +115,7 @@ pub fn diff(path_filters: &[PathBuf], base: Option<&str>) -> Result<Selection, G
     let mut sources = Vec::with_capacity(paths.len());
     let mut changed_lines = BTreeMap::new();
     for path in paths {
-        let absolute = root.join(&path);
+        let absolute = resolved_path(&root.join(&path), &cwd);
         let bytes = if base.is_some() {
             let spec = format!("HEAD:{}", path.to_string_lossy());
             git_output(&root, &["show", "--no-textconv", &spec])?.stdout
@@ -157,7 +157,7 @@ fn repository_root() -> Result<PathBuf, GitError> {
         return Err(GitError::NotRepository);
     }
     let root = String::from_utf8_lossy(&output.stdout).trim().to_owned();
-    Ok(PathBuf::from(root))
+    Ok(resolved_path(Path::new(&root), &std::env::current_dir()?))
 }
 
 fn git_output(root: &Path, args: &[&str]) -> Result<Output, GitError> {
@@ -183,8 +183,8 @@ fn selected(path: &Path, filters: &[PathBuf], root: &Path, cwd: &Path) -> bool {
         return true;
     }
     filters.iter().any(|filter| {
-        let absolute = absolute_path(filter, cwd);
-        let selected = root.join(path);
+        let absolute = resolved_path(filter, cwd);
+        let selected = resolved_path(&root.join(path), cwd);
         selected == absolute || selected.starts_with(absolute)
     })
 }
@@ -213,6 +213,37 @@ fn parse_added_ranges(patch: &[u8]) -> Vec<LineRange> {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn selected_paths_match_canonical_repository_roots() {
+        let directory = tempfile::tempdir().expect("temporary directory");
+        let root = fs::canonicalize(directory.path()).expect("canonical root");
+        let cwd = directory.path();
+        for filter in [".", "src", "src/app.py"] {
+            assert!(selected(
+                Path::new("src/app.py"),
+                &[PathBuf::from(filter)],
+                &root,
+                cwd
+            ));
+        }
+    }
+
+    #[test]
+    #[cfg(unix)]
+    fn selected_paths_resolve_symlinked_repository_roots() {
+        let directory = tempfile::tempdir().expect("temporary directory");
+        let root = directory.path().join("real");
+        let alias = directory.path().join("alias");
+        fs::create_dir(&root).expect("create repository directory");
+        std::os::unix::fs::symlink(&root, &alias).expect("create symlink");
+        assert!(selected(
+            Path::new("src/app.py"),
+            &[PathBuf::from(".")],
+            &root,
+            &alias
+        ));
+    }
 
     #[test]
     fn parses_zero_context_hunks() {

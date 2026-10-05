@@ -56,7 +56,7 @@ pub struct PathFilter {
 impl Default for PathFilter {
     fn default() -> Self {
         let base = std::env::current_dir().unwrap_or_else(|_| PathBuf::from("."));
-        let base = absolute_path(&base, &base);
+        let base = resolved_path(&base, &base);
         let empty = Arc::new(
             GitignoreBuilder::new(&base)
                 .build()
@@ -75,8 +75,8 @@ impl Default for PathFilter {
 impl PathFilter {
     fn new(base: &Path, includes: &[String], excludes: &[String]) -> Result<Self, ConfigError> {
         let cwd = std::env::current_dir().unwrap_or_else(|_| PathBuf::from("."));
-        let cwd = absolute_path(&cwd, &cwd);
-        let base = absolute_path(base, &cwd);
+        let cwd = resolved_path(&cwd, &cwd);
+        let base = resolved_path(base, &cwd);
         Ok(Self {
             cwd,
             includes: Arc::new(build_globs(&base, includes)?),
@@ -115,15 +115,7 @@ impl PathFilter {
 
     #[must_use]
     pub fn absolute(&self, path: &Path) -> PathBuf {
-        let absolute = absolute_path(path, &self.cwd);
-        for ancestor in absolute.ancestors() {
-            if let (Ok(canonical), Ok(suffix)) =
-                (fs::canonicalize(ancestor), absolute.strip_prefix(ancestor))
-            {
-                return absolute_path(&canonical.join(suffix), &self.cwd);
-            }
-        }
-        absolute
+        resolved_path(path, &self.cwd)
     }
 
     pub(crate) fn display_path(&self, path: &Path) -> PathBuf {
@@ -133,6 +125,18 @@ impl PathFilter {
             .unwrap_or(&absolute)
             .to_path_buf()
     }
+}
+
+pub(crate) fn resolved_path(path: &Path, cwd: &Path) -> PathBuf {
+    let absolute = absolute_path(path, cwd);
+    for ancestor in absolute.ancestors() {
+        if let (Ok(canonical), Ok(suffix)) =
+            (fs::canonicalize(ancestor), absolute.strip_prefix(ancestor))
+        {
+            return absolute_path(&canonical.join(suffix), cwd);
+        }
+    }
+    absolute
 }
 
 pub(crate) fn absolute_path(path: &Path, cwd: &Path) -> PathBuf {
