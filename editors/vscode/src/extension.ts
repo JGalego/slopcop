@@ -6,6 +6,8 @@ import {
   type LanguageClientOptions,
   type ServerOptions,
 } from "vscode-languageclient/node";
+import { FindingsView } from "./findings";
+import { registerReports } from "./reports";
 
 // Mirrors the extensions that slopcop classifies in src/language.rs. Other files are not sent to
 // the server, which would ignore them anyway.
@@ -18,14 +20,23 @@ const EXTENSIONS = [
 let client: LanguageClient | undefined;
 
 export async function activate(context: vscode.ExtensionContext): Promise<void> {
+  const executable = () => serverCommand(context);
+  const findings = new FindingsView(context, executable);
   context.subscriptions.push(
+    findings,
     vscode.commands.registerCommand("slopcop.restart", () => restart(context)),
+    vscode.commands.registerCommand("slopcop.refresh", () => findings.refresh()),
+    vscode.commands.registerCommand("slopcop.groupByFile", () => findings.setGroupBy("file")),
+    vscode.commands.registerCommand("slopcop.groupByRule", () => findings.setGroupBy("rule")),
+    ...registerReports(findings, executable),
     vscode.workspace.onDidChangeConfiguration((event) => {
       if (event.affectsConfiguration("slopcop.path")) {
+        void findings.refresh();
         return restart(context);
       }
     }),
   );
+  void findings.refresh();
   await start(context);
 }
 

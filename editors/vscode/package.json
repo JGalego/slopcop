@@ -39,8 +39,168 @@
         "command": "slopcop.restart",
         "title": "Restart Language Server",
         "category": "slopcop"
+      },
+      {
+        "command": "slopcop.refresh",
+        "title": "Scan Workspace",
+        "category": "slopcop",
+        "icon": "$(refresh)"
+      },
+      {
+        "command": "slopcop.groupByRule",
+        "title": "Group by Rule",
+        "category": "slopcop",
+        "icon": "$(list-tree)"
+      },
+      {
+        "command": "slopcop.groupByFile",
+        "title": "Group by File",
+        "category": "slopcop",
+        "icon": "$(file)"
+      },
+      {
+        "command": "slopcop.reportFalsePositive",
+        "title": "Report False Positive",
+        "category": "slopcop",
+        "icon": "$(thumbsdown)"
+      },
+      {
+        "command": "slopcop.nominate",
+        "title": "Nominate for Most Wanted",
+        "category": "slopcop",
+        "icon": "$(star-empty)"
+      },
+      {
+        "command": "slopcop.reportMissedSlop",
+        "title": "Report Missed Slop",
+        "category": "slopcop",
+        "icon": "$(search-fuzzy)"
+      },
+      {
+        "command": "slopcop.reportBug",
+        "title": "Report a Bug",
+        "category": "slopcop"
+      },
+      {
+        "command": "slopcop.requestFeature",
+        "title": "Request a Feature",
+        "category": "slopcop"
       }
     ],
+    "viewsContainers": {
+      "activitybar": [
+        {
+          "id": "slopcop",
+          "title": "slopcop",
+          "icon": "images/activity.svg"
+        }
+      ]
+    },
+    "views": {
+      "slopcop": [
+        {
+          "id": "slopcop.findings",
+          "name": "Findings",
+          "icon": "images/activity.svg",
+          "contextualTitle": "slopcop"
+        }
+      ]
+    },
+    "viewsWelcome": [
+      {
+        "view": "slopcop.findings",
+        "contents": "Open a folder to scan it for slop.\n[Open Folder](command:vscode.openFolder)",
+        "when": "workbenchState == empty"
+      },
+      {
+        "view": "slopcop.findings",
+        "contents": "No slop detected. Suspiciously competent.\n[Scan Again](command:slopcop.refresh)",
+        "when": "slopcop.clean"
+      }
+    ],
+    "menus": {
+      "view/title": [
+        {
+          "command": "slopcop.refresh",
+          "when": "view == slopcop.findings",
+          "group": "navigation@1"
+        },
+        {
+          "command": "slopcop.groupByRule",
+          "when": "view == slopcop.findings && slopcop.groupBy != rule",
+          "group": "navigation@2"
+        },
+        {
+          "command": "slopcop.groupByFile",
+          "when": "view == slopcop.findings && slopcop.groupBy == rule",
+          "group": "navigation@2"
+        },
+        {
+          "command": "slopcop.reportMissedSlop",
+          "when": "view == slopcop.findings",
+          "group": "navigation@3"
+        },
+        {
+          "command": "slopcop.reportBug",
+          "when": "view == slopcop.findings",
+          "group": "feedback@1"
+        },
+        {
+          "command": "slopcop.requestFeature",
+          "when": "view == slopcop.findings",
+          "group": "feedback@2"
+        }
+      ],
+      "view/item/context": [
+        {
+          "command": "slopcop.reportFalsePositive",
+          "when": "view == slopcop.findings && viewItem == finding",
+          "group": "inline@1"
+        },
+        {
+          "command": "slopcop.nominate",
+          "when": "view == slopcop.findings && viewItem == finding",
+          "group": "inline@2"
+        },
+        {
+          "command": "slopcop.reportFalsePositive",
+          "when": "view == slopcop.findings && viewItem == finding",
+          "group": "feedback@1"
+        },
+        {
+          "command": "slopcop.nominate",
+          "when": "view == slopcop.findings && viewItem == finding",
+          "group": "feedback@2"
+        }
+      ],
+      "editor/context": [
+        {
+          "command": "slopcop.reportFalsePositive",
+          "when": "slopcop.onFinding",
+          "group": "slopcop@1"
+        },
+        {
+          "command": "slopcop.nominate",
+          "when": "slopcop.onFinding",
+          "group": "slopcop@2"
+        },
+        {
+          "command": "slopcop.reportMissedSlop",
+          "when": "resourceScheme == file",
+          "group": "slopcop@3"
+        }
+      ],
+      "commandPalette": [
+        {
+          "command": "slopcop.groupByRule",
+          "when": "false"
+        },
+        {
+          "command": "slopcop.groupByFile",
+          "when": "false"
+        }
+      ]
+    },
     "configuration": {
       "title": "slopcop",
       "properties": {

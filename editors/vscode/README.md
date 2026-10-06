@@ -23,6 +23,16 @@ This extension shows slopcop findings while you edit. It starts `slopcop lsp` an
 
 Saving or changing a `.slopcop.toml` lints the open files again.
 
+## Findings view
+
+The language server lints only open files. To see every finding in the workspace, open the slopcop icon in the Activity Bar. The Findings view runs `slopcop` on each workspace folder, shows the total as a badge, and scans again after a save, a file operation, or a `.slopcop.toml` change. It reads files from disk, so unsaved edits appear after a save. Group findings by file or by rule from the view's toolbar, and select a finding to open it.
+
+## Feedback
+
+Each finding in the view has buttons to report a false positive or nominate it for the Most Wanted gallery. In the editor, right-click a finding for the same commands, or right-click a selection to report missed slop. The view's toolbar reports missed slop, and its overflow menu reports a bug or requests a feature.
+
+These commands open a prefilled GitHub issue form in the browser with the rule, the slopcop version, the excerpt around the finding, and a link to the line on GitHub when the file is in a GitHub clone. Nothing is sent from the editor: review the form, including the excerpt, before you submit it.
+
 ## Requirements
 
 Platform-specific builds of the extension include the slopcop binary. Otherwise, install slopcop and make sure it is on `PATH`:

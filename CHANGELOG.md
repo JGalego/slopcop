@@ -10,7 +10,7 @@ This project records user-visible changes in this file and follows Semantic Vers
 - `--stdin --stdin-filename PATH` lints one file read from standard input, such as an unsaved editor buffer. The filename selects the language and path filters, and configuration discovery starts in its directory.
 - Findings carry an end position. JSON locations add `end_line` and `end_column`, and SARIF regions add `endLine` and `endColumn`. The range runs from the reported position to the end of that line's content.
 - `slopcop lsp` runs a Language Server Protocol server. It publishes findings as diagnostics while files are edited, shows rule explanations on hover, and offers a quick fix that inserts a suppression directive in the file's comment syntax. It is a default Cargo feature named `lsp`.
-- A Visual Studio Code extension in `editors/vscode` runs the language server. Releases attach a VSIX for each binary platform with slopcop bundled, and a universal VSIX that uses `slopcop` from `PATH`.
+- A Visual Studio Code extension in `editors/vscode` runs the language server. Releases attach a VSIX for each binary platform with slopcop bundled, and a universal VSIX that uses `slopcop` from `PATH`. A Findings view in the Activity Bar lists every finding in the workspace, grouped by file or by rule. Buttons on each finding and editor context menu items open prefilled false-positive, Most Wanted, and missed-slop issue forms.
 - `--format gitlab` writes a GitLab Code Quality report. Fingerprints come from the rule, path, and line text, so findings keep their identity when edits move them.
 - `docs/integrations.md` covers the GitHub Action, GitLab CI, reviewdog, Azure Pipelines, and editor setup for VS Code, Neovim, Helix, Emacs, and JetBrains IDEs.
 
