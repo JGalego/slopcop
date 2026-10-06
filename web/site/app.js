@@ -2,6 +2,7 @@ const SEVERITIES = ["error", "warning", "info"];
 const MODULES = ["deadweight", "vibecheck", "papertrail"];
 const PAGE_SIZE = 250;
 const CONTEXT_LINES = 2;
+const TOKEN_KEY = "slopcop.github-token";
 
 const $ = (id) => document.getElementById(id);
 const worker = new Worker(new URL("worker.js", import.meta.url), { type: "module" });
@@ -58,7 +59,7 @@ function startScan(target) {
   $("status").hidden = false;
   $("scan-button").disabled = true;
   setProgress("Loading scanner", 0, 0);
-  worker.postMessage(target);
+  worker.postMessage({ ...target, token: $("token").value.trim() });
 }
 
 function setProgress(stage, done, total) {
@@ -79,6 +80,10 @@ worker.onmessage = ({ data }) => {
   if (data.type === "error") {
     $("error").textContent = data.message;
     $("error").hidden = false;
+    if (data.code === "bad-token" || (data.code === "rate-limit" && !$("token").value.trim())) {
+      $("token-panel").open = true;
+      $("token").focus();
+    }
     return;
   }
   showResults(data);
@@ -375,6 +380,31 @@ $("scan-form").addEventListener("submit", (event) => {
   }
   startScan(target);
 });
+
+function saveToken() {
+  const token = $("token").value.trim();
+  try {
+    if (token) sessionStorage.setItem(TOKEN_KEY, token);
+    else sessionStorage.removeItem(TOKEN_KEY);
+  } catch {
+    // Storage can be blocked by the browser; the token then lasts only until the page closes.
+  }
+  $("token-state").textContent = token ? "(set)" : "(optional)";
+}
+
+$("token").addEventListener("input", saveToken);
+
+$("forget-token").addEventListener("click", () => {
+  $("token").value = "";
+  saveToken();
+});
+
+try {
+  $("token").value = sessionStorage.getItem(TOKEN_KEY) || "";
+} catch {
+  // Without storage the field starts empty and scans run anonymously.
+}
+saveToken();
 
 $("examples").addEventListener("click", (event) => {
   const repo = event.target.closest("button")?.dataset.repo;

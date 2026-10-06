@@ -46,6 +46,16 @@
         <button type="button" data-repo="BurntSushi/ripgrep">BurntSushi/ripgrep</button>
       </p>
 
+      <details id="token-panel" class="token-panel">
+        <summary>GitHub token <span id="token-state">(optional)</span></summary>
+        <p>Without a token, every scan from your network shares GitHub's anonymous limit of 60 API requests per hour, and each scan uses two. A token raises the limit to 5,000 per hour. Create a <a href="https://github.com/settings/personal-access-tokens/new" target="_blank" rel="noopener">fine-grained token</a> with public repository access and no permissions. It stays in this tab and is only sent to api.github.com.</p>
+        <div class="token-row">
+          <label class="visually-hidden" for="token">GitHub token</label>
+          <input id="token" type="password" placeholder="github_pat_…" autocomplete="off" spellcheck="false">
+          <button type="button" id="forget-token" class="secondary">Forget</button>
+        </div>
+      </details>
+
       <div id="status" class="status" hidden>
         <div class="status-row">
           <span id="status-text">Starting…</span>

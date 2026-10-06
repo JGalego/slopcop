@@ -16,7 +16,7 @@ Open <http://localhost:8000>. Append `#owner/repo` or `#owner/repo@ref` to the U
 
 ## How a scan works
 
-1. `worker.js` resolves the ref to a commit with the GitHub REST API and lists the tree in one recursive request. Anonymous clients get 60 API requests per hour, and each scan uses two.
+1. `worker.js` resolves the ref to a commit with the GitHub REST API and lists the tree in one recursive request. Anonymous clients get 60 API requests per hour per IP address, and each scan uses two. The optional token field raises that to 5,000 per hour: the token is kept in `sessionStorage` for the tab and sent only with these two API requests, never to `raw.githubusercontent.com`.
 2. The scanner decides which blobs to download using the same rules as the CLI: known source types only, no dependency or build directories, the configured size limit, and the repository's `.slopcop.toml` ignore and include globs.
 3. Selected files are downloaded from `raw.githubusercontent.com`, pinned to the commit, with bounded concurrency. The demo caps a scan at 3,000 files or 60 MB.
 4. The worker passes the bytes to `Scanner::add`, and `Scanner::finish` returns the same JSON report as `slopcop --format json`.

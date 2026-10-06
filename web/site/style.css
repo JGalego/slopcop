@@ -107,6 +107,17 @@ main { max-width: 1280px; margin: 0 auto; padding: 0 16px; }
 }
 .examples button:hover { border-style: solid; border-color: var(--ink); }
 
+.token-panel { margin-top: 12px; font-size: 14px; color: var(--muted); }
+.token-panel summary { cursor: pointer; width: fit-content; }
+.token-panel summary:hover { color: var(--ink); }
+.token-panel p { margin: 8px 0; }
+.token-row { display: flex; gap: 8px; }
+#token {
+  flex: 1 1 auto; min-width: 0; font: 14px var(--mono); color: var(--ink); background: var(--surface);
+  border: 1px solid var(--line); border-radius: var(--radius); padding: 7px 12px;
+}
+#token:focus { border-color: var(--focus); outline: none; box-shadow: 0 0 0 3px color-mix(in srgb, var(--focus) 25%, transparent); }
+
 .status { margin-top: 24px; }
 .status-row { display: flex; justify-content: space-between; font-size: 14px; color: var(--muted); margin-bottom: 6px; font-variant-numeric: tabular-nums; }
 .progress { height: 6px; background: var(--surface-2); border-radius: 999px; overflow: hidden; }
