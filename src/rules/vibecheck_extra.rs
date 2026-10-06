@@ -102,8 +102,11 @@ static VIBE008: RuleMetadata = RuleMetadata {
     default_confidence: Confidence::Medium,
     message: "A large share of sentences use the same colon-led structure.",
     suggestion: "Keep colons for genuine expansions and vary sentences that do not introduce a list or definition.",
-    rationale: "Repeated label: explanation sentences can make prose look organized while flattening every idea into the same template.",
-    examples: &["Input: one value. Output: one value. Result: one value. Reason: one value."],
+    rationale: "Repeated label: explanation sentences and staged reveals such as \"The result: X.\" or \"What changed? X.\" make prose look organized and dramatic while flattening every idea into the same template.",
+    examples: &[
+        "Input: one value. Output: one value. Result: one value. Reason: one value.",
+        "The reason is simple: caching. The result: faster pages. What changed? The index.",
+    ],
     false_positives: "Glossaries and field-reference documents naturally use many colons; release notes, code comments, and lead-ins that end with a colon are excluded.",
 };
 
@@ -626,6 +629,40 @@ fn check_signposting(
     );
 }
 
+fn dramatic_colon_matcher() -> &'static Regex {
+    static MATCHER: OnceLock<Regex> = OnceLock::new();
+    MATCHER.get_or_init(|| {
+        let pattern = r"(?i)^(?:the (?:[a-z]+ )?(?:result|catch|problem|issue|answer|fix|twist|verdict|takeaway|upshot|lesson|kicker|reason|truth|reality|difference|outcome)(?: is| was)?(?: simple| clear)?|there(?:'s| is| was) (?:one|a|just one|only one) (?:problem|catch|issue|twist|difference|reason)|here(?:'s| is) (?:why|how|the catch|the problem|the thing|what happened|the twist)):\s+\S";
+        Regex::new(&pattern.replace('\'', "['\u{2019}]"))
+            .expect("VIBE008 reveal regex must compile")
+    })
+}
+
+/// Offsets of sentences staged as a reveal: a colon after a short dramatic setup ("The result:
+/// X.") or a question of at most four words answered in the same paragraph ("What changed? X.").
+fn dramatic_reveals(context: &ScanContext<'_>) -> Vec<usize> {
+    let prose = context.prose();
+    let sentences = context.sentences();
+    let mut reveals = Vec::new();
+    for (index, sentence) in sentences.iter().enumerate() {
+        let text = sentence.text(prose).trim();
+        let offset = sentence.start + sentence.text(prose).find(text).unwrap_or(0);
+        if inside_double_quotes(prose, offset) {
+            continue;
+        }
+        let answered_question = text.ends_with('?')
+            && word_count(text) <= 4
+            && sentences.get(index + 1).is_some_and(|next| {
+                !next.text(prose).trim_end().ends_with('?')
+                    && paragraph_index(context, next.start) == paragraph_index(context, offset)
+            });
+        if answered_question || dramatic_colon_matcher().is_match(text) {
+            reveals.push(offset);
+        }
+    }
+    reveals
+}
+
 fn check_em_dashes(
     context: &ScanContext<'_>,
     metadata: &'static RuleMetadata,
@@ -660,6 +697,20 @@ fn check_colons(
     findings: &mut Vec<crate::model::Finding>,
 ) {
     if !is_running_text(context) || is_release_notes(context) {
+        return;
+    }
+    let reveals = dramatic_reveals(context);
+    if reveals.len() >= 3 && reveals.len() * 200 >= context.prose_word_count() {
+        emit(
+            context,
+            metadata,
+            findings,
+            reveals[0],
+            Some(format!(
+                "observed {} dramatic colon or question reveals",
+                reveals.len()
+            )),
+        );
         return;
     }
     let sentences: Vec<_> = context
@@ -1980,5 +2031,14 @@ mod tests {
             ),
             0
         );
+    }
+
+    #[test]
+    fn colon_rule_reports_staged_reveals() {
+        let reveals = "The reason is simple: caching. The result: pages load in a third of the time. There is one problem: invalidation. What changed? The index moved to memory.";
+        assert_eq!(findings("VIBE008", reveals), 1);
+        let labels = "Problem: the build fails. Fix: pin the compiler. Why does it fail? The lockfile is stale.\n\n## What changed?\n\nThe index moved to memory.";
+        assert_eq!(findings("VIBE008", labels), 0);
+        assert_eq!(findings_at("VIBE008", "CHANGELOG.md", reveals), 0);
     }
 }

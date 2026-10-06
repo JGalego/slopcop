@@ -19,6 +19,7 @@ This project records user-visible changes in this file and follows Semantic Vers
 - `VIBE004` recognizes hedging phrases such as "it can be argued", "one could argue", "to some extent", and "does not necessarily".
 - `VIBE005` reports stock both-sides lines such as "there are valid arguments on both sides" and "neither approach is inherently better". Not-only/but-also pairs move to `VIBE021`.
 - `VIBE006` recognizes structure announcements such as "first and foremost", "there are three key points", and "before we dive in".
+- `VIBE008` reports staged reveals such as "The reason is simple: X.", "The result: X.", and short self-answered questions such as "What changed? X.".
 
 ## 0.1.1 - 2026-10-06
 

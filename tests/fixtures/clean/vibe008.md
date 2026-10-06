@@ -46,3 +46,5 @@ Stop the server with Ctrl+C when finished:
 ```sh
 kill %1
 ```
+
+Troubleshooting entries use labels. Problem: the build fails after an upgrade. Fix: delete the lockfile and run the install again.
