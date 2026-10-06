@@ -135,7 +135,7 @@ static VIBE010: RuleMetadata = RuleMetadata {
     suggestion: "Combine or split sentences according to the ideas rather than preserving a repeated cadence.",
     rationale: "Eight similarly sized sentences in sequence can indicate templated prose, but the observation is intentionally low confidence.",
     examples: &["Eight consecutive sentences whose word counts vary by at most three."],
-    false_positives: "Controlled-language documentation and material written for early readers often targets uniform sentence length; lists, code comments, and release notes are excluded.",
+    false_positives: "Controlled-language documentation and material written for early readers often targets uniform sentence length; lists, tables, code comments, and release notes are excluded.",
 };
 
 static VIBE011: RuleMetadata = RuleMetadata {
@@ -237,7 +237,7 @@ static VIBE017: RuleMetadata = RuleMetadata {
     examples: &[
         "The scanner reads every tracked source file in parallel. Every tracked source file is read in parallel by the scanner.",
     ],
-    false_positives: "Definitions may intentionally restate a term once in equivalent language; list entries, release notes, and sentences in separate paragraphs or comments are not compared.",
+    false_positives: "Definitions may intentionally restate a term once in equivalent language; list entries, table rows, release notes, and sentences in separate paragraphs or comments are not compared.",
 };
 
 static VIBE018: RuleMetadata = RuleMetadata {
@@ -483,11 +483,14 @@ fn paragraph_index(context: &ScanContext<'_>, offset: usize) -> Option<usize> {
         .map(|_| index)
 }
 
-/// Reports whether `offset` falls in a paragraph that begins with a list item. Neighboring list
-/// entries are parallel by design, as in changelogs and option references.
+/// Reports whether `offset` falls in a paragraph that begins with a list item or a table row.
+/// Neighboring list entries and table rows are parallel by design, as in changelogs, option
+/// references, and comparison tables.
 fn in_list_paragraph(context: &ScanContext<'_>, offset: usize) -> bool {
-    paragraph_index(context, offset)
-        .is_some_and(|index| is_list_item(context.paragraphs()[index].text(context.prose())))
+    paragraph_index(context, offset).is_some_and(|index| {
+        let text = context.paragraphs()[index].text(context.prose());
+        is_list_item(text) || text.trim_start().starts_with('|')
+    })
 }
 
 fn check_assistant_framing(
@@ -2253,6 +2256,14 @@ mod tests {
             "The scanner reads every tracked source file in parallel during repository checks.";
         let second = "Every tracked source file is read in parallel by the scanner during repository checks.";
         assert_eq!(findings("VIBE017", &format!("- {first}\n- {second}\n")), 0);
+        let table = format!(
+            "| Step | Behavior |\n| --- | --- |\n| read | {first} |\n| scan | {second} |\n"
+        );
+        assert_eq!(
+            findings("VIBE017", &table),
+            0,
+            "table rows are parallel by design"
+        );
         assert_eq!(
             findings_at("VIBE017", "CHANGELOG.md", &format!("{first} {second}")),
             0

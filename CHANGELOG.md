@@ -16,6 +16,7 @@ This project records user-visible changes in this file and follows Semantic Vers
 
 ### Fixed
 
+- `VIBE017` and `VIBE010` skip Markdown table rows as they skip list entries. Neighboring rows repeat their column vocabulary by design, so adjacent cells no longer read as restated sentences or a uniform rhythm.
 - Release notes kept as one file per release count as release notes, so `VIBE008`, `VIBE010`, `VIBE011`, `VIBE017`, `VIBE018`, `VIBE020`, and `VIBE021` skip them as they skip `CHANGELOG.md`. A file qualifies when it sits under a `changelog`, `changelogs`, `releases`, or `release-notes` directory and the file or a directory below that one is named for a version or `Unreleased`, as in `CHANGELOG/2026.3.24.md` or `docs/CHANGELOG/v0.14.1/en.md`.
 - `DEAD003` no longer reports a thrown error or panic whose message merely contains the letters "todo", such as `"Mastodon login failed"`, `"expected set_todos tool"`, or a task-board message like `"cards must move to todo"`. A message still counts when it says "not implemented", contains an uppercase `TODO`, or opens with `todo`.
 - `DEAD014` no longer reports a Python `except X: raise` that is followed by another `except` clause of the same `try`. The rethrow keeps `X` out of the broader handler below it, so removing it would change behavior.
