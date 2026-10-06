@@ -22,6 +22,7 @@
       </a>
       <nav class="masthead-links">
         <a href="https://github.com/JGalego/slopcop/blob/main/docs/rules/README.md">Rules</a>
+        <a href="#feedback">Feedback</a>
         <a href="https://github.com/JGalego/slopcop">GitHub</a>
       </nav>
     </div>
@@ -94,7 +95,7 @@
           <div class="findings-toolbar">
             <span id="match-count"></span>
             <button type="button" id="clear-filters" class="link-button" hidden>Clear filters</button>
-            <span class="keys"><kbd>j</kbd>/<kbd>k</kbd> move · <kbd>o</kbd> open on GitHub · <kbd>e</kbd> explain rule</span>
+            <span class="keys"><kbd>j</kbd>/<kbd>k</kbd> move · <kbd>o</kbd> open on GitHub · <kbd>e</kbd> explain rule · <kbd>f</kbd> report false positive</span>
           </div>
           <div id="findings"></div>
         </div>
@@ -103,6 +104,12 @@
   </main>
 
   <footer class="footer">
+    <nav id="feedback" class="feedback" aria-label="Feedback">
+      <a id="report-bug" class="secondary" href="https://github.com/JGalego/slopcop/issues/new?template=bug_report.yml" target="_blank" rel="noopener">Report a bug</a>
+      <a class="secondary" href="https://github.com/JGalego/slopcop/issues/new?template=false_positive.yml" target="_blank" rel="noopener">Report a false positive</a>
+      <a class="secondary" href="https://github.com/JGalego/slopcop/issues/new?template=feature_request.yml" target="_blank" rel="noopener">Propose a rule or feature</a>
+      <a class="secondary" href="https://github.com/JGalego/slopcop/security/advisories/new" target="_blank" rel="noopener">Report a vulnerability</a>
+    </nav>
     <p>Scans skip dependency directories, unsupported file types, and files over the size limit before downloading. Commit-history checks need a local clone: run <code>slopcop history</code>.</p>
   </footer>
 </body>

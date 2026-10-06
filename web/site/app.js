@@ -3,6 +3,8 @@ const MODULES = ["deadweight", "vibecheck", "papertrail"];
 const PAGE_SIZE = 250;
 const CONTEXT_LINES = 2;
 const TOKEN_KEY = "slopcop.github-token";
+const REPO_URL = "https://github.com/JGalego/slopcop";
+const MAX_FIELD = 1500;
 
 const $ = (id) => document.getElementById(id);
 const worker = new Worker(new URL("worker.js", import.meta.url), { type: "module" });
@@ -70,6 +72,50 @@ function setProgress(stage, done, total) {
   bar.style.width = total ? `${(100 * done) / total}%` : "";
 }
 
+function issueUrl(template, fields) {
+  const params = new URLSearchParams({ template });
+  for (const [key, value] of Object.entries(fields)) {
+    if (value) params.set(key, value.length > MAX_FIELD ? value.slice(0, MAX_FIELD) + "\n…" : value);
+  }
+  return `${REPO_URL}/issues/new?${params}`;
+}
+
+function versionLabel() {
+  const version = state.data?.result.version;
+  return version ? `slopcop ${version} (web demo)` : "slopcop web demo";
+}
+
+function bugReportUrl(actual = "") {
+  return issueUrl("bug_report.yml", {
+    version: versionLabel(),
+    environment: `Web demo in ${navigator.userAgent}`,
+    reproduction: state.data || actual ? `Scan ${location.href}` : "",
+    actual,
+  });
+}
+
+function falsePositiveUrl(finding) {
+  const { line, column } = finding.location;
+  const output = [`${finding.path}:${line}:${column}  ${finding.rule_id}  ${finding.severity}`, finding.message];
+  if (finding.observation) output.push(`observed: ${finding.observation}`);
+  return issueUrl("false_positive.yml", {
+    title: `false positive: ${finding.rule_id} in ${finding.path}`,
+    rule: finding.rule_id,
+    version: versionLabel(),
+    context: `${finding.path} at ${blobUrl(finding.path, line)}`,
+    snippet: snippetLines(finding)?.map((row) => row.text).join("\n") || finding.evidence || "",
+    finding: output.join("\n"),
+  });
+}
+
+function showError(message, reportable = false) {
+  $("error").replaceChildren(message);
+  if (reportable) {
+    $("error").append(" ", h("a", { href: bugReportUrl(message), target: "_blank", rel: "noopener" }, "Report this as a bug"), ".");
+  }
+  $("error").hidden = false;
+}
+
 worker.onmessage = ({ data }) => {
   if (data.type === "progress") {
     setProgress(data.stage, data.done, data.total);
@@ -78,8 +124,7 @@ worker.onmessage = ({ data }) => {
   $("status").hidden = true;
   $("scan-button").disabled = false;
   if (data.type === "error") {
-    $("error").textContent = data.message;
-    $("error").hidden = false;
+    showError(data.message, !data.code);
     if (data.code === "bad-token" || (data.code === "rate-limit" && !$("token").value.trim())) {
       $("token-panel").open = true;
       $("token").focus();
@@ -92,8 +137,7 @@ worker.onmessage = ({ data }) => {
 worker.onerror = (event) => {
   $("status").hidden = true;
   $("scan-button").disabled = false;
-  $("error").textContent = `The scanner failed to load: ${event.message || "unknown error"}.`;
-  $("error").hidden = false;
+  showError(`The scanner failed to load: ${event.message || "unknown error"}.`, true);
 };
 
 function showResults(data) {
@@ -120,9 +164,9 @@ function renderSummary() {
   const { repo, ref, sha, result, stats } = state.data;
   const counts = countBy(result.findings, (finding) => finding.severity);
   const treeUrl = `https://github.com/${repo}/tree/${sha}`;
-  const download = () => {
-    const blob = new Blob([JSON.stringify(result, null, 2)], { type: "application/json" });
-    const link = h("a", { href: URL.createObjectURL(blob), download: `slopcop-${repo.replace("/", "-")}.json` });
+  const download = (content, type, extension) => () => {
+    const blob = new Blob([content], { type });
+    const link = h("a", { href: URL.createObjectURL(blob), download: `slopcop-${repo.replace("/", "-")}.${extension}` });
     link.click();
     URL.revokeObjectURL(link.href);
   };
@@ -139,7 +183,9 @@ function renderSummary() {
       stat(result.summary.skipped_files, "skipped"),
       stat(formatMillis(stats.totalMillis), `total, ${formatMillis(stats.scanMillis)} scanning`),
     ),
-    h("button", { type: "button", class: "secondary", onclick: download }, "Download JSON"),
+    h("div", { class: "summary-actions" },
+      h("button", { type: "button", class: "secondary", onclick: download(state.data.html, "text/html", "html") }, "Download HTML"),
+      h("button", { type: "button", class: "secondary", onclick: download(JSON.stringify(result, null, 2), "application/json", "json") }, "Download JSON")),
   );
 }
 
@@ -244,13 +290,11 @@ function renderFindings() {
     else groups.push({ path: finding.path, findings: [finding] });
   }
 
-  container.replaceChildren(
-    ...groups.map(renderGroup),
-    visible.length > state.limit
-      ? h("button", { type: "button", class: "secondary more", onclick: () => { state.limit += PAGE_SIZE; renderFindings(); } },
-        `Show ${Math.min(PAGE_SIZE, visible.length - state.limit)} more of ${visible.length - state.limit} remaining`)
-      : null,
-  );
+  container.replaceChildren(...groups.map(renderGroup));
+  if (visible.length > state.limit) {
+    container.append(h("button", { type: "button", class: "secondary more", onclick: () => { state.limit += PAGE_SIZE; renderFindings(); } },
+      `Show ${Math.min(PAGE_SIZE, visible.length - state.limit)} more of ${visible.length - state.limit} remaining`));
+  }
   if (state.selected >= 0) select(state.selected, false);
 }
 
@@ -287,26 +331,35 @@ function renderFinding(finding) {
       h("a", { class: "location", href: blobUrl(finding.path, line), target: "_blank", rel: "noopener", title: "Open on GitHub (o)" }, `${line}:${column}`)),
     finding.observation ? h("p", { class: "observation" }, finding.observation) : null,
     renderSnippet(finding),
-    finding.suggestion ? h("p", { class: "suggestion" }, h("span", {}, "Fix: "), finding.suggestion) : null,
+    h("div", { class: "finding-foot" },
+      finding.suggestion ? h("p", { class: "suggestion" }, h("span", {}, "Fix: "), finding.suggestion) : null,
+      h("a", { class: "report-false-positive", href: falsePositiveUrl(finding), target: "_blank", rel: "noopener", title: "Open a prefilled false-positive issue on GitHub (f)" }, "Report false positive")),
     explanation);
 }
 
-function renderSnippet(finding) {
+function snippetLines(finding) {
   const source = state.data.sources[finding.path];
-  if (source === undefined) {
-    return finding.evidence ? h("pre", { class: "evidence" }, finding.evidence) : null;
-  }
+  if (source === undefined) return null;
   const lines = source.split("\n");
   const target = finding.location.line;
   const first = Math.max(1, target - CONTEXT_LINES);
   const last = Math.min(lines.length, target + CONTEXT_LINES);
   const rows = [];
   for (let number = first; number <= last; number += 1) {
-    rows.push(h("div", { class: "code-line" + (number === target ? " hit" : "") },
-      h("span", { class: "gutter" }, String(number)),
-      h("span", { class: "text" }, lines[number - 1].replace(/\r$/, "") || " ")));
+    rows.push({ number, hit: number === target, text: lines[number - 1].replace(/\r$/, "") });
   }
-  return h("div", { class: "code" }, rows);
+  return rows;
+}
+
+function renderSnippet(finding) {
+  const rows = snippetLines(finding);
+  if (rows === null) {
+    return finding.evidence ? h("pre", { class: "evidence" }, finding.evidence) : null;
+  }
+  return h("div", { class: "code" }, rows.map((row) =>
+    h("div", { class: "code-line" + (row.hit ? " hit" : "") },
+      h("span", { class: "gutter" }, String(row.number)),
+      h("span", { class: "text" }, row.text || " "))));
 }
 
 function renderExplanation(rule) {
@@ -348,6 +401,7 @@ document.addEventListener("keydown", (event) => {
     case "k": select(state.selected - 1); break;
     case "o": card?.querySelector(".location").click(); break;
     case "e": card?.querySelector(".rule-id").click(); break;
+    case "f": card?.querySelector(".report-false-positive").click(); break;
     case "/": event.preventDefault(); $("query").focus(); break;
     default: return;
   }
@@ -374,8 +428,7 @@ $("scan-form").addEventListener("submit", (event) => {
   event.preventDefault();
   const target = parseTarget($("repo").value, $("ref").value);
   if (!target) {
-    $("error").textContent = "Enter a repository as owner/name or a github.com URL.";
-    $("error").hidden = false;
+    showError("Enter a repository as owner/name or a github.com URL.");
     return;
   }
   startScan(target);
@@ -405,6 +458,10 @@ try {
   // Without storage the field starts empty and scans run anonymously.
 }
 saveToken();
+
+$("report-bug").addEventListener("click", (event) => {
+  event.currentTarget.href = bugReportUrl();
+});
 
 $("examples").addEventListener("click", (event) => {
   const repo = event.target.closest("button")?.dataset.repo;

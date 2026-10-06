@@ -76,6 +76,9 @@ async function scanRepository(repo, ref, token) {
   }
   const result = JSON.parse(scanner.finish());
   const scanMillis = performance.now() - scanStarted;
+  const title = `${repo} · ${ref ? ref + " · " : ""}${sha.slice(0, 7)}`;
+  const html = scanner.html(title, `https://github.com/${repo}/blob/${sha}/`, notices);
+  scanner.free();
 
   const decoder = new TextDecoder();
   const sources = {};
@@ -93,6 +96,7 @@ async function scanRepository(repo, ref, token) {
     rules: JSON.parse(rules()),
     sources,
     notices,
+    html,
     stats: {
       treeFiles: blobs.length,
       downloaded: contents.size,
@@ -145,7 +149,7 @@ async function github(path, token, accept = "application/vnd.github+json") {
     throw Object.assign(new Error(message), { code: "rate-limit" });
   }
   if (response.status === 404 || response.status === 422) {
-    throw new Error("Repository or ref not found. Only public repositories can be scanned.");
+    throw Object.assign(new Error("Repository or ref not found. Only public repositories can be scanned."), { code: "not-found" });
   }
   throw new Error(`GitHub responded with ${response.status} ${response.statusText}.`);
 }

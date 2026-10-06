@@ -2,16 +2,16 @@
 
 //! Browser bindings for the slopcop demo. The page lists a repository tree, asks [`Scanner::wants`]
 //! which blobs are worth downloading, feeds them to [`Scanner::add`], and renders the JSON report
-//! returned by [`Scanner::finish`].
+//! returned by [`Scanner::finish`]. [`Scanner::html`] renders the same scan as a downloadable page.
 
 use std::path::{Component, Path, PathBuf};
 
 use slopcop::config::{CONFIG_FILE_NAME, Config};
 use slopcop::discovery::SKIPPED_DIRECTORIES;
 use slopcop::language::{SourceType, classify};
-use slopcop::reporting::write_json;
+use slopcop::reporting::{HtmlContext, write_html, write_json};
 use slopcop::rules::metadata_registry;
-use slopcop::{ScanOptions, SourceFile, scan_sources};
+use slopcop::{ScanOptions, ScanResult, SourceFile, scan_sources};
 use wasm_bindgen::prelude::*;
 
 /// Returns metadata for every registered rule as a JSON array.
@@ -29,6 +29,7 @@ pub fn rules() -> String {
 pub struct Scanner {
     options: ScanOptions,
     sources: Vec<SourceFile>,
+    result: Option<ScanResult>,
 }
 
 #[wasm_bindgen]
@@ -51,6 +52,7 @@ impl Scanner {
                 config,
             },
             sources: Vec::new(),
+            result: None,
         })
     }
 
@@ -76,7 +78,44 @@ impl Scanner {
         let result = scan_sources(std::mem::take(&mut self.sources), &self.options);
         let mut output = Vec::new();
         write_json(&mut output, &result).expect("report serializes");
+        self.result = Some(result);
         String::from_utf8(output).expect("report is UTF-8")
+    }
+
+    /// Renders the last finished scan as the same page as `slopcop --format html`. Findings link to
+    /// `{source_url}{path}#L{line}`, and each note is listed under the summary.
+    ///
+    /// # Errors
+    ///
+    /// Returns an error when called before [`Scanner::finish`].
+    ///
+    /// # Panics
+    ///
+    /// Panics if the report is not UTF-8, which would be a programming error.
+    // wasm-bindgen passes JavaScript strings and arrays in as owned values.
+    #[allow(clippy::needless_pass_by_value)]
+    pub fn html(
+        &self,
+        title: Option<String>,
+        source_url: Option<String>,
+        notes: Vec<String>,
+    ) -> Result<String, JsError> {
+        let result = self
+            .result
+            .as_ref()
+            .ok_or_else(|| JsError::new("finish the scan before rendering a report"))?;
+        let mut output = Vec::new();
+        write_html(
+            &mut output,
+            result,
+            &HtmlContext {
+                title: title.as_deref(),
+                source_url: source_url.as_deref(),
+                notes: &notes,
+            },
+        )
+        .expect("writing to memory succeeds");
+        Ok(String::from_utf8(output).expect("report is UTF-8"))
     }
 }
 
@@ -130,5 +169,15 @@ mod tests {
             serde_json::from_str(&scanner.finish()).expect("valid JSON");
         assert_eq!(report["summary"]["scanned_files"], 1);
         assert_eq!(report["findings"][0]["path"], "src/app.py");
+
+        let html = scanner
+            .html(
+                Some("owner/repo".to_owned()),
+                Some("https://github.com/owner/repo/blob/abc/".to_owned()),
+                vec!["Scanned in a test.".to_owned()],
+            )
+            .expect("finished scan renders");
+        assert!(html.contains("href=\"https://github.com/owner/repo/blob/abc/src/app.py#L4\""));
+        assert!(html.contains("<li>Scanned in a test.</li>"));
     }
 }

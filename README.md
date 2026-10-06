@@ -137,13 +137,16 @@ repos:
 
 ## CI and machine output
 
-JSON, SARIF 2.1.0, and GitHub workflow annotations are built in:
+JSON, SARIF 2.1.0, GitHub workflow annotations, and HTML reports are built in:
 
 ```sh
 slopcop . --format json
 slopcop . --format sarif > slopcop.sarif
 slopcop . --format github
+slopcop . --format html > slopcop.html
 ```
+
+The HTML report is a single self-contained page with no scripts or external resources, so it can be attached to a CI run or opened offline. It lists the findings by file, with a severity filter, and explains every rule that fired.
 
 The included CI workflow runs formatting, Clippy, tests, package verification, release-mode self-lint, and the benchmark smoke check. Self-hosting tests require every module and rule to remain enabled and verify that all source and documentation artifacts are discovered and scanned without size or generated-file skips.
 

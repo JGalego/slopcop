@@ -37,6 +37,12 @@ fn exit_codes_formats_configuration_and_suppressions_are_stable() {
         serde_json::from_slice(&sarif_output.stdout).expect("valid SARIF");
     assert_eq!(sarif["version"], "2.1.0");
 
+    let html_output = slopcop(directory.path(), &["bad.py", "--format", "html"]);
+    assert_eq!(html_output.status.code(), Some(1));
+    let html = String::from_utf8(html_output.stdout).expect("UTF-8 HTML");
+    assert!(html.starts_with("<!doctype html>"));
+    assert!(html.contains("id=\"rule-DEAD002\""));
+
     fs::write(
         directory.path().join("suppressed.py"),
         "# slopcop: ignore DEAD002 -- tracked as issue 42\n# TODO: remove compatibility path\n",

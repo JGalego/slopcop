@@ -26,7 +26,7 @@ suppressions and severity overrides
 stable finding sort
         |
         v
-text / JSON / SARIF / GitHub reporter
+text / JSON / SARIF / GitHub / HTML reporter
 ```
 
 ## Components
@@ -45,13 +45,13 @@ text / JSON / SARIF / GitHub reporter
 
 `git` reads staged content directly from the index. Working-tree comparisons read local content, while base comparisons read committed `HEAD` blobs. Both parse zero-context diff hunks and retain findings whose source line intersects an added range. Selection, configuration, and hunk lookup use normalized absolute paths; reports use invocation-relative paths where possible.
 
-`reporting` consumes sorted findings. JSON includes scan counts; SARIF includes every rule descriptor; GitHub output escapes workflow-command control characters.
+`reporting` consumes sorted findings. JSON includes scan counts; SARIF includes every rule descriptor; GitHub output escapes workflow-command control characters; HTML is a self-contained page that escapes all source text and runs no scripts.
 
 ## Determinism
 
 Parallel workers may finish in any order. The scanner sorts findings by path, line, column, and rule ID before reporting. The registry is sorted by stable ID. Rules make no network requests and use no randomized or model-backed process.
 
-Timing appears only in the benchmark command. Normal JSON and SARIF output contain no timestamps, host data, or unstable identifiers.
+Timing appears only in the benchmark command. Normal JSON, SARIF, and HTML output contain no timestamps, host data, or unstable identifiers.
 
 ## Performance choices
 

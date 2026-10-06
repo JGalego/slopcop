@@ -9,6 +9,10 @@ use crate::model::{Finding, Severity};
 use crate::rules::metadata_registry;
 use crate::scanner::ScanResult;
 
+mod html;
+
+pub use html::{HtmlContext, write_html};
+
 /// Writes the human-readable report.
 ///
 /// # Errors

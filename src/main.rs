@@ -9,7 +9,9 @@ use slopcop::config::Config;
 use slopcop::git;
 use slopcop::init;
 use slopcop::papertrail;
-use slopcop::reporting::{write_github, write_json, write_sarif, write_text};
+use slopcop::reporting::{
+    HtmlContext, write_github, write_html, write_json, write_sarif, write_text,
+};
 use slopcop::rules::metadata_registry;
 use slopcop::{ScanOptions, ScanResult, Severity, scan_paths, scan_sources};
 
@@ -100,6 +102,7 @@ enum OutputFormat {
     Json,
     Sarif,
     Github,
+    Html,
 }
 
 fn main() -> ExitCode {
@@ -275,6 +278,8 @@ fn write_result(
         OutputFormat::Github => {
             write_github(stdout.lock(), &result.findings).map_err(|error| error.to_string())
         }
+        OutputFormat::Html => write_html(stdout.lock(), result, &HtmlContext::default())
+            .map_err(|error| error.to_string()),
     };
     if let Err(error) = output {
         eprintln!("slopcop: could not write output: {error}");

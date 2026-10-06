@@ -6,6 +6,8 @@ This project records user-visible changes in this file and follows Semantic Vers
 
 ### Added
 
+- `--format html` writes a self-contained HTML report with scan totals, findings grouped by file, a severity filter, and a reference entry for each rule that fired. The browser demo offers the same report as a download, with links to the scanned commit on GitHub.
+- The browser demo links each finding to a prefilled false-positive issue, and its footer links to the bug, false-positive, feature, and security report forms. Unexpected scan errors offer a prefilled bug report.
 - The browser demo accepts an optional GitHub token, which raises the API limit from 60 to 5,000 requests per hour. It opens the token field when the anonymous limit runs out and reports a rejected token instead of a generic error.
 - `VIBE020` reports clusters of rhetorical contrast templates such as "it's X, not Y", "the goal isn't X; it's Y", and "rather than X, Y".
 - `VIBE021` reports repeated correlative emphasis such as "not only X, but also Y" and "everything from X to Y".
