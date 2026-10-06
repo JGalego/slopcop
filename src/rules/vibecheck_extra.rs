@@ -1158,7 +1158,7 @@ fn context_phrase_hits<'a>(
         .collect()
 }
 
-fn inside_double_quotes(source: &str, offset: usize) -> bool {
+pub(super) fn inside_double_quotes(source: &str, offset: usize) -> bool {
     let line_start = source[..offset].rfind('\n').map_or(0, |index| index + 1);
     let prefix = &source[line_start..offset];
     let mut quoted = false;

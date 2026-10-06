@@ -2,6 +2,12 @@
 
 This project records user-visible changes in this file and follows Semantic Versioning.
 
+## Unreleased
+
+### Changed
+
+- `VIBE001` recognizes more stock pivot phrases and transitions, including "the real question is", "put differently", "the bottom line is", "more broadly", and "notably,", with either apostrophe. It no longer counts double-quoted examples or a literal "the key is" followed by an ordinary predicate.
+
 ## 0.1.1 - 2026-10-06
 
 ### Added
