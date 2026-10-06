@@ -29,7 +29,7 @@ Exception is swallowed without logging, rethrowing, or handling.
 
 To try it without installing anything, open the [browser demo](https://slopcop.me) and enter a public GitHub repository. The scanner runs locally as WebAssembly.
 
-![Scanning pallets/flask in the browser demo](docs/assets/demo.gif)
+![Scanning pallets/flask in the browser demo](.github/assets/demo.gif)
 
 ## Getting started
 
