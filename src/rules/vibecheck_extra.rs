@@ -1298,6 +1298,13 @@ fn check_disclaimers(
         "as with any",
         "depending on your needs",
         "depending on the context",
+        "one-size-fits-all",
+        "depends on the specific situation",
+        "depends on your specific",
+        "your individual circumstances",
+        "your specific circumstances",
+        "every situation is different",
+        "not necessarily true in every case",
     ];
     check_phrase_cluster(
         context,
@@ -2350,5 +2357,11 @@ mod tests {
         assert_eq!(findings("VIBE023", repeated), 0);
         let technical = "The context carries the deadline. Each pattern matches one edge case, and every constraint is checked before the approach is chosen.";
         assert_eq!(findings("VIBE023", technical), 0);
+    }
+
+    #[test]
+    fn disclaimers_include_one_size_fits_all_caveats() {
+        let caveats = "There is no one-size-fits-all answer. Of course, it depends on the specific situation. Consider your individual circumstances, because every situation is different.";
+        assert_eq!(findings("VIBE015", caveats), 1);
     }
 }

@@ -47,7 +47,7 @@ jobs:
       - run: cargo clippy --locked --all-targets -- -W clippy::all -W clippy::pedantic -D warnings
         working-directory: web
       - run: make web
-      - uses: actions/upload-pages-artifact@v4
+      - uses: actions/upload-pages-artifact@v5
         with:
           path: web/site
 
@@ -64,4 +64,4 @@ jobs:
       url: ${{ steps.deployment.outputs.page_url }}
     steps:
       - id: deployment
-        uses: actions/deploy-pages@v4
+        uses: actions/deploy-pages@v5
