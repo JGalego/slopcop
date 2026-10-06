@@ -22,6 +22,7 @@ This project records user-visible changes in this file and follows Semantic Vers
 
 ### Fixed
 
+- The crates.io package leaves out the demo GIF, the browser demo, the VS Code extension, the install scripts, the benchmarks, and the GitHub workflows, which a build from crates.io never uses. The 0.2.0 package was 6.9 MB; this one is about 140 KB.
 - `DEAD002` no longer reports a lowercase or capitalized `todo` that opens a comment as part of a noun phrase, such as `// todo list to expanded` or `// Todo snapshot.`. The words that form these phrases are a short fixed list: list, item, entry, card, row, app, snapshot, content, state, and status, with their plurals. Uppercase `TODO` still counts anywhere.
 - `VIBE010` and `VIBE017` treat a list item or table row as a parallel entry even when a lead-in line such as "This skill enforces only:" opens its paragraph. Before, list entries were skipped only when the paragraph itself began with one.
 - An explanatory comment exempts a one-line empty function from `DEAD005` in Go and Rust, as it already did in Python, JavaScript, and TypeScript. Explanatory comments were read only in those three languages, so `func onStart() { /* Hooks run before the listener opens. */ }` was reported.
