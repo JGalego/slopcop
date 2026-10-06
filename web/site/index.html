@@ -24,6 +24,8 @@
     <symbol id="i-external" viewBox="0 0 24 24"><path d="M15 3h6v6"/><path d="M10 14 21 3"/><path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"/></symbol>
     <symbol id="i-copy" viewBox="0 0 24 24"><rect width="14" height="14" x="8" y="8" rx="2"/><path d="M4 16c-1.1 0-2-.9-2-2V4c0-1.1.9-2 2-2h10c1.1 0 2 .9 2 2"/></symbol>
     <symbol id="i-check" viewBox="0 0 24 24"><path d="M20 6 9 17l-5-5"/></symbol>
+    <symbol id="i-pause" viewBox="0 0 24 24"><rect width="4" height="16" x="6" y="4" rx="1"/><rect width="4" height="16" x="14" y="4" rx="1"/></symbol>
+    <symbol id="i-play" viewBox="0 0 24 24"><path d="M6 3v18l14-9z"/></symbol>
     <symbol id="i-arrow" viewBox="0 0 24 24"><path d="M5 12h14"/><path d="m12 5 7 7-7 7"/></symbol>
     <symbol id="i-fetch" viewBox="0 0 24 24"><path d="M12 13v8l-4-4"/><path d="m12 21 4-4"/><path d="M4.39 15.27A7 7 0 1 1 15.71 8h1.79a4.5 4.5 0 0 1 2.44 8.28"/></symbol>
     <symbol id="i-cpu" viewBox="0 0 24 24"><rect width="16" height="16" x="4" y="4" rx="2"/><rect width="6" height="6" x="9" y="9" rx="1"/><path d="M15 2v2M15 20v2M2 15h2M2 9h2M20 15h2M20 9h2M9 2v2M9 20v2"/></symbol>
@@ -85,23 +87,167 @@
       </details>
       </div>
 
-      <figure class="specimen" aria-label="Example finding">
-        <figcaption><span class="specimen-dots" aria-hidden="true"></span>sync.py</figcaption>
-        <div class="code" aria-hidden="true">
-          <div class="code-line"><span class="gutter">1</span><span class="text">def sync_users(client, users):</span></div>
-          <div class="code-line"><span class="gutter">2</span><span class="text">    for user in users:</span></div>
-          <div class="code-line"><span class="gutter">3</span><span class="text">        try:</span></div>
-          <div class="code-line"><span class="gutter">4</span><span class="text">            client.push(user)</span></div>
-          <div class="code-line hit"><span class="gutter">5</span><span class="text">        except Exception:</span></div>
-          <div class="code-line"><span class="gutter">6</span><span class="text">            pass</span></div>
-        </div>
-        <div class="finding sev-error">
-          <div class="finding-head">
-            <span class="badge sev-error">error</span>
-            <span class="rule-id">DEAD001</span>
-            <span class="finding-message">Exception is swallowed without logging, rethrowing, or handling.</span>
+      <figure class="specimen" id="specimen" aria-roledescription="carousel" aria-label="Example findings">
+        <figcaption><span class="specimen-dots" aria-hidden="true"></span><span id="specimen-file">bank.py</span></figcaption>
+        <div class="specimen-slides" id="specimen-slides" aria-live="off">
+          <div class="specimen-slide active" id="specimen-1" role="tabpanel" aria-roledescription="slide" aria-label="1 of 8" data-file="bank.py">
+            <div class="code" aria-hidden="true">
+              <div class="code-line"><span class="gutter">1</span><span class="text">def transfer(src, dst, amount):</span></div>
+              <div class="code-line"><span class="gutter">2</span><span class="text">    try:</span></div>
+              <div class="code-line"><span class="gutter">3</span><span class="text">        src.withdraw(amount)</span></div>
+              <div class="code-line"><span class="gutter">4</span><span class="text">        dst.deposit(amount)</span></div>
+              <div class="code-line hit"><span class="gutter">5</span><span class="text">    except Exception:</span></div>
+              <div class="code-line"><span class="gutter">6</span><span class="text">        pass</span></div>
+            </div>
+            <div class="finding sev-error">
+              <div class="finding-head">
+                <span class="badge sev-error">error</span>
+                <span class="rule-id">DEAD001</span>
+                <span class="finding-message">Exception is swallowed without logging, rethrowing, or handling.</span>
+              </div>
+              <p class="suggestion"><span>Fix:</span> Handle the failure, rethrow it, or document a narrow and intentional exception.</p>
+            </div>
           </div>
-          <p class="suggestion"><span>Fix:</span> Handle the failure, rethrow it, or document a narrow and intentional exception.</p>
+          <div class="specimen-slide" id="specimen-2" role="tabpanel" aria-roledescription="slide" aria-label="2 of 8" data-file="docs/INSTALL.md">
+            <div class="code" aria-hidden="true">
+              <div class="code-line"><span class="gutter">1</span><span class="text"># Installation</span></div>
+              <div class="code-line"><span class="gutter">2</span><span class="text"></span></div>
+              <div class="code-line hit"><span class="gutter">3</span><span class="text">Great question! Installing is a journey, and</span></div>
+              <div class="code-line"><span class="gutter">4</span><span class="text">I'm thrilled to take it with you.</span></div>
+              <div class="code-line"><span class="gutter">5</span><span class="text">Run `make install`.</span></div>
+              <div class="code-line hit"><span class="gutter">6</span><span class="text">I hope this helps! Let me know if you'd like</span></div>
+              <div class="code-line hit"><span class="gutter">7</span><span class="text">me to install it for you.</span></div>
+            </div>
+            <div class="finding sev-warning">
+              <div class="finding-head">
+                <span class="badge sev-warning">warning</span>
+                <span class="rule-id">VIBE002</span>
+                <span class="finding-message">The prose repeatedly addresses the reader like a chat assistant.</span>
+              </div>
+              <p class="suggestion"><span>Fix:</span> Remove conversational service framing and state the useful information directly.</p>
+            </div>
+          </div>
+          <div class="specimen-slide" id="specimen-3" role="tabpanel" aria-roledescription="slide" aria-label="3 of 8" data-file="tests/payments.test.js">
+            <div class="code" aria-hidden="true">
+              <div class="code-line"><span class="gutter">1</span><span class="text">test("never charges a customer twice", () =&gt; {</span></div>
+              <div class="code-line"><span class="gutter">2</span><span class="text">  // TODO: ask Dave how this works</span></div>
+              <div class="code-line hit"><span class="gutter">3</span><span class="text">  expect(true).toBe(true);</span></div>
+              <div class="code-line"><span class="gutter">4</span><span class="text">});</span></div>
+            </div>
+            <div class="finding sev-error">
+              <div class="finding-head">
+                <span class="badge sev-error">error</span>
+                <span class="rule-id">DEAD010</span>
+                <span class="finding-message">A test asserts a constant truth rather than observable behavior.</span>
+              </div>
+              <p class="suggestion"><span>Fix:</span> Assert a result or side effect produced by the unit under test.</p>
+            </div>
+          </div>
+          <div class="specimen-slide" id="specimen-4" role="tabpanel" aria-roledescription="slide" aria-label="4 of 8" data-file="COMMIT_EDITMSG">
+            <div class="code" aria-hidden="true">
+              <div class="code-line hit"><span class="gutter">1</span><span class="text">wip</span></div>
+              <div class="code-line"><span class="gutter">2</span><span class="text"></span></div>
+              <div class="code-line"><span class="gutter">3</span><span class="text"># On branch main</span></div>
+              <div class="code-line"><span class="gutter">4</span><span class="text"># Changes to be committed:</span></div>
+              <div class="code-line"><span class="gutter">5</span><span class="text">#  modified:   src/payments.rs</span></div>
+              <div class="code-line"><span class="gutter">6</span><span class="text">#  deleted:    tests/payments.rs</span></div>
+            </div>
+            <div class="finding sev-warning">
+              <div class="finding-head">
+                <span class="badge sev-warning">warning</span>
+                <span class="rule-id">TRAIL001</span>
+                <span class="finding-message">The commit subject is a placeholder rather than a change summary.</span>
+              </div>
+              <p class="suggestion"><span>Fix:</span> Summarize the observable change with a specific imperative subject.</p>
+            </div>
+          </div>
+          <div class="specimen-slide" id="specimen-5" role="tabpanel" aria-roledescription="slide" aria-label="5 of 8" data-file="src/Account.jsx">
+            <div class="code" aria-hidden="true">
+              <div class="code-line"><span class="gutter">1</span><span class="text">export function Account() {</span></div>
+              <div class="code-line"><span class="gutter">2</span><span class="text">  return (</span></div>
+              <div class="code-line hit"><span class="gutter">3</span><span class="text">    &lt;button onClick={() =&gt; {}}&gt;</span></div>
+              <div class="code-line"><span class="gutter">4</span><span class="text">      Cancel subscription</span></div>
+              <div class="code-line"><span class="gutter">5</span><span class="text">    &lt;/button&gt;</span></div>
+              <div class="code-line"><span class="gutter">6</span><span class="text">  );</span></div>
+              <div class="code-line"><span class="gutter">7</span><span class="text">}</span></div>
+            </div>
+            <div class="finding sev-error">
+              <div class="finding-head">
+                <span class="badge sev-error">error</span>
+                <span class="rule-id">DEAD016</span>
+                <span class="finding-message">A user-facing event handler is present but performs no action.</span>
+              </div>
+              <p class="suggestion"><span>Fix:</span> Implement the interaction or remove the control until it has real behavior.</p>
+            </div>
+          </div>
+          <div class="specimen-slide" id="specimen-6" role="tabpanel" aria-roledescription="slide" aria-label="6 of 8" data-file="CHANGELOG.md">
+            <div class="code" aria-hidden="true">
+              <div class="code-line"><span class="gutter">1</span><span class="text"># Changelog</span></div>
+              <div class="code-line"><span class="gutter">2</span><span class="text"></span></div>
+              <div class="code-line"><span class="gutter">3</span><span class="text">## 2.0.0</span></div>
+              <div class="code-line"><span class="gutter">4</span><span class="text"></span></div>
+              <div class="code-line"><span class="gutter">5</span><span class="text">Fixed a typo in the README. This release marks a</span></div>
+              <div class="code-line hit"><span class="gutter">6</span><span class="text">pivotal moment and a fundamental shift for the</span></div>
+              <div class="code-line hit"><span class="gutter">7</span><span class="text">project: a meaningful step forward.</span></div>
+            </div>
+            <div class="finding sev-warning">
+              <div class="finding-head">
+                <span class="badge sev-warning">warning</span>
+                <span class="rule-id">VIBE025</span>
+                <span class="finding-message">The prose dresses ordinary facts in dramatic characterizations.</span>
+              </div>
+              <p class="suggestion"><span>Fix:</span> State the concrete fact, such as the number, date, or change, instead of calling it a pivotal moment or a fundamental shift.</p>
+            </div>
+          </div>
+          <div class="specimen-slide" id="specimen-7" role="tabpanel" aria-roledescription="slide" aria-label="7 of 8" data-file="src/deploy.rs">
+            <div class="code" aria-hidden="true">
+              <div class="code-line"><span class="gutter">1</span><span class="text">impl Deploy {</span></div>
+              <div class="code-line"><span class="gutter">2</span><span class="text">    pub fn rollback(&amp;self) -&gt; Result&lt;()&gt; {</span></div>
+              <div class="code-line hit"><span class="gutter">3</span><span class="text">        todo!("we will never need this")</span></div>
+              <div class="code-line"><span class="gutter">4</span><span class="text">    }</span></div>
+              <div class="code-line"><span class="gutter">5</span><span class="text">}</span></div>
+            </div>
+            <div class="finding sev-error">
+              <div class="finding-head">
+                <span class="badge sev-error">error</span>
+                <span class="rule-id">DEAD003</span>
+                <span class="finding-message">Executable code contains an explicit unimplemented placeholder.</span>
+              </div>
+              <p class="suggestion"><span>Fix:</span> Implement the behavior before shipping, or move the contract to a recognized abstract interface.</p>
+            </div>
+          </div>
+          <div class="specimen-slide" id="specimen-8" role="tabpanel" aria-roledescription="slide" aria-label="8 of 8" data-file="src/retry.ts">
+            <div class="code" aria-hidden="true">
+              <div class="code-line"><span class="gutter">1</span><span class="text">export async function fetchWithRetry(url: string) {</span></div>
+              <div class="code-line"><span class="gutter">2</span><span class="text">  try {</span></div>
+              <div class="code-line"><span class="gutter">3</span><span class="text">    return await fetch(url);</span></div>
+              <div class="code-line hit"><span class="gutter">4</span><span class="text">  } catch (err) {</span></div>
+              <div class="code-line"><span class="gutter">5</span><span class="text">    throw err; // retry</span></div>
+              <div class="code-line"><span class="gutter">6</span><span class="text">  }</span></div>
+              <div class="code-line"><span class="gutter">7</span><span class="text">}</span></div>
+            </div>
+            <div class="finding sev-warning">
+              <div class="finding-head">
+                <span class="badge sev-warning">warning</span>
+                <span class="rule-id">DEAD014</span>
+                <span class="finding-message">An exception handler only rethrows the same failure without adding behavior.</span>
+              </div>
+              <p class="suggestion"><span>Fix:</span> Remove the handler, or add the translation, cleanup, or context that justifies it.</p>
+            </div>
+          </div>
+        </div>
+        <div class="specimen-nav">
+          <button type="button" id="specimen-pause" class="specimen-pause" aria-label="Pause examples"><svg class="icon"><use href="#i-pause"/></svg></button>
+          <div class="specimen-tabs" role="tablist" aria-label="Choose an example">
+            <button type="button" role="tab" aria-controls="specimen-1" aria-selected="true" aria-label="DEAD001" title="DEAD001"></button>
+            <button type="button" role="tab" aria-controls="specimen-2" aria-selected="false" aria-label="VIBE002" title="VIBE002" tabindex="-1"></button>
+            <button type="button" role="tab" aria-controls="specimen-3" aria-selected="false" aria-label="DEAD010" title="DEAD010" tabindex="-1"></button>
+            <button type="button" role="tab" aria-controls="specimen-4" aria-selected="false" aria-label="TRAIL001" title="TRAIL001" tabindex="-1"></button>
+            <button type="button" role="tab" aria-controls="specimen-5" aria-selected="false" aria-label="DEAD016" title="DEAD016" tabindex="-1"></button>
+            <button type="button" role="tab" aria-controls="specimen-6" aria-selected="false" aria-label="VIBE025" title="VIBE025" tabindex="-1"></button>
+            <button type="button" role="tab" aria-controls="specimen-7" aria-selected="false" aria-label="DEAD003" title="DEAD003" tabindex="-1"></button>
+            <button type="button" role="tab" aria-controls="specimen-8" aria-selected="false" aria-label="DEAD014" title="DEAD014" tabindex="-1"></button>
+          </div>
         </div>
       </figure>
       </div>

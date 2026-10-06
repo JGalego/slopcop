@@ -112,6 +112,28 @@ main { max-width: 1280px; margin: 0 auto; padding: 0 16px; }
 .specimen-dots { width: 44px; height: 10px; background: radial-gradient(circle, var(--line) 4px, transparent 5px) 0 0 / 15px 10px repeat-x; }
 .specimen .code { margin: 0; border: 0; border-radius: 0; background: transparent; padding: 10px 0; }
 .specimen .finding { margin: 4px 14px 0; box-shadow: 0 8px 20px -12px rgb(0 0 0 / 0.3); }
+.specimen-slides { display: grid; grid-template-columns: minmax(0, 1fr); }
+.specimen-slide { grid-area: 1 / 1; visibility: hidden; opacity: 0; transition: opacity 0.35s ease, visibility 0s 0.35s; }
+.specimen-slide.active { visibility: visible; opacity: 1; transition: opacity 0.35s ease; }
+.specimen-nav { display: flex; align-items: center; justify-content: center; gap: 8px; padding: 12px 14px 0; }
+.specimen-pause {
+  display: grid; place-items: center; width: 26px; height: 26px; padding: 0;
+  color: var(--muted); background: var(--surface); border: 1px solid var(--line); border-radius: 50%;
+}
+.specimen-pause:hover { color: var(--ink); border-color: var(--muted); }
+.specimen-pause .icon { width: 11px; height: 11px; }
+.specimen-tabs { display: flex; align-items: center; }
+.specimen-tabs button { display: grid; place-items: center; padding: 8px 4px; background: none; border: 0; }
+.specimen-tabs button::before {
+  content: ""; width: 8px; height: 8px; border-radius: 4px;
+  background: color-mix(in srgb, var(--muted) 35%, transparent); transition: width 0.25s ease, background-color 0.25s ease;
+}
+.specimen-tabs button:hover::before { background: var(--muted); }
+.specimen-tabs button[aria-selected="true"]::before { width: 22px; background: var(--hit-edge); }
+
+@media (prefers-reduced-motion: reduce) {
+  .specimen-slide, .specimen-slide.active, .specimen-tabs button::before { transition: none; }
+}
 
 .has-results .intro { padding: 20px 0 16px; }
 .has-results .hero { display: block; }

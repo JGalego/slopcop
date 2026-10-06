@@ -530,6 +530,65 @@ $("copy-install").addEventListener("click", async (event) => {
   setTimeout(() => button.replaceChildren(icon("copy")), 1500);
 });
 
+const SPECIMEN_INTERVAL = 7000;
+const specimenTabs = [...document.querySelectorAll(".specimen-tabs [role=tab]")];
+const specimen = { index: 0, paused: matchMedia("(prefers-reduced-motion: reduce)").matches, held: false, timer: 0 };
+
+function showSpecimen(index) {
+  specimen.index = (index + specimenTabs.length) % specimenTabs.length;
+  specimenTabs.forEach((tab, i) => {
+    const selected = i === specimen.index;
+    tab.setAttribute("aria-selected", String(selected));
+    tab.tabIndex = selected ? 0 : -1;
+    const slide = $(tab.getAttribute("aria-controls"));
+    slide.classList.toggle("active", selected);
+    if (selected) $("specimen-file").textContent = slide.dataset.file;
+  });
+}
+
+function scheduleSpecimen() {
+  clearTimeout(specimen.timer);
+  const running = !specimen.paused && !specimen.held && !document.hidden
+    && !document.body.classList.contains("has-results");
+  $("specimen-slides").setAttribute("aria-live", running ? "off" : "polite");
+  if (running) specimen.timer = setTimeout(() => {
+    showSpecimen(specimen.index + 1);
+    scheduleSpecimen();
+  }, SPECIMEN_INTERVAL);
+}
+
+function setSpecimenPaused(paused) {
+  specimen.paused = paused;
+  const button = $("specimen-pause");
+  button.setAttribute("aria-label", paused ? "Play examples" : "Pause examples");
+  button.replaceChildren(icon(paused ? "play" : "pause"));
+  scheduleSpecimen();
+}
+
+specimenTabs.forEach((tab, i) => {
+  tab.addEventListener("click", () => {
+    showSpecimen(i);
+    setSpecimenPaused(true);
+  });
+  tab.addEventListener("keydown", (event) => {
+    const step = { ArrowRight: 1, ArrowLeft: -1 }[event.key];
+    if (!step) return;
+    showSpecimen(specimen.index + step);
+    specimenTabs[specimen.index].focus();
+    setSpecimenPaused(true);
+  });
+});
+
+$("specimen-pause").addEventListener("click", () => setSpecimenPaused(!specimen.paused));
+for (const [type, held] of [["mouseenter", true], ["mouseleave", false], ["focusin", true], ["focusout", false]]) {
+  $("specimen").addEventListener(type, () => {
+    specimen.held = held;
+    scheduleSpecimen();
+  });
+}
+document.addEventListener("visibilitychange", scheduleSpecimen);
+setSpecimenPaused(specimen.paused);
+
 $("examples").addEventListener("click", (event) => {
   const repo = event.target.closest("button")?.dataset.repo;
   if (repo) startScan({ repo, ref: "" });
