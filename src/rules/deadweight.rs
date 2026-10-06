@@ -18,8 +18,12 @@ static METADATA: RuleMetadata = RuleMetadata {
     message: "Exception is swallowed without logging, rethrowing, or handling.",
     suggestion: "Handle the failure, rethrow it, or document a narrow and intentional exception.",
     rationale: "Silent exception handling hides failures and turns debugging evidence into an unexplained fallback.",
-    examples: &["except NetworkError:\n    pass", "catch (error) {}"],
-    false_positives: "A deliberately ignored exception with an explanatory body comment, an optional import, an exhausted iterator, or a guarded block that always raises is excluded; other undocumented handlers remain findings.",
+    examples: &[
+        "except NetworkError:\n    pass",
+        "catch (error) {}",
+        "} catch let error as IOError {}",
+    ],
+    false_positives: "A deliberately ignored exception with an explanatory body comment, an optional import, an exhausted iterator, or a guarded block that always raises or fails the test is excluded; other undocumented handlers remain findings.",
 };
 
 impl Rule for EmptyExceptionHandler {
@@ -30,7 +34,16 @@ impl Rule for EmptyExceptionHandler {
     fn check(&self, context: &ScanContext<'_>, findings: &mut Vec<Finding>) {
         let matcher = match context.source_type {
             SourceType::Code(Language::Python) => python_matcher(),
-            SourceType::Code(Language::JavaScript | Language::TypeScript) => brace_matcher(),
+            SourceType::Code(
+                Language::JavaScript
+                | Language::TypeScript
+                | Language::Java
+                | Language::Kotlin
+                | Language::CSharp
+                | Language::Cpp
+                | Language::Php,
+            ) => brace_matcher(),
+            SourceType::Code(Language::Swift) => swift_matcher(),
             _ => return,
         };
 
@@ -45,6 +58,7 @@ impl Rule for EmptyExceptionHandler {
             }
             if is_optional_import(matched.as_str())
                 || is_iteration_end(matched.as_str())
+                || holds_string_literal(context, matched.start(), matched.end())
                 || raises_deliberately(context, matched.start())
             {
                 continue;
@@ -65,6 +79,22 @@ impl Rule for EmptyExceptionHandler {
     }
 }
 
+/// Whether the match holds a string literal that the code view blanked. A Kotlin `try` is an
+/// expression, so `catch (e: IOException) { "offline" }` yields a value rather than an empty body.
+/// String literals are blank in the code and prose views alike; comments survive in the prose view.
+fn holds_string_literal(context: &ScanContext<'_>, start: usize, end: usize) -> bool {
+    let (source, code, prose) = (
+        context.source.as_bytes(),
+        context.code().as_bytes(),
+        context.prose().as_bytes(),
+    );
+    (start..end).any(|index| {
+        !source[index].is_ascii_whitespace()
+            && code[index].is_ascii_whitespace()
+            && prose[index].is_ascii_whitespace()
+    })
+}
+
 /// `except ImportError: pass` is the idiom for an optional dependency: the import is the probe.
 fn is_optional_import(handler: &str) -> bool {
     let clause = handler.lines().next().unwrap_or("");
@@ -80,21 +110,59 @@ fn is_iteration_end(handler: &str) -> bool {
         .is_some_and(|clause| clause.contains("StopIteration"))
 }
 
-/// Reports whether the guarded block always ends by raising: it only throws, or its last statement
-/// raises or fails the test. Tests use this shape to put an exception in flight or to expect one,
-/// so discarding it is the intended behavior.
+/// Reports whether the guarded block always ends by raising: its last statement raises or fails
+/// the test, as in a Swift `do` block that ends with `XCTFail(...)` before it catches the expected
+/// error. Tests use this shape to put an exception in flight or to expect one, so discarding it is
+/// the intended behavior.
 fn raises_deliberately(context: &ScanContext<'_>, handler_start: usize) -> bool {
     let code = context.code();
     let before = code[..handler_start].trim_end();
     if context.source_type != SourceType::Code(Language::Python) {
-        let Some(open) = before.strip_suffix('}').and_then(|body| body.rfind('{')) else {
+        let Some(body) = before.strip_suffix('}') else {
             return false;
         };
-        let body = &before[..before.len() - 1];
-        let statement = body[open + 1..].trim();
-        return body[..open].trim_end().ends_with("try")
-            && statement.starts_with("throw ")
-            && !statement.trim_end_matches(';').contains(';');
+        // The brace that opens the guarded block, past any closures nested inside it.
+        let mut depth = 0_usize;
+        let Some(open) = body.bytes().rposition(|byte| match byte {
+            b'}' => {
+                depth += 1;
+                false
+            }
+            b'{' if depth == 0 => true,
+            b'{' => {
+                depth -= 1;
+                false
+            }
+            _ => false,
+        }) else {
+            return false;
+        };
+        let opener = body[..open].trim_end();
+        let opened_by = |keyword: &str| {
+            opener.strip_suffix(keyword).is_some_and(|rest| {
+                !rest.ends_with(|character: char| character.is_alphanumeric() || character == '_')
+            })
+        };
+        let last = body[open + 1..]
+            .trim()
+            .trim_end_matches(';')
+            .rsplit([';', '\n'])
+            .next()
+            .unwrap_or("")
+            .trim();
+        return (opened_by("try") || opened_by("do"))
+            && [
+                "throw ",
+                "fail(",
+                "XCTFail(",
+                "Issue.record(",
+                "Assert.fail(",
+                "Assertions.fail(",
+                "assert.fail(",
+                "expect.fail(",
+            ]
+            .iter()
+            .any(|marker| last.starts_with(marker));
     }
     let handler_indent = indentation(&code[handler_start..]);
     let mut body = Vec::new();
@@ -135,6 +203,14 @@ fn brace_matcher() -> &'static Regex {
     })
 }
 
+/// Swift clauses take a pattern without parentheses: `catch {}`, `catch let error as IOError {}`.
+fn swift_matcher() -> &'static Regex {
+    static MATCHER: OnceLock<Regex> = OnceLock::new();
+    MATCHER.get_or_init(|| {
+        Regex::new(r"\bcatch\b[^{};\r\n]*\{\s*\}").expect("DEAD001 Swift regex must compile")
+    })
+}
+
 #[cfg(test)]
 mod tests {
     use std::path::Path;
@@ -155,6 +231,70 @@ mod tests {
 
         assert_eq!(findings.len(), 1);
         assert_eq!(findings[0].location.line, 3);
+    }
+
+    fn count(path: &str, source: &str) -> usize {
+        let path = Path::new(path);
+        let context = ScanContext::new(path, source, crate::language::classify(path));
+        let mut findings = Vec::new();
+        EmptyExceptionHandler.check(&context, &mut findings);
+        findings.len()
+    }
+
+    #[test]
+    fn detects_empty_handlers_in_other_catch_languages() {
+        for (path, source) in [
+            ("Store.java", "try { load(); } catch (IOException e) {}\n"),
+            ("Store.kt", "try { load() } catch (e: IOException) {\n}\n"),
+            ("Store.cs", "try { Load(); } catch (IOException) { }\n"),
+            ("store.cpp", "try { load(); } catch (...) {}\n"),
+            ("Store.php", "try { load(); } catch (Exception $e) {}\n"),
+            ("Store.swift", "do {\n    try load()\n} catch {}\n"),
+            (
+                "Store.swift",
+                "do {\n    try load()\n} catch let error as IOError {\n}\n",
+            ),
+            (
+                "Store.swift",
+                "do {\n    try load()\n} catch is CancellationError {}\n",
+            ),
+            (
+                "Store.swift",
+                "do {\n    try load(then: { cache.clear() })\n} catch {}\n",
+            ),
+        ] {
+            assert_eq!(count(path, source), 1, "{source}");
+        }
+        for (path, source) in [
+            (
+                "Store.swift",
+                "do {\n    try load()\n} catch {\n    // The cache is rebuilt on the next launch.\n}\n",
+            ),
+            (
+                "StoreTests.swift",
+                "do {\n    try load()\n    XCTFail(\"Expected a timeout\")\n} catch StoreError.timedOut {\n    // expected\n}\n",
+            ),
+            (
+                "StoreTests.swift",
+                "do {\n    _ = try await task.value\n    Issue.record(\"Expected cancellation\")\n} catch is CancellationError {}\n",
+            ),
+            (
+                "StoreTests.swift",
+                "do {\n    _ = try fetch(parse: { _ in \"ok\" })\n    Issue.record(\"Expected a timeout\")\n} catch StoreError.timedOut {\n}\n",
+            ),
+            (
+                "StoreTest.java",
+                "try {\n    load();\n    fail(\"expected IOException\");\n} catch (IOException expected) {}\n",
+            ),
+            (
+                "Store.kt",
+                "fun f(): String = try {\n    read()\n} catch (e: IOException) {\n    \"offline\"\n}\n",
+            ),
+            ("store.js", "promise.catch(() => {});\n"),
+            ("store.go", "func catch() {}\n"),
+        ] {
+            assert_eq!(count(path, source), 0, "{source}");
+        }
     }
 
     #[test]
