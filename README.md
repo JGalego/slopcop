@@ -27,7 +27,7 @@ Exception is swallowed without logging, rethrowing, or handling.
 2 finding(s). Nice try, robot.
 ```
 
-To try it without installing anything, open the [browser demo](https://jgalego.github.io/slopcop/) and enter a public GitHub repository. The scanner runs locally as WebAssembly.
+To try it without installing anything, open the [browser demo](https://slopcop.me) and enter a public GitHub repository. The scanner runs locally as WebAssembly.
 
 ![Scanning pallets/flask in the browser demo](docs/assets/demo.gif)
 
