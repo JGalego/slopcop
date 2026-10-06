@@ -311,6 +311,21 @@ static VIBE022: RuleMetadata = RuleMetadata {
     false_positives: "Isolated domain terms such as a best-practices guide or a leveraged buyout do not trigger this rule; management documents may use more of this vocabulary on purpose.",
 };
 
+static VIBE023: RuleMetadata = RuleMetadata {
+    id: "VIBE023",
+    module: Module::Vibecheck,
+    description: "Generic AI vocabulary density",
+    default_severity: Severity::Warning,
+    default_confidence: Confidence::Medium,
+    message: "Generic AI-favored vocabulary is unusually dense.",
+    suggestion: "Replace abstract evaluation with the specific property, number, or example it stands for.",
+    rationale: "Words such as nuanced, thoughtful, meaningful, holistic, and delve are rarely wrong alone, but a high concentration of them signals abstract evaluative padding rather than specific claims.",
+    examples: &[
+        "A nuanced, holistic review delves into meaningful trade-offs and offers a thoughtful, strategic perspective.",
+    ],
+    false_positives: "Common technical terms such as context, pattern, constraint, and edge case are not counted; essays about strategy or design may legitimately use several of these words.",
+};
+
 pub(super) fn rules() -> Vec<Box<dyn Rule>> {
     vec![
         boxed(&VIBE002, check_assistant_framing),
@@ -334,6 +349,7 @@ pub(super) fn rules() -> Vec<Box<dyn Rule>> {
         boxed(&VIBE020, check_rhetorical_contrasts),
         boxed(&VIBE021, check_correlatives),
         boxed(&VIBE022, check_workplace_jargon),
+        boxed(&VIBE023, check_ai_vocabulary),
     ]
 }
 
@@ -1204,6 +1220,65 @@ fn check_workplace_jargon(
         },
         "workplace jargon markers",
     );
+}
+
+fn check_ai_vocabulary(
+    context: &ScanContext<'_>,
+    metadata: &'static RuleMetadata,
+    findings: &mut Vec<crate::model::Finding>,
+) {
+    const TERMS: &[&str] = &[
+        "nuanced",
+        "nuance",
+        "nuances",
+        "thoughtful",
+        "thoughtfully",
+        "meaningful",
+        "meaningfully",
+        "holistic",
+        "holistically",
+        "strategic",
+        "strategically",
+        "compelling",
+        "multifaceted",
+        "intricate",
+        "intricacies",
+        "delve",
+        "delves",
+        "delving",
+        "broader",
+        "sustainable",
+        "profound",
+        "profoundly",
+    ];
+    if !is_prose(context) {
+        return;
+    }
+    let tokens = words(context.prose());
+    let used: Vec<_> = tokens
+        .iter()
+        .filter(|word| TERMS.contains(&word.as_str()))
+        .collect();
+    let distinct: HashSet<_> = used.iter().collect();
+    if used.len() >= 5 && distinct.len() >= 3 && used.len() * 120 >= tokens.len() {
+        let offset = TERMS
+            .iter()
+            .filter_map(|term| find_word(context.lower_prose(), term))
+            .min()
+            .unwrap_or(0);
+        emit(
+            context,
+            metadata,
+            findings,
+            offset,
+            Some(format!(
+                "observed {} generic AI vocabulary words using {} distinct forms across {} words",
+                used.len(),
+                distinct.len(),
+                tokens.len()
+            )),
+        );
+    }
 }
 
 fn check_disclaimers(
@@ -2265,5 +2340,15 @@ mod tests {
             ),
             0
         );
+    }
+
+    #[test]
+    fn ai_vocabulary_needs_a_varied_dense_cluster() {
+        let vocabulary = "A nuanced, holistic review delves into meaningful trade-offs and offers a thoughtful, strategic perspective.";
+        assert_eq!(findings("VIBE023", vocabulary), 1);
+        let repeated = "Meaningful names help. Meaningful errors help. Meaningful defaults help. Meaningful logs help. Meaningful tests help.";
+        assert_eq!(findings("VIBE023", repeated), 0);
+        let technical = "The context carries the deadline. Each pattern matches one edge case, and every constraint is checked before the approach is chosen.";
+        assert_eq!(findings("VIBE023", technical), 0);
     }
 }

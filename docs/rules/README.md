@@ -60,6 +60,7 @@ Confidence describes how directly the rule observes its quality smell. It never 
 | `VIBE020` | warning | medium | Three unquoted rhetorical contrast templates of at least two kinds, such as "it's X, not Y" or "the goal isn't X; it's Y", at a density of one per 250 words or more | One or two contrasts, one template repeated, quoted examples, and release notes |
 | `VIBE021` | warning | medium | Two unquoted not-only/but-also or everything-from/to constructions, or four correlatives including one of those at a density of one per 150 words or more | Plain both/and and whether/or clauses, one emphatic pair, quoted examples, and release notes |
 | `VIBE022` | warning | medium | Six workplace jargon markers, such as "leverage", "key stakeholders", or "drive alignment", using at least four forms, at one per 100 words or more | Isolated domain terms and concrete descriptions of who does what |
+| `VIBE023` | warning | medium | Five generic AI-favored words, such as nuanced, holistic, or delve, using at least three forms, at one per 120 words or more | Common technical terms such as context, pattern, and edge case; one word repeated; or sparse use in long prose |
 
 ## Configuration
 
