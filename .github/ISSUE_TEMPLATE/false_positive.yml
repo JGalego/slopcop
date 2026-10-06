@@ -20,7 +20,7 @@ body:
     attributes:
       label: slopcop version
       description: Paste the output of `slopcop --version`.
-      placeholder: slopcop 0.1.0
+      placeholder: slopcop 0.1.1
     validations:
       required: true
 

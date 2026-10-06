@@ -127,7 +127,7 @@ Wildcard suppressions and reason-free directives do nothing. Broad exclusions be
 ```yaml
 repos:
   - repo: https://github.com/JGalego/slopcop
-    rev: v0.1.0
+    rev: v0.1.1
     hooks:
       - id: slopcop
       - id: slopcop-commit-msg
