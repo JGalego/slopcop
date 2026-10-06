@@ -13,6 +13,7 @@ This project records user-visible changes in this file and follows Semantic Vers
 - `VIBE023` reports dense generic AI vocabulary such as "nuanced", "holistic", "meaningful", and "delve".
 - `VIBE024` reports generalized moral framing such as "this is a reminder that", "a testament to", and "is only as good as the people using it".
 - `VIBE025` reports dramatic characterizations such as "a pivotal moment", "a fundamental shift", and "a meaningful step forward".
+- `VIBE026` reports restated question premises such as "you're essentially asking whether" and "the issue you're getting at".
 
 ### Changed
 

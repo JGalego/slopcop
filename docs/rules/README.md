@@ -63,6 +63,7 @@ Confidence describes how directly the rule observes its quality smell. It never 
 | `VIBE023` | warning | medium | Five unquoted generic AI-favored words, such as nuanced, holistic, or delve, using at least three forms, at one per 120 words or more | Common technical terms such as context, pattern, and edge case; quoted examples; one word repeated; or sparse use in long prose |
 | `VIBE024` | warning | medium | Two unquoted generalized-lesson phrases of different forms, such as "this is a reminder that" or "is only as good as the", at one per 400 words or more | One reflective sentence, quoted examples, and literal discussion of lessons or reminders |
 | `VIBE025` | warning | medium | Two unquoted dramatic characterizations of different forms, such as "pivotal moment" or "fundamental shift", at one per 300 words or more | One characterization, quoted examples, and literal technical uses such as an inflection point on a curve |
+| `VIBE026` | warning | medium | One unquoted paraphrase of a reader's question, such as "you're essentially asking whether" | Quoted examples, ordinary conditionals such as "if what you are describing is a bug", and FAQ dialogue with a suppression |
 
 ## Configuration
 

@@ -356,6 +356,19 @@ static VIBE025: RuleMetadata = RuleMetadata {
     false_positives: "One characterization never triggers this rule, and double-quoted examples are excluded; retrospectives may name a real turning point.",
 };
 
+static VIBE026: RuleMetadata = RuleMetadata {
+    id: "VIBE026",
+    module: Module::Vibecheck,
+    description: "Restated question premise",
+    default_severity: Severity::Warning,
+    default_confidence: Confidence::Medium,
+    message: "The prose restates a reader's question instead of answering it.",
+    suggestion: "Start with the answer; the reader already knows what they asked.",
+    rationale: "Openers such as \"you're essentially asking whether\" paraphrase a chat prompt and are residue in repository prose, which has no asker.",
+    examples: &["You're essentially asking whether the cache can be shared between workers."],
+    false_positives: "Double-quoted examples are excluded; FAQ pages written as dialogue may need a named suppression.",
+};
+
 pub(super) fn rules() -> Vec<Box<dyn Rule>> {
     vec![
         boxed(&VIBE002, check_assistant_framing),
@@ -382,6 +395,7 @@ pub(super) fn rules() -> Vec<Box<dyn Rule>> {
         boxed(&VIBE023, check_ai_vocabulary),
         boxed(&VIBE024, check_moral_framing),
         boxed(&VIBE025, check_dramatic_characterizations),
+        boxed(&VIBE026, check_restated_premise),
     ]
 }
 
@@ -1723,6 +1737,37 @@ fn check_correlatives(
     }
 }
 
+fn check_restated_premise(
+    context: &ScanContext<'_>,
+    metadata: &'static RuleMetadata,
+    findings: &mut Vec<crate::model::Finding>,
+) {
+    const PHRASES: &[&str] = &[
+        "you're essentially asking",
+        "you are essentially asking",
+        "what you're really asking",
+        "what you are really asking",
+        "what you're describing is essentially",
+        "the issue you're getting at",
+        "the question you're getting at",
+        "if i understand your question",
+        "it sounds like you're asking",
+    ];
+    if !is_prose(context) {
+        return;
+    }
+    let hits = context_phrase_hits(context, PHRASES);
+    if let Some((offset, phrase)) = hits.first() {
+        emit(
+            context,
+            metadata,
+            findings,
+            *offset,
+            Some(format!("restates the question with \"{phrase}\"")),
+        );
+    }
+}
+
 fn check_word_density(
     context: &ScanContext<'_>,
     metadata: &'static RuleMetadata,
@@ -2509,6 +2554,31 @@ mod tests {
             findings(
                 "VIBE025",
                 "The curve has one inflection point at x = 0, where the second derivative changes sign."
+            ),
+            0
+        );
+    }
+
+    #[test]
+    fn restated_premise_needs_one_unquoted_paraphrase() {
+        assert_eq!(
+            findings(
+                "VIBE026",
+                "You\u{2019}re essentially asking whether the cache can be shared."
+            ),
+            1
+        );
+        assert_eq!(
+            findings(
+                "VIBE026",
+                "If what you're describing is a bug, open an issue with the failing input."
+            ),
+            0
+        );
+        assert_eq!(
+            findings(
+                "VIBE026",
+                r#"Drop openers such as "you're essentially asking" from answers."#
             ),
             0
         );
