@@ -9,6 +9,7 @@ This project records user-visible changes in this file and follows Semantic Vers
 - The browser demo accepts an optional GitHub token, which raises the API limit from 60 to 5,000 requests per hour. It opens the token field when the anonymous limit runs out and reports a rejected token instead of a generic error.
 - `VIBE020` reports clusters of rhetorical contrast templates such as "it's X, not Y", "the goal isn't X; it's Y", and "rather than X, Y".
 - `VIBE021` reports repeated correlative emphasis such as "not only X, but also Y" and "everything from X to Y".
+- `VIBE022` reports dense workplace productivity jargon such as "leverage", "streamline", "key stakeholders", and "drive alignment".
 
 ### Changed
 

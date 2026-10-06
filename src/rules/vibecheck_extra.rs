@@ -296,6 +296,21 @@ static VIBE021: RuleMetadata = RuleMetadata {
     false_positives: "Plain both/and and whether/or clauses never trigger this rule alone, and double-quoted examples are excluded.",
 };
 
+static VIBE022: RuleMetadata = RuleMetadata {
+    id: "VIBE022",
+    module: Module::Vibecheck,
+    description: "Workplace productivity jargon",
+    default_severity: Severity::Warning,
+    default_confidence: Confidence::Medium,
+    message: "Workplace productivity jargon is unusually dense.",
+    suggestion: "Name who does what and what changes, instead of leveraging, streamlining, or driving alignment.",
+    rationale: "Clusters of empower, leverage, streamline, stakeholder, and alignment language read like an office assistant's summary and hide the concrete action.",
+    examples: &[
+        "Empower key stakeholders to leverage actionable insights, streamline workflows, and drive alignment across cross-functional teams.",
+    ],
+    false_positives: "Isolated domain terms such as a best-practices guide or a leveraged buyout do not trigger this rule; management documents may use more of this vocabulary on purpose.",
+};
+
 pub(super) fn rules() -> Vec<Box<dyn Rule>> {
     vec![
         boxed(&VIBE002, check_assistant_framing),
@@ -318,6 +333,7 @@ pub(super) fn rules() -> Vec<Box<dyn Rule>> {
         boxed(&VIBE019, check_chatbot_residue),
         boxed(&VIBE020, check_rhetorical_contrasts),
         boxed(&VIBE021, check_correlatives),
+        boxed(&VIBE022, check_workplace_jargon),
     ]
 }
 
@@ -1133,6 +1149,60 @@ fn check_corporate_positivity(
             words_per_hit: 150,
         },
         "corporate positivity markers",
+    );
+}
+
+fn check_workplace_jargon(
+    context: &ScanContext<'_>,
+    metadata: &'static RuleMetadata,
+    findings: &mut Vec<crate::model::Finding>,
+) {
+    const PHRASES: &[&str] = &[
+        "empower",
+        "leverage",
+        "streamline",
+        "enhance",
+        "foster",
+        "harness",
+        "facilitate",
+        "drive impact",
+        "drive alignment",
+        "ensure alignment",
+        "unlock value",
+        "foster collaboration",
+        "foster an environment",
+        "enhance productivity",
+        "maximize efficiency",
+        "maximize opportunities",
+        "optimize workflows",
+        "actionable insights",
+        "meaningful insights",
+        "key stakeholders",
+        "cross-functional",
+        "move the needle",
+        "best practices",
+        "strategic priorities",
+        "strategic initiatives",
+        "business outcomes",
+        "value proposition",
+        "thought leadership",
+        "create synergies",
+        "address challenges",
+        "navigate complexities",
+        "position ourselves",
+        "fast-paced world",
+    ];
+    check_distinct_cluster(
+        context,
+        metadata,
+        findings,
+        PHRASES,
+        DistinctThresholds {
+            minimum: 6,
+            distinct_minimum: 4,
+            words_per_hit: 100,
+        },
+        "workplace jargon markers",
     );
 }
 
@@ -2179,6 +2249,19 @@ mod tests {
             findings(
                 "VIBE014",
                 "Run the installer to elevate privileges. Profiling is a powerful tool for finding hot loops."
+            ),
+            0
+        );
+    }
+
+    #[test]
+    fn workplace_jargon_needs_a_varied_cluster() {
+        let jargon = "Empower key stakeholders to leverage actionable insights, streamline workflows, and drive alignment across cross-functional teams.";
+        assert_eq!(findings("VIBE022", jargon), 1);
+        assert_eq!(
+            findings(
+                "VIBE022",
+                "Use the covering index to streamline this query. The guide lists best practices for indexes."
             ),
             0
         );
