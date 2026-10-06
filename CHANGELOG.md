@@ -6,6 +6,7 @@ This project records user-visible changes in this file and follows Semantic Vers
 
 ### Added
 
+- The browser demo accepts an optional GitHub token, which raises the API limit from 60 to 5,000 requests per hour. It opens the token field when the anonymous limit runs out and reports a rejected token instead of a generic error.
 - `VIBE020` reports clusters of rhetorical contrast templates such as "it's X, not Y", "the goal isn't X; it's Y", and "rather than X, Y".
 - `VIBE021` reports repeated correlative emphasis such as "not only X, but also Y" and "everything from X to Y".
 
@@ -17,6 +18,7 @@ This project records user-visible changes in this file and follows Semantic Vers
 - `VIBE003` counts the importance labels "essential", "critical", "pivotal", "paramount", and "noteworthy".
 - `VIBE004` recognizes hedging phrases such as "it can be argued", "one could argue", "to some extent", and "does not necessarily".
 - `VIBE005` reports stock both-sides lines such as "there are valid arguments on both sides" and "neither approach is inherently better". Not-only/but-also pairs move to `VIBE021`.
+- `VIBE006` recognizes structure announcements such as "first and foremost", "there are three key points", and "before we dive in".
 
 ## 0.1.1 - 2026-10-06
 

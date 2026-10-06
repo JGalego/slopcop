@@ -600,6 +600,20 @@ fn check_signposting(
         "next, we",
         "next we",
         "as we have seen",
+        "first and foremost",
+        "three key points",
+        "three key things",
+        "three key takeaways",
+        "several key points",
+        "several key factors",
+        "a few key points",
+        "a few key things",
+        "there are several factors to consider",
+        "the first thing to understand",
+        "let's look at each",
+        "before we dive in",
+        "now let's turn to",
+        "finally, it's worth noting",
     ];
     check_phrase_cluster(
         context,
@@ -1950,6 +1964,19 @@ mod tests {
             findings(
                 "VIBE021",
                 r#"Avoid "not only fast but also clear" and "everything from X to Y" in summaries."#
+            ),
+            0
+        );
+    }
+
+    #[test]
+    fn signposting_counts_structure_announcements() {
+        let announcements = "There are three key points. First and foremost, the first thing to understand is scope. Before we dive in, let's look at each one. Now let's turn to cost.";
+        assert_eq!(findings("VIBE006", announcements), 1);
+        assert_eq!(
+            findings(
+                "VIBE006",
+                "First, parse the header. There are three key types: `Ed25519`, `P-256`, and `RSA`."
             ),
             0
         );
