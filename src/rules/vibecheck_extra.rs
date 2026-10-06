@@ -341,6 +341,21 @@ static VIBE024: RuleMetadata = RuleMetadata {
     false_positives: "One reflective sentence never triggers this rule, and double-quoted examples are excluded; essays and retrospectives may draw lessons on purpose.",
 };
 
+static VIBE025: RuleMetadata = RuleMetadata {
+    id: "VIBE025",
+    module: Module::Vibecheck,
+    description: "Dramatic characterizations",
+    default_severity: Severity::Warning,
+    default_confidence: Confidence::Medium,
+    message: "The prose dresses ordinary facts in dramatic characterizations.",
+    suggestion: "State the concrete fact, such as the number, date, or change, instead of calling it a pivotal moment or a fundamental shift.",
+    rationale: "Phrases such as \"a critical inflection point\" and \"a meaningful step forward\" sound precise but add significance the text does not demonstrate.",
+    examples: &[
+        "The release marks a pivotal moment and a fundamental shift: a meaningful step forward for the project.",
+    ],
+    false_positives: "One characterization never triggers this rule, and double-quoted examples are excluded; retrospectives may name a real turning point.",
+};
+
 pub(super) fn rules() -> Vec<Box<dyn Rule>> {
     vec![
         boxed(&VIBE002, check_assistant_framing),
@@ -366,6 +381,7 @@ pub(super) fn rules() -> Vec<Box<dyn Rule>> {
         boxed(&VIBE022, check_workplace_jargon),
         boxed(&VIBE023, check_ai_vocabulary),
         boxed(&VIBE024, check_moral_framing),
+        boxed(&VIBE025, check_dramatic_characterizations),
     ]
 }
 
@@ -1317,6 +1333,43 @@ fn check_moral_framing(
             words_per_hit: 400,
         },
         "generalized lesson phrases",
+    );
+}
+
+fn check_dramatic_characterizations(
+    context: &ScanContext<'_>,
+    metadata: &'static RuleMetadata,
+    findings: &mut Vec<crate::model::Finding>,
+) {
+    const PHRASES: &[&str] = &[
+        "inflection point",
+        "pivotal moment",
+        "defining moment",
+        "watershed moment",
+        "critical juncture",
+        "turning point",
+        "fundamental shift",
+        "seismic shift",
+        "sea change",
+        "new era",
+        "transformative opportunity",
+        "powerful framework",
+        "compelling case",
+        "clear signal",
+        "step forward",
+        "game-changing",
+    ];
+    check_distinct_cluster(
+        context,
+        metadata,
+        findings,
+        PHRASES,
+        DistinctThresholds {
+            minimum: 2,
+            distinct_minimum: 2,
+            words_per_hit: 300,
+        },
+        "dramatic characterizations",
     );
 }
 
@@ -2442,6 +2495,20 @@ mod tests {
             findings(
                 "VIBE024",
                 r#"Cut closers like "this is a reminder that" and "a testament to" from reports."#
+            ),
+            0
+        );
+    }
+
+    #[test]
+    fn dramatic_characterizations_need_two_distinct_forms() {
+        let drama =
+            "Version 2 marks a pivotal moment and a meaningful step forward for the project.";
+        assert_eq!(findings("VIBE025", drama), 1);
+        assert_eq!(
+            findings(
+                "VIBE025",
+                "The curve has one inflection point at x = 0, where the second derivative changes sign."
             ),
             0
         );
