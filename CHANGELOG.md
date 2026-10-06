@@ -7,6 +7,7 @@ This project records user-visible changes in this file and follows Semantic Vers
 ### Added
 
 - `VIBE020` reports clusters of rhetorical contrast templates such as "it's X, not Y", "the goal isn't X; it's Y", and "rather than X, Y".
+- `VIBE021` reports repeated correlative emphasis such as "not only X, but also Y" and "everything from X to Y".
 
 ### Changed
 

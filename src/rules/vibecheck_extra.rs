@@ -275,6 +275,21 @@ static VIBE020: RuleMetadata = RuleMetadata {
     false_positives: "One or two contrasts never trigger this rule, and double-quoted examples are excluded; comparison guides that weigh named alternatives may still need configuration.",
 };
 
+static VIBE021: RuleMetadata = RuleMetadata {
+    id: "VIBE021",
+    module: Module::Vibecheck,
+    description: "Correlative emphasis constructions",
+    default_severity: Severity::Warning,
+    default_confidence: Confidence::Medium,
+    message: "The prose repeatedly adds emphasis with correlative constructions.",
+    suggestion: "State both facts directly; keep a correlative pair only where the second item is genuinely surprising.",
+    rationale: "Repeated not-only/but-also and everything-from/to constructions add rhetorical lift where a direct sentence would carry the same information.",
+    examples: &[
+        "Not only is it fast, but it is also clear. It handles everything from scripts to services.",
+    ],
+    false_positives: "Plain both/and and whether/or clauses never trigger this rule alone, and double-quoted examples are excluded.",
+};
+
 pub(super) fn rules() -> Vec<Box<dyn Rule>> {
     vec![
         boxed(&VIBE002, check_assistant_framing),
@@ -296,6 +311,7 @@ pub(super) fn rules() -> Vec<Box<dyn Rule>> {
         boxed(&VIBE018, check_paragraph_symmetry),
         boxed(&VIBE019, check_chatbot_residue),
         boxed(&VIBE020, check_rhetorical_contrasts),
+        boxed(&VIBE021, check_correlatives),
     ]
 }
 
@@ -1214,6 +1230,76 @@ fn check_rhetorical_contrasts(
     }
 }
 
+fn correlative_matchers() -> &'static [(Regex, bool)] {
+    static MATCHERS: OnceLock<Vec<(Regex, bool)>> = OnceLock::new();
+    MATCHERS.get_or_init(|| {
+        [
+            (r"(?i)\bnot only\b[^.!?]{1,120}?\b(?:but|also)\b", true),
+            (
+                r"(?i)\b(?:everything|anything) from\b[^.!?]{1,80}?\bto\b",
+                true,
+            ),
+            (r"(?i)\bboth\b[^.!?,;]{1,50}?\band\b", false),
+            (r"(?i)\bwhether\b[^.!?;]{1,60}?\bor\b", false),
+        ]
+        .into_iter()
+        .map(|(pattern, strong)| {
+            (
+                Regex::new(pattern).expect("VIBE021 correlative regexes must compile"),
+                strong,
+            )
+        })
+        .collect()
+    })
+}
+
+/// Strong correlatives ("not only ... but also", "everything from ... to") carry the signal;
+/// "both ... and" and "whether ... or" are ordinary grammar and only add weight to a cluster that
+/// already has a strong one.
+fn check_correlatives(
+    context: &ScanContext<'_>,
+    metadata: &'static RuleMetadata,
+    findings: &mut Vec<crate::model::Finding>,
+) {
+    if !is_prose(context) || is_release_notes(context) {
+        return;
+    }
+    let prose = context.prose();
+    let mut strong = Vec::new();
+    let mut weak = 0;
+    for sentence in context.sentences() {
+        let text = sentence.text(prose);
+        for (matcher, is_strong) in correlative_matchers() {
+            for found in matcher.find_iter(text) {
+                let offset = sentence.start + found.start();
+                let whether_or_not = found.as_str().eq_ignore_ascii_case("whether or");
+                if whether_or_not || inside_double_quotes(prose, offset) {
+                    continue;
+                }
+                if *is_strong {
+                    strong.push(offset);
+                } else {
+                    weak += 1;
+                }
+            }
+        }
+    }
+    let total = strong.len() + weak;
+    let clustered = !strong.is_empty() && total >= 4 && total * 150 >= context.prose_word_count();
+    if strong.len() >= 2 || clustered {
+        emit(
+            context,
+            metadata,
+            findings,
+            strong.iter().copied().min().unwrap_or(0),
+            Some(format!(
+                "observed {} not-only or everything-from constructions and {weak} both/and or whether/or clauses",
+                strong.len()
+            )),
+        );
+    }
+}
+
 fn check_word_density(
     context: &ScanContext<'_>,
     metadata: &'static RuleMetadata,
@@ -1832,6 +1918,38 @@ mod tests {
             findings(
                 "VIBE005",
                 "On the other hand, the parser rejects tabs. The table lists the pros and cons of each backend."
+            ),
+            0
+        );
+    }
+
+    #[test]
+    fn correlatives_need_strong_constructions() {
+        assert_eq!(
+            findings(
+                "VIBE021",
+                "Not only is it fast, but it is also clear. Not only is it small, but it is also tested."
+            ),
+            1
+        );
+        assert_eq!(
+            findings(
+                "VIBE021",
+                "It handles everything from scripts to services. Both reads and writes are cached, whether local or remote. Both the client and the server retry."
+            ),
+            1
+        );
+        assert_eq!(
+            findings(
+                "VIBE021",
+                "Both reads and writes are cached. Whether or not the file exists, the call succeeds. Both the client and the server retry. Choose whether to block or poll."
+            ),
+            0
+        );
+        assert_eq!(
+            findings(
+                "VIBE021",
+                r#"Avoid "not only fast but also clear" and "everything from X to Y" in summaries."#
             ),
             0
         );

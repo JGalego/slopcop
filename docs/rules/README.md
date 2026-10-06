@@ -58,6 +58,7 @@ Confidence describes how directly the rule observes its quality smell. It never 
 | `VIBE018` | info | low | Five substantial consecutive paragraphs whose word counts remain within a 20 percent band | Paragraphs sized by their evidence, a constrained publication format, walkthrough steps separated by code examples, or code comments |
 | `VIBE019` | warning | high | One unquoted chatbot identity, cutoff, or browsing-disclaimer artifact | Quoted examples and stored chat transcripts |
 | `VIBE020` | warning | medium | Three unquoted rhetorical contrast templates of at least two kinds, such as "it's X, not Y" or "the goal isn't X; it's Y", at a density of one per 250 words or more | One or two contrasts, one template repeated, quoted examples, and release notes |
+| `VIBE021` | warning | medium | Two unquoted not-only/but-also or everything-from/to constructions, or four correlatives including one of those at a density of one per 150 words or more | Plain both/and and whether/or clauses, one emphatic pair, quoted examples, and release notes |
 
 ## Configuration
 
