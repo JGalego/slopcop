@@ -1,7 +1,8 @@
 """Post one triage comment on a new issue.
 
-False-positive reports are checked deterministically: the reported snippet is
-scanned with slopcop built from the default branch. When GEMINI_API_KEY is set,
+False-positive reports, missed-slop reports, and Most Wanted nominations are
+checked deterministically: the reported snippet is scanned with slopcop built
+from the default branch. When GEMINI_API_KEY is set,
 Gemini adds a short summary, missing details, related issues, and labels drawn
 from a fixed allowlist. The bot never closes, assigns, or edits issues.
 """
@@ -23,6 +24,11 @@ MARKER = "<!-- slopcop-triage -->"
 LABELS = ["bug", "enhancement", "false positive", "documentation", "question", "accessibility", "needs info"]
 MAX_BODY = 12000
 MAX_TEXT = 600
+SNIPPET_FIELDS = {
+    "false positive": "Minimal flagged example",
+    "missed slop": "Minimal missed example",
+    "most wanted": "Flagged excerpt",
+}
 
 KNOWN_EXTENSIONS = {
     "py", "pyi", "js", "jsx", "mjs", "cjs", "ts", "tsx", "mts", "cts", "go", "rs", "java", "c", "h",
@@ -48,7 +54,10 @@ Be brief and concrete:
 - summary: one or two sentences restating the report.
 - assessment: up to three sentences. For a false positive, say whether the case looks
   legitimate given the rule's rationale and the reproduction result, and what a narrow
-  deterministic quiet boundary could be. For a bug, name the likely area (CLI, rule, config,
+  deterministic quiet boundary could be. For missed slop, say whether the problem is
+  observable and could be detected deterministically without flagging legitimate text,
+  and whether an existing rule should already cover it. For a Most Wanted nomination,
+  say whether the excerpt is free of personal names and secrets. For a bug, name the likely area (CLI, rule, config,
   reporting, web demo). For a proposal, say whether it fits a deterministic,
   evidence-based linter.
 - missing: only details a maintainer would need before acting. Empty when complete.
@@ -98,6 +107,10 @@ def kind_of(issue):
     title = issue["title"].lower()
     if "false positive" in names or title.startswith("false positive"):
         return "false positive"
+    if "false negative" in names or title.startswith("missed slop"):
+        return "missed slop"
+    if "most wanted" in names or title.startswith("most wanted"):
+        return "most wanted"
     if "bug" in names or title.startswith("bug"):
         return "bug"
     if "enhancement" in names or title.startswith("proposal"):
@@ -124,14 +137,11 @@ def snippet_path(context):
     return None
 
 
-def reproduce(form, slopcop):
-    rule = form.get("Rule ID", "").strip().upper()
-    snippet = strip_fence(form.get("Minimal flagged example", ""))
-    if not re.fullmatch(r"[A-Z]+\d{3}", rule) or not snippet:
-        return rule, "Could not read a rule ID and snippet from the report."
-    relative = snippet_path(form.get("File type and context", ""))
+def scan(snippet, context, slopcop):
+    """Scan a reported snippet; return (relative path, findings) or (None, reason)."""
+    relative = snippet_path(context)
     if relative is None:
-        return rule, "Could not tell the file type from the context field, so the snippet was not scanned."
+        return None, "Could not tell the file type from the context field, so the snippet was not scanned."
 
     with tempfile.TemporaryDirectory() as directory:
         target = Path(directory, relative)
@@ -141,18 +151,53 @@ def reproduce(form, slopcop):
             [slopcop, "--format", "json", relative], cwd=directory, capture_output=True, text=True, check=False
         )
     if run.returncode not in (0, 1):
-        return rule, f"slopcop exited with {run.returncode} on the snippet: `{run.stderr.strip()[:200]}`"
+        return None, f"slopcop exited with {run.returncode} on the snippet: `{run.stderr.strip()[:200]}`"
+    return relative, json.loads(run.stdout)["findings"]
 
-    findings = json.loads(run.stdout)["findings"]
+
+def reproduce(kind, form, slopcop):
+    rule = form.get("Expected rule" if kind == "missed slop" else "Rule ID", "").strip().upper()
+    if not re.fullmatch(r"[A-Z]+\d{3}", rule):
+        rule = ""
+    snippet = strip_fence(form.get(SNIPPET_FIELDS[kind], ""))
+    if not snippet or (not rule and kind != "missed slop"):
+        return rule, "Could not read a rule ID and snippet from the report."
+    relative, findings = scan(snippet, form.get("File type and context", ""), slopcop)
+    if relative is None:
+        return rule, findings
+
     hits = [finding for finding in findings if finding["rule_id"] == rule]
     others = sorted({finding["rule_id"] for finding in findings} - {rule})
-    also = f" Other rules on the snippet: {', '.join(others)}." if others else ""
+    also = f" Other rules on the snippet: {', '.join(others)}." if others and rule else ""
+    lines = ", ".join(str(hit["location"]["line"]) for hit in hits)
+    where = f"(as `{relative}`)"
+
+    if kind == "missed slop":
+        if not rule and others:
+            return rule, (
+                f"**Partly flagged.** slopcop reports {', '.join(others)} on the snippet {where}. "
+                "Check whether one of these already covers the problem."
+            )
+        if not rule:
+            return rule, f"**Confirmed miss.** slopcop reports nothing on the snippet {where}."
+        if hits:
+            return rule, (
+                f"**Already caught.** {rule} fires on the snippet {where} at line {lines}. "
+                f"It may have been fixed after your release.{also}"
+            )
+        return rule, f"**Confirmed miss.** {rule} stays quiet on the snippet {where}.{also}"
+
     if hits:
-        lines = ", ".join(str(hit["location"]["line"]) for hit in hits)
-        return rule, f"**Reproduces.** {rule} fires on the snippet (as `{relative}`) at line {lines}.{also}"
+        verdict = "Reproduces" if kind == "false positive" else "Confirmed"
+        return rule, f"**{verdict}.** {rule} fires on the snippet {where} at line {lines}.{also}"
+    if kind == "false positive":
+        return rule, (
+            f"**Does not reproduce.** {rule} stays quiet on the snippet {where}. It may already be fixed, "
+            f"or the snippet may lack context the rule needs.{also}"
+        )
     return rule, (
-        f"**Does not reproduce.** {rule} stays quiet on the snippet (as `{relative}`). It may already be fixed, "
-        f"or the snippet may lack context the rule needs.{also}"
+        f"**Does not reproduce.** {rule} stays quiet on the excerpt {where}. The excerpt may lack context "
+        f"the rule needs, or the rule changed after your release.{also}"
     )
 
 
@@ -239,8 +284,8 @@ def main():
     kind = kind_of(issue)
 
     rule, reproduction = None, None
-    if kind == "false positive":
-        rule, reproduction = reproduce(parse_form(issue["body"]), slopcop)
+    if kind in SNIPPET_FIELDS:
+        rule, reproduction = reproduce(kind, parse_form(issue["body"]), slopcop)
 
     notes, failure, model = None, None, os.environ.get("GEMINI_MODEL") or DEFAULT_MODEL
     if os.environ.get("GEMINI_API_KEY"):

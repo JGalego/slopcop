@@ -324,8 +324,9 @@ kbd {
 
 .finding-foot { display: flex; flex-wrap: wrap; align-items: baseline; gap: 4px 16px; }
 .suggestion { margin: 10px 0 0; font-size: 14px; flex: 1 1 260px; }
-.report-false-positive { display: inline-flex; align-items: center; gap: 5px; margin: 10px 0 0 auto; font-size: 13px; color: var(--muted); white-space: nowrap; }
-.report-false-positive:hover { color: var(--ink); }
+.finding-actions { display: inline-flex; flex-wrap: wrap; gap: 4px 16px; margin: 10px 0 0 auto; }
+.finding-actions a { display: inline-flex; align-items: center; gap: 5px; font-size: 13px; color: var(--muted); white-space: nowrap; }
+.finding-actions a:hover { color: var(--ink); }
 .suggestion span { font-weight: 700; }
 
 .explanation { margin-top: 12px; padding: 12px 14px; border-radius: 6px; background: var(--surface-2); font-size: 14px; }

@@ -2,6 +2,13 @@
 
 This project records user-visible changes in this file and follows Semantic Versioning.
 
+## Unreleased
+
+### Added
+
+- A missed-slop issue form reports quality problems that slopcop does not flag, and a Most Wanted form nominates striking findings for a gallery. The triage bot scans the snippet in both and says whether slopcop already catches it or whether the nominated rule fires.
+- The browser demo links each finding to a prefilled Most Wanted nomination (`w`), and its results summary, empty state, and footer link to the missed-slop form.
+
 ## 0.2.0 - 2026-10-06
 
 ### Added

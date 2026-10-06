@@ -1,0 +1,77 @@
+name: Most Wanted nomination
+description: Nominate a memorable finding for the Most Wanted gallery
+title: "most wanted: "
+labels: ["most wanted"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Most Wanted collects striking examples of slop that slopcop caught. Entries show the excerpt and the finding, never who wrote it. Your own code is the best nomination. Maintainers pick entries, may shorten them, and remove any entry on request.
+
+  - type: input
+    id: rule
+    attributes:
+      label: Rule ID
+      placeholder: DEAD001 or VIBE008
+    validations:
+      required: true
+
+  - type: input
+    id: version
+    attributes:
+      label: slopcop version
+      description: Paste the output of `slopcop --version`, or the web demo version.
+      placeholder: slopcop 0.2.0
+    validations:
+      required: true
+
+  - type: input
+    id: context
+    attributes:
+      label: File type and context
+      description: Include the language or format and the file name.
+      placeholder: Python source module, sync.py
+    validations:
+      required: true
+
+  - type: textarea
+    id: snippet
+    attributes:
+      label: Flagged excerpt
+      description: Keep it short enough to read at a glance. Remove names, emails, and anything identifying a person.
+      render: text
+    validations:
+      required: true
+
+  - type: textarea
+    id: finding
+    attributes:
+      label: Finding output
+      description: Include the rule, location, message, and observation from slopcop.
+      render: text
+    validations:
+      required: true
+
+  - type: input
+    id: source
+    attributes:
+      label: Source permalink
+      description: Optional. A link pinned to a commit, for the record. It is not shown in the gallery.
+
+  - type: textarea
+    id: notes
+    attributes:
+      label: Case notes
+      description: Optional. Why this one stands out.
+
+  - type: checkboxes
+    id: checks
+    attributes:
+      label: Checks
+      options:
+        - label: I wrote this code, or it is publicly available and I may share this excerpt.
+          required: true
+        - label: The excerpt contains no secrets, credentials, or personal information.
+          required: true
+        - label: I agree to the excerpt being shown on the slopcop site.
+          required: true

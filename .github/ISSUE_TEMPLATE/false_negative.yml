@@ -1,0 +1,67 @@
+name: Missed slop
+description: Report a quality problem that slopcop does not flag
+title: "missed slop: "
+labels: ["false negative"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        slopcop reports observable quality problems, not authorship. A useful report names the concrete problem in the example and a narrow deterministic signal that would catch it without flagging legitimate text. "This reads like AI wrote it" is not enough on its own.
+
+  - type: input
+    id: rule
+    attributes:
+      label: Expected rule
+      description: The rule that should fire, or leave empty if no current rule covers this.
+      placeholder: DEAD001 or VIBE008
+
+  - type: input
+    id: version
+    attributes:
+      label: slopcop version
+      description: Paste the output of `slopcop --version`.
+      placeholder: slopcop 0.2.0
+    validations:
+      required: true
+
+  - type: input
+    id: context
+    attributes:
+      label: File type and context
+      description: Include the language or format and whether the file is source, test, generated, or documentation.
+      placeholder: Python source module
+    validations:
+      required: true
+
+  - type: textarea
+    id: snippet
+    attributes:
+      label: Minimal missed example
+      description: Include only the smallest non-sensitive excerpt that shows the problem.
+      render: text
+    validations:
+      required: true
+
+  - type: textarea
+    id: problem
+    attributes:
+      label: Observable problem
+      description: Explain what is wrong with the example and what it costs a reader or maintainer.
+    validations:
+      required: true
+
+  - type: textarea
+    id: signal
+    attributes:
+      label: Proposed signal
+      description: Suggest the narrowest deterministic pattern that separates this case from legitimate text, if known.
+
+  - type: checkboxes
+    id: checks
+    attributes:
+      label: Checks
+      options:
+        - label: I confirmed slopcop stays quiet on this example with the latest release.
+          required: true
+        - label: I removed secrets, credentials, and private source from this report.
+          required: true

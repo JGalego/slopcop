@@ -120,6 +120,25 @@ function falsePositiveUrl(finding) {
   });
 }
 
+function missedSlopUrl() {
+  return issueUrl("false_negative.yml", { version: versionLabel() });
+}
+
+function nominateUrl(finding) {
+  const { line, column } = finding.location;
+  const output = [`${finding.path}:${line}:${column}  ${finding.rule_id}  ${finding.severity}`, finding.message];
+  if (finding.observation) output.push(`observed: ${finding.observation}`);
+  return issueUrl("most_wanted.yml", {
+    title: `most wanted: ${finding.rule_id}`,
+    rule: finding.rule_id,
+    version: versionLabel(),
+    context: finding.path,
+    snippet: snippetLines(finding)?.map((row) => row.text).join("\n") || finding.evidence || "",
+    finding: output.join("\n"),
+    source: blobUrl(finding.path, line),
+  });
+}
+
 function showError(message, reportable = false) {
   $("error").replaceChildren(message);
   if (reportable) {
@@ -215,7 +234,8 @@ function renderSummary() {
     ),
     h("div", { class: "summary-actions" },
       h("button", { type: "button", class: "secondary", onclick: download(state.data.html, "text/html", "html") }, icon("download"), "Download HTML"),
-      h("button", { type: "button", class: "secondary", onclick: download(JSON.stringify(result, null, 2), "application/json", "json") }, icon("download"), "Download JSON")),
+      h("button", { type: "button", class: "secondary", onclick: download(JSON.stringify(result, null, 2), "application/json", "json") }, icon("download"), "Download JSON"),
+      h("a", { class: "secondary", href: missedSlopUrl(), target: "_blank", rel: "noopener", title: "Open a prefilled missed-slop issue on GitHub" }, icon("search-x"), "Report missed slop")),
   );
 }
 
@@ -305,7 +325,8 @@ function renderFindings() {
   if (all.length === 0) {
     container.replaceChildren(h("div", { class: "empty" },
       h("strong", {}, "No findings."),
-      ` slopcop scanned ${state.data.result.summary.scanned_files} files and found nothing to report.`));
+      ` slopcop scanned ${state.data.result.summary.scanned_files} files and found nothing to report. Missed something? `,
+      h("a", { href: missedSlopUrl(), target: "_blank", rel: "noopener" }, "Report missed slop"), "."));
     return;
   }
   if (visible.length === 0) {
@@ -363,7 +384,9 @@ function renderFinding(finding) {
     renderSnippet(finding),
     h("div", { class: "finding-foot" },
       finding.suggestion ? h("p", { class: "suggestion" }, h("span", {}, "Fix: "), finding.suggestion) : null,
-      h("a", { class: "report-false-positive", href: falsePositiveUrl(finding), target: "_blank", rel: "noopener", title: "Open a prefilled false-positive issue on GitHub (f)" }, icon("flag"), "Report false positive")),
+      h("span", { class: "finding-actions" },
+        h("a", { class: "nominate", href: nominateUrl(finding), target: "_blank", rel: "noopener", title: "Nominate this finding for the Most Wanted gallery (w)" }, icon("crosshair"), "Nominate"),
+        h("a", { class: "report-false-positive", href: falsePositiveUrl(finding), target: "_blank", rel: "noopener", title: "Open a prefilled false-positive issue on GitHub (f)" }, icon("flag"), "Report false positive"))),
     explanation);
 }
 
@@ -432,6 +455,7 @@ document.addEventListener("keydown", (event) => {
     case "o": card?.querySelector(".location").click(); break;
     case "e": card?.querySelector(".rule-id").click(); break;
     case "f": card?.querySelector(".report-false-positive").click(); break;
+    case "w": card?.querySelector(".nominate").click(); break;
     case "/": event.preventDefault(); $("query").focus(); break;
     default: return;
   }
@@ -491,6 +515,10 @@ saveToken();
 
 $("report-bug").addEventListener("click", (event) => {
   event.currentTarget.href = bugReportUrl();
+});
+
+$("report-missed").addEventListener("click", (event) => {
+  event.currentTarget.href = missedSlopUrl();
 });
 
 const installTabs = [...document.querySelectorAll(".terminal-tabs [role=tab]")];
