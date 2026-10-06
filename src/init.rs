@@ -34,7 +34,7 @@ exclude = []
 
 const PRE_COMMIT: &str = r"repos:
   - repo: https://github.com/JGalego/slopcop
-    rev: v0.3.0
+    rev: v0.3.1
     hooks:
       - id: slopcop
             - id: slopcop-commit-msg

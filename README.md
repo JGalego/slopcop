@@ -45,7 +45,7 @@ On Windows (into `%LOCALAPPDATA%\Programs\slopcop`, added to your user `PATH`):
 irm https://raw.githubusercontent.com/JGalego/slopcop/main/install/install.ps1 | iex
 ```
 
-Both scripts download the latest release from GitHub and verify its SHA-256 checksum before installing. They need no root or administrator rights. Set `SLOPCOP_VERSION=v0.3.0` to pin a release, `SLOPCOP_PREFIX` to choose the install directory, or `SLOPCOP_SOURCE=1` to build from source with cargo. Re-running a script replaces the installed binary.
+Both scripts download the latest release from GitHub and verify its SHA-256 checksum before installing. They need no root or administrator rights. Set `SLOPCOP_VERSION=v0.3.1` to pin a release, `SLOPCOP_PREFIX` to choose the install directory, or `SLOPCOP_SOURCE=1` to build from source with cargo. Re-running a script replaces the installed binary.
 
 Or install from crates.io:
 
@@ -145,7 +145,7 @@ Wildcard suppressions and reason-free directives do nothing. Broad exclusions be
 ```yaml
 repos:
   - repo: https://github.com/JGalego/slopcop
-    rev: v0.3.0
+    rev: v0.3.1
     hooks:
       - id: slopcop
       - id: slopcop-commit-msg
