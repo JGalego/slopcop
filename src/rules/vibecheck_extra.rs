@@ -419,24 +419,59 @@ fn is_running_text(context: &ScanContext<'_>) -> bool {
     ) && context.prose_word_count() > 0
 }
 
-/// Release notes repeat one entry template by design, so structural rhythm rules skip them.
+/// Release notes repeat one entry template by design, so structural rhythm rules skip them. A
+/// project may keep one file per release, as in `CHANGELOG/2026.3.24.md` or
+/// `docs/releases/v1.2.0/en.md`: a release directory with a version below it.
 fn is_release_notes(context: &ScanContext<'_>) -> bool {
-    context
+    let normalize = |name: &str| name.to_ascii_lowercase().replace(['-', '_'], "");
+    let stem = context
         .path
         .file_stem()
         .and_then(|stem| stem.to_str())
-        .is_some_and(|stem| {
-            let stem = stem.to_ascii_lowercase().replace(['-', '_'], "");
-            [
-                "changelog",
-                "changes",
-                "history",
-                "news",
-                "releases",
-                "releasenotes",
-            ]
-            .contains(&stem.as_str())
+        .map(normalize);
+    if stem.as_deref().is_some_and(|stem| {
+        [
+            "changelog",
+            "changes",
+            "history",
+            "news",
+            "releases",
+            "releasenotes",
+        ]
+        .contains(&stem)
+    }) {
+        return true;
+    }
+    let directories: Vec<_> = context
+        .path
+        .parent()
+        .into_iter()
+        .flat_map(|parent| parent.iter())
+        .filter_map(|component| component.to_str())
+        .map(normalize)
+        .collect();
+    directories
+        .iter()
+        .position(|name| {
+            ["changelog", "changelogs", "releases", "releasenotes"].contains(&name.as_str())
         })
+        .is_some_and(|index| {
+            directories[index + 1..]
+                .iter()
+                .chain(stem.as_ref())
+                .any(|name| name == "unreleased" || is_version(name))
+        })
+}
+
+/// Whether a lowercase path component names a release, such as `2026.3.24`, `v0.14.1`, or
+/// `2026.1.12-1`.
+fn is_version(name: &str) -> bool {
+    let name = name.strip_prefix('v').unwrap_or(name);
+    name.starts_with(|character: char| character.is_ascii_digit())
+        && name.contains('.')
+        && name
+            .chars()
+            .all(|character| character.is_ascii_alphanumeric() || matches!(character, '.' | '+'))
 }
 
 fn paragraph_index(context: &ScanContext<'_>, offset: usize) -> Option<usize> {
@@ -2455,6 +2490,29 @@ mod tests {
         let labels = "Problem: the build fails. Fix: pin the compiler. Why does it fail? The lockfile is stale.\n\n## What changed?\n\nThe index moved to memory.";
         assert_eq!(findings("VIBE008", labels), 0);
         assert_eq!(findings_at("VIBE008", "CHANGELOG.md", reveals), 0);
+    }
+
+    #[test]
+    fn release_notes_may_be_one_file_per_release() {
+        let reveals = "The reason is simple: caching. The result: pages load in a third of the time. There is one problem: invalidation. What changed? The index moved to memory.";
+        for path in [
+            "CHANGELOG/2026.3.24.md",
+            "CHANGELOG/records/2026.1.12-1.md",
+            "docs/releases/v0.2.0.md",
+            "docs/CHANGELOG/v0.14.1/en.md",
+            "docs/release-notes/2.0/README.md",
+            ".github/releases/Unreleased.md",
+        ] {
+            assert_eq!(findings_at("VIBE008", path, reveals), 0, "{path}");
+        }
+        for path in [
+            "releases/proj/README.md",
+            "docs/releases/process.md",
+            "docs/history/2026.3.24.md",
+            "v1.2/guide.md",
+        ] {
+            assert_eq!(findings_at("VIBE008", path, reveals), 1, "{path}");
+        }
     }
 
     #[test]
