@@ -17,6 +17,7 @@ This project records user-visible changes in this file and follows Semantic Vers
 ### Fixed
 
 - `DEAD002` no longer reports "Todo" used as a noun, as in "an in-memory Todo REST API", or names such as `todo-null`. Uppercase `TODO` and `FIXME` still count anywhere in a comment; other spellings count when they open the comment. A line with several markers is reported once.
+- `VIBE008` counts a colon only when a space and more text follow it on the same line. Bold Markdown labels such as `**Task:**`, lead-ins such as `**Using pandas:**` or a colon before a list, and joined tokens such as `<file>:<line>` no longer count toward colon density. A sentence that contains a URL is no longer skipped when it also has a colon in its text.
 - A suppression in a block comment, such as `<!-- slopcop: ignore VIBE001 -- -->`, no longer counts the comment terminator as its reason.
 - A missed-slop issue form reports quality problems that slopcop does not flag, and a Most Wanted form nominates striking findings for a gallery. The triage bot scans the snippet in both and says whether slopcop already catches it or whether the nominated rule fires.
 - The browser demo links each finding to a prefilled Most Wanted nomination (`w`), and its results summary, empty state, and footer link to the missed-slop form.

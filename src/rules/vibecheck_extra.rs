@@ -770,6 +770,18 @@ fn check_em_dashes(
     }
 }
 
+/// Whether a sentence uses a colon as punctuation inside running text. A colon needs a space and
+/// more text on the same line after it, which leaves out lead-ins that end a line or introduce a
+/// list, bold labels such as `**Task:**`, and joined tokens such as `file:line` and URLs.
+fn has_prose_colon(text: &str) -> bool {
+    text.match_indices(':').any(|(offset, _)| {
+        text[offset + 1..]
+            .strip_prefix([' ', '\t'])
+            .and_then(|rest| rest.split('\n').next())
+            .is_some_and(|line| line.chars().any(char::is_alphanumeric))
+    })
+}
+
 fn check_colons(
     context: &ScanContext<'_>,
     metadata: &'static RuleMetadata,
@@ -802,10 +814,7 @@ fn check_colons(
     }
     let colon_sentences: Vec<_> = sentences
         .iter()
-        .filter(|span| {
-            let text = span.text(context.prose());
-            text.trim_end_matches([':', '.', '!', '?']).contains(':') && !text.contains("://")
-        })
+        .filter(|span| has_prose_colon(span.text(context.prose())))
         .collect();
     if colon_sentences.len() >= 4 && colon_sentences.len() * 5 >= sentences.len() * 2 {
         emit(
@@ -2172,6 +2181,9 @@ mod tests {
             .collect::<Vec<_>>()
             .concat();
         assert_eq!(findings_at("VIBE008", "src/views.rs", &comments), 0);
+
+        let markdown = "# CSV Sum\n\n**Task:** \"Write code that sums the amount column.\"\n\nVerbatim output from a benchmark run, source `output.json`.\n\n**Using the CSV module (without pandas):**\n\nIt opens the file once.\n\n**Using pandas with error handling:**\n\nIt reports a missing file.\n\n**The pandas method is recommended** because it's:\n- More concise and readable\n- Handles data types automatically\n\nSkipped: pandas, error handling, and file closing.\n\nRows map to <file>:<line> pairs in the ledger output.\n\nThe totals match the spreadsheet.\n";
+        assert_eq!(findings("VIBE008", markdown), 0);
     }
 
     #[test]
