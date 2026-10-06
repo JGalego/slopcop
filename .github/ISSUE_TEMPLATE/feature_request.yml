@@ -1,6 +1,7 @@
 name: Rule or feature proposal
 description: Propose a deterministic rule or product improvement
 title: "proposal: "
+labels: ["enhancement"]
 body:
   - type: dropdown
     id: area

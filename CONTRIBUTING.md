@@ -45,3 +45,10 @@ Papertrail rules use focused commit-message tests and Git integration tests inst
 ## Pull requests
 
 Describe the observable problem, the chosen signal, and the cases that should remain quiet. Include measurements for performance work. Avoid claims about who authored an artifact; findings must describe what the scanner observed.
+
+## Issue automation
+
+Two bots help with issues. Neither closes, assigns, or edits issues.
+
+- **Issue triage** (`.github/workflows/triage.yml`) runs when someone outside the maintainers opens an issue. For a false-positive report it scans the reported snippet with slopcop built from `main` and says whether the rule still fires. With a `GEMINI_API_KEY` secret, Gemini adds a collapsed summary, missing details, possibly related issues, and labels from a fixed list. It posts one comment and updates that comment on reruns. Rerun it from the Actions tab with the issue number. Set the `GEMINI_MODEL` variable to change the model.
+- **Claude** (`.github/workflows/claude.yml`) answers only when a maintainer mentions `@claude` in an issue or pull request comment. It needs the [Claude GitHub App](https://github.com/apps/claude) installed on the repository and a `CLAUDE_CODE_OAUTH_TOKEN` secret from `claude setup-token`, or an `ANTHROPIC_API_KEY` secret.

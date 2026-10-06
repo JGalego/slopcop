@@ -1,8 +1,10 @@
 /target/
 *.profraw
 *.sarif
+/slopcop.html
 .DS_Store
 .idea/
 .vscode/
 /web/target/
 /web/site/pkg/
+__pycache__/

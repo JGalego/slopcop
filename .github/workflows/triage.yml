@@ -1,0 +1,39 @@
+name: Issue triage
+
+on:
+  issues:
+    types: [opened]
+  workflow_dispatch:
+    inputs:
+      issue:
+        description: Issue number to triage again
+        required: true
+
+permissions: {}
+
+concurrency:
+  group: triage-${{ github.event.issue.number || inputs.issue }}
+
+jobs:
+  triage:
+    # Maintainers' own issues skip triage; a manual run covers any issue.
+    if: >-
+      github.event_name == 'workflow_dispatch' ||
+      !contains(fromJSON('["OWNER", "MEMBER", "COLLABORATOR"]'), github.event.issue.author_association)
+    runs-on: ubuntu-24.04
+    permissions:
+      contents: read
+      issues: write
+    steps:
+      - uses: actions/checkout@v5
+      - uses: dtolnay/rust-toolchain@stable
+      - uses: Swatinem/rust-cache@v2
+      - run: cargo build --release --locked
+      - name: Triage
+        run: python3 .github/scripts/triage.py
+        env:
+          GITHUB_TOKEN: ${{ github.token }}
+          ISSUE_NUMBER: ${{ github.event.issue.number || inputs.issue }}
+          SLOPCOP: ${{ github.workspace }}/target/release/slopcop
+          GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
+          GEMINI_MODEL: ${{ vars.GEMINI_MODEL }}

@@ -1,6 +1,7 @@
 name: False positive
 description: Report a finding that should remain quiet
 title: "false positive: "
+labels: ["false positive"]
 body:
   - type: markdown
     attributes:
