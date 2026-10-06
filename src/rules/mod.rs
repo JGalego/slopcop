@@ -8,7 +8,10 @@ use std::borrow::Cow;
 use std::cell::OnceCell;
 use std::path::Path;
 
-use crate::analysis::{Span, code_view, paragraph_spans, prose_view, sentence_spans, word_count};
+use crate::analysis::{
+    Span, code_view, paragraph_spans, prose_view, restructured_text_prose, sentence_spans,
+    word_count,
+};
 use crate::language::{Language, SourceType};
 use crate::model::{Finding, Location, RuleMetadata};
 
@@ -37,7 +40,11 @@ impl ScanContext<'_> {
             path,
             source,
             source_type,
-            prose: prose_view(source, source_type),
+            prose: if source_type == SourceType::Documentation && is_restructured_text(path) {
+                Cow::Owned(restructured_text_prose(source))
+            } else {
+                prose_view(source, source_type)
+            },
             code: code_view(source, source_type),
             lower_source: OnceCell::new(),
             lower_prose: OnceCell::new(),
@@ -108,6 +115,12 @@ impl ScanContext<'_> {
             .map_or(self.source.len(), |position| start + position);
         self.source[start..end].trim().to_owned()
     }
+}
+
+fn is_restructured_text(path: &Path) -> bool {
+    path.extension()
+        .and_then(|extension| extension.to_str())
+        .is_some_and(|extension| extension.eq_ignore_ascii_case("rst"))
 }
 
 pub(super) type CheckFn = fn(&ScanContext<'_>, &'static RuleMetadata, &mut Vec<Finding>);

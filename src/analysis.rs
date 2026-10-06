@@ -1,4 +1,7 @@
 use std::borrow::Cow;
+use std::sync::OnceLock;
+
+use regex::Regex;
 
 use crate::language::{Language, SourceType};
 
@@ -41,12 +44,6 @@ pub(crate) fn preceding_text(source: &str, end: usize, length: usize) -> &str {
 }
 
 pub(crate) fn python_block_ends_at(source: &str, start: usize, end: usize) -> bool {
-    let indentation = |line: &str| {
-        line.bytes()
-            .take_while(|byte| matches!(byte, b' ' | b'\t'))
-            .map(|byte| if byte == b'\t' { 8 } else { 1 })
-            .sum::<usize>()
-    };
     let header_indent = indentation(source[start..].lines().next().unwrap_or(""));
     source[end..]
         .lines()
@@ -54,49 +51,47 @@ pub(crate) fn python_block_ends_at(source: &str, start: usize, end: usize) -> bo
         .is_none_or(|line| indentation(line) <= header_indent)
 }
 
+/// Splits prose into sentences. Sentences never cross a paragraph boundary, so a heading or a
+/// comment without terminal punctuation does not merge with the text that follows it.
 #[must_use]
 pub fn sentence_spans(source: &str) -> Vec<Span> {
     let bytes = source.as_bytes();
     let mut spans = Vec::new();
-    let mut start = 0;
-    let mut index = 0;
-
-    while index < bytes.len() {
-        let boundary = matches!(bytes[index], b'.' | b'!' | b'?')
-            && bytes.get(index + 1).is_none_or(u8::is_ascii_whitespace);
-        if boundary {
-            push_trimmed_span(source, start, index + 1, &mut spans);
-            start = index + 1;
+    for paragraph in paragraph_spans(source) {
+        let mut start = paragraph.start;
+        for index in paragraph.start..paragraph.end {
+            let boundary = matches!(bytes[index], b'.' | b'!' | b'?')
+                && bytes.get(index + 1).is_none_or(u8::is_ascii_whitespace);
+            if boundary {
+                push_trimmed_span(source, start, index + 1, &mut spans);
+                start = index + 1;
+            }
         }
-        index += 1;
+        push_trimmed_span(source, start, paragraph.end, &mut spans);
     }
-    push_trimmed_span(source, start, source.len(), &mut spans);
     spans
 }
 
+/// Splits prose into runs of lines that contain words. Blank lines, masked code, and lines of
+/// only punctuation, such as underlines, rules, or empty comment markers, separate paragraphs.
 #[must_use]
 pub fn paragraph_spans(source: &str) -> Vec<Span> {
-    let bytes = source.as_bytes();
     let mut spans = Vec::new();
-    let mut start = 0;
-    let mut index = 0;
-
-    while index + 1 < bytes.len() {
-        if bytes[index] == b'\n' {
-            let mut end = index + 1;
-            while end < bytes.len() && matches!(bytes[end], b'\n' | b'\r' | b' ' | b'\t') {
-                end += 1;
-            }
-            if bytes[index + 1..end].contains(&b'\n') {
-                push_trimmed_span(source, start, index, &mut spans);
-                start = end;
-                index = end;
-                continue;
-            }
+    let mut start = None;
+    let mut end = 0;
+    let mut offset = 0;
+    for line in source.split_inclusive('\n') {
+        if line.chars().any(char::is_alphanumeric) {
+            start.get_or_insert(offset);
+            end = offset + line.len();
+        } else if let Some(paragraph_start) = start.take() {
+            push_trimmed_span(source, paragraph_start, end, &mut spans);
         }
-        index += 1;
+        offset += line.len();
     }
-    push_trimmed_span(source, start, source.len(), &mut spans);
+    if let Some(paragraph_start) = start {
+        push_trimmed_span(source, paragraph_start, end, &mut spans);
+    }
     spans
 }
 
@@ -122,6 +117,15 @@ pub fn prose_view(source: &str, source_type: SourceType) -> Cow<'_, str> {
         SourceType::Code(language) => Cow::Owned(extract_code_prose(source, language)),
         SourceType::Configuration | SourceType::Unknown => Cow::Owned(blank(source)),
     }
+}
+
+/// Returns the prose of a reStructuredText document with directives, literal and doctest blocks,
+/// roles, field markers, and inline literals masked. Offsets match `source`.
+#[must_use]
+pub(crate) fn restructured_text_prose(source: &str) -> String {
+    let mut output = source.as_bytes().to_vec();
+    mask_restructured_text(&mut output, source, 0);
+    String::from_utf8(output).expect("masking preserves valid UTF-8")
 }
 
 #[must_use]
@@ -252,6 +256,175 @@ fn find_repeated(bytes: &[u8], needle: u8, count: usize) -> Option<usize> {
         .position(|window| window.iter().all(|byte| *byte == needle))
 }
 
+/// Directives whose indented body is prose rather than code, data, or configuration.
+const PROSE_DIRECTIVES: &[&str] = &[
+    "admonition",
+    "attention",
+    "caution",
+    "container",
+    "danger",
+    "deprecated",
+    "error",
+    "hint",
+    "important",
+    "note",
+    "only",
+    "rubric",
+    "seealso",
+    "sidebar",
+    "tip",
+    "topic",
+    "versionadded",
+    "versionchanged",
+    "versionremoved",
+    "warning",
+];
+
+#[derive(Clone, Copy)]
+enum RstBlock {
+    /// Mask blank lines and lines indented past this column.
+    Masked(usize),
+    /// Mask option lines indented past this column, then keep the directive body.
+    Options(usize),
+    /// A paragraph ended with `::`; a following block indented past this column is literal.
+    PendingLiteral(usize),
+    /// Mask lines until the next blank line.
+    Doctest,
+}
+
+fn mask_restructured_text(output: &mut [u8], source: &str, base: usize) {
+    let mut block = None;
+    let mut offset = base;
+    for line in source.split_inclusive('\n') {
+        let start = offset;
+        offset += line.len();
+        let trimmed = line.trim();
+        let indent = indentation(line);
+        match block {
+            Some(RstBlock::Masked(column)) if trimmed.is_empty() || indent > column => {
+                mask_range(output, start, offset);
+                continue;
+            }
+            Some(RstBlock::Options(column)) if indent > column && trimmed.starts_with(':') => {
+                mask_range(output, start, offset);
+                continue;
+            }
+            Some(RstBlock::PendingLiteral(_)) if trimmed.is_empty() => continue,
+            Some(RstBlock::PendingLiteral(column)) if indent > column => {
+                mask_range(output, start, offset);
+                block = Some(RstBlock::Masked(column));
+                continue;
+            }
+            Some(RstBlock::Doctest) if !trimmed.is_empty() => {
+                mask_range(output, start, offset);
+                continue;
+            }
+            _ => block = None,
+        }
+        if trimmed == ".." || trimmed.starts_with(".. ") {
+            mask_range(output, start, offset);
+            let name = trimmed[2..]
+                .trim_start()
+                .split_once("::")
+                .map_or("", |(name, _)| name.trim());
+            block = Some(if PROSE_DIRECTIVES.contains(&name) {
+                RstBlock::Options(indent)
+            } else {
+                RstBlock::Masked(indent)
+            });
+            continue;
+        }
+        if trimmed.starts_with(">>>") {
+            mask_range(output, start, offset);
+            block = Some(RstBlock::Doctest);
+            continue;
+        }
+        mask_rst_inline(output, line, start);
+        if let Some(prefix) = trimmed.strip_suffix("::") {
+            let marker = start + line.trim_end().len() - 2;
+            // `text::` renders as `text:`, while a detached `::` disappears entirely.
+            if prefix.is_empty() || prefix.ends_with(char::is_whitespace) {
+                mask_range(output, marker, marker + 2);
+            } else {
+                mask_range(output, marker + 1, marker + 2);
+            }
+            block = Some(RstBlock::PendingLiteral(indent));
+        }
+    }
+}
+
+fn mask_rst_inline(output: &mut [u8], line: &str, line_offset: usize) {
+    for found in rst_role_matcher().find_iter(line) {
+        mask_range(
+            output,
+            line_offset + found.start(),
+            line_offset + found.end() - 1,
+        );
+    }
+    if let Some(found) = rst_field_matcher().find(line) {
+        mask_range(
+            output,
+            line_offset + found.start(),
+            line_offset + found.end(),
+        );
+    }
+    mask_inline_code(output, line, line_offset);
+}
+
+fn rst_role_matcher() -> &'static Regex {
+    static MATCHER: OnceLock<Regex> = OnceLock::new();
+    MATCHER.get_or_init(|| {
+        Regex::new(r":[A-Za-z][\w.+-]*(?::[A-Za-z][\w.+-]*)*:`")
+            .expect("reStructuredText role regex must compile")
+    })
+}
+
+fn rst_field_matcher() -> &'static Regex {
+    static MATCHER: OnceLock<Regex> = OnceLock::new();
+    MATCHER.get_or_init(|| {
+        Regex::new(r"^[ \t]*:[^:\s`][^:`]*:(?:[ \t]|\r?$)")
+            .expect("reStructuredText field regex must compile")
+    })
+}
+
+/// Masks fenced Markdown examples inside Rust `///` and `//!` documentation comments.
+fn mask_doc_comment_examples(output: &mut [u8], source: &str) {
+    let mut fence: Option<(u8, usize)> = None;
+    let mut offset = 0;
+    for line in source.split_inclusive('\n') {
+        let trimmed = line.trim_start();
+        let content = trimmed
+            .strip_prefix("///")
+            .or_else(|| trimmed.strip_prefix("//!"));
+        if let Some(content) = content {
+            let delimiter = markdown_fence(content);
+            if fence.is_some() || delimiter.is_some() {
+                mask_range(output, offset, offset + line.len());
+            }
+            if let Some((marker, length)) = fence {
+                if delimiter
+                    .is_some_and(|(candidate, count)| candidate == marker && count >= length)
+                {
+                    fence = None;
+                }
+            } else {
+                fence = delimiter;
+            }
+        } else {
+            fence = None;
+        }
+        offset += line.len();
+    }
+}
+
+/// Returns the width of a line's leading whitespace, counting a tab as eight columns.
+pub(crate) fn indentation(line: &str) -> usize {
+    line.bytes()
+        .take_while(|byte| matches!(byte, b' ' | b'\t'))
+        .map(|byte| if byte == b'\t' { 8 } else { 1 })
+        .sum()
+}
+
 #[derive(Clone, Copy, Eq, PartialEq)]
 enum ExtractionMode {
     Code,
@@ -300,13 +473,11 @@ fn extract_code_view(source: &str, language: Language, mode: ExtractionMode) -> 
         if language == Language::Python && starts_triple_quote(bytes, index) {
             let quote = bytes[index];
             let end = find_triple_end(bytes, index + 3, quote).unwrap_or(bytes.len());
-            transform_range(
-                &mut output,
-                bytes,
-                index,
-                end,
-                mode == ExtractionMode::Prose && starts_docstring(bytes, index),
-            );
+            let docstring = mode == ExtractionMode::Prose && starts_docstring(bytes, index);
+            transform_range(&mut output, bytes, index, end, docstring);
+            if docstring {
+                mask_restructured_text(&mut output, &source[index..end], index);
+            }
             index = end;
             continue;
         }
@@ -353,6 +524,9 @@ fn extract_code_view(source: &str, language: Language, mode: ExtractionMode) -> 
             continue;
         }
         index += 1;
+    }
+    if language == Language::Rust && mode == ExtractionMode::Prose {
+        mask_doc_comment_examples(&mut output, source);
     }
 
     String::from_utf8(output).expect("extraction preserves valid UTF-8")
@@ -553,6 +727,88 @@ mod tests {
 
         assert_eq!(code.len(), source.len());
         assert_eq!(code.matches("todo!").count(), 1);
+    }
+
+    #[test]
+    fn masks_restructured_text_markup_but_keeps_prose() {
+        let source = ".. module:: flask\n\nUse :class:`~flask.Flask` for apps. See ``g`` here::\n\n    # Code is not prose.\n    app = Flask(__name__)\n\n.. code-block:: python\n    :emphasize-lines: 1\n\n    hidden_call()\n\n.. note::\n    :class: tip\n\n    Notes stay visible.\n\n>>> doctest_hidden()\nresult_hidden\n\n:param timeout: Seconds to wait.\n";
+        let prose = restructured_text_prose(source);
+        assert_eq!(prose.len(), source.len());
+        for hidden in [
+            "module",
+            ":class:",
+            "Flask",
+            "``g``",
+            "::",
+            "Code is not",
+            "hidden",
+            "emphasize",
+            "tip",
+            ":param timeout:",
+        ] {
+            assert!(
+                !prose.contains(hidden),
+                "{hidden} should be masked in {prose:?}"
+            );
+        }
+        for visible in [
+            "Use",
+            "for apps.",
+            "See",
+            "here:",
+            "Notes stay visible.",
+            "Seconds to wait.",
+        ] {
+            assert!(
+                prose.contains(visible),
+                "{visible} should stay in {prose:?}"
+            );
+        }
+    }
+
+    #[test]
+    fn masks_examples_in_docstrings_and_rust_doc_comments() {
+        let python = "def stream():\n    \"\"\"Stream a response.\n\n    .. code-block:: python\n\n        hidden_example()\n\n    >>> hidden_doctest()\n    \"\"\"\n";
+        let prose = prose_view(python, SourceType::Code(Language::Python));
+        assert!(prose.contains("Stream a response."));
+        assert!(!prose.contains("hidden"));
+
+        let rust = "/// Escapes a glob.\n///\n/// ```\n/// assert_eq!(escape(\"hidden\"), \"x\");\n/// ```\nfn escape() {}\n";
+        let prose = prose_view(rust, SourceType::Code(Language::Rust));
+        assert!(prose.contains("Escapes a glob."));
+        assert!(!prose.contains("hidden"));
+        assert_eq!(prose.len(), rust.len());
+    }
+
+    #[test]
+    fn sentences_stop_at_paragraph_boundaries() {
+        let source =
+            "Installation\n============\n\nRun the installer now. Then restart\n///\nthe shell.";
+        let paragraphs: Vec<_> = paragraph_spans(source)
+            .iter()
+            .map(|span| span.text(source))
+            .collect();
+        assert_eq!(
+            paragraphs,
+            [
+                "Installation",
+                "Run the installer now. Then restart",
+                "the shell."
+            ]
+        );
+        let sentences: Vec<_> = sentence_spans(source)
+            .iter()
+            .map(|span| span.text(source))
+            .collect();
+        assert_eq!(
+            sentences,
+            [
+                "Installation",
+                "Run the installer now.",
+                "Then restart",
+                "the shell."
+            ]
+        );
     }
 
     #[test]

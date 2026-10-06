@@ -5,7 +5,7 @@ use std::sync::OnceLock;
 use regex::Regex;
 
 use super::{BuiltinRule, Rule, ScanContext, emit, matched_source_has_explanatory_comment};
-use crate::analysis::{preceding_text, python_block_ends_at, word_count, words};
+use crate::analysis::{indentation, preceding_text, python_block_ends_at, word_count, words};
 use crate::language::{Language, SourceType};
 use crate::model::{Confidence, Module, RuleMetadata, Severity};
 
@@ -19,7 +19,7 @@ static DEAD002: RuleMetadata = RuleMetadata {
     suggestion: "Implement the missing behavior or link the marker to tracked work with a concrete reason.",
     rationale: "Unowned TODO-style scaffolding is easily mistaken for completed agent output.",
     examples: &["# TODO: implement retry handling"],
-    false_positives: "Tracked debt can be intentional; configure this rule for repositories that enforce issue-linked markers separately.",
+    false_positives: "Tracked debt can be intentional; configure this rule for repositories that enforce issue-linked markers separately. Test code, code-quoted references, and lowercase xxx or hack are excluded.",
 };
 
 static DEAD003: RuleMetadata = RuleMetadata {
@@ -36,7 +36,7 @@ static DEAD003: RuleMetadata = RuleMetadata {
         "raise NotImplementedError",
         "throw new Error(\"not implemented\")",
     ],
-    false_positives: "Abstract methods and deliberate extension points are excluded when a nearby abstract declaration is visible.",
+    false_positives: "Abstract methods, Python methods whose whole body raises NotImplementedError, and raises guarded by a condition are excluded.",
 };
 
 static DEAD004: RuleMetadata = RuleMetadata {
@@ -52,7 +52,7 @@ static DEAD004: RuleMetadata = RuleMetadata {
         "except Exception:\n    return None",
         "catch (error) { return null; }",
     ],
-    false_positives: "Compatibility probes with an explanatory body comment are excluded.",
+    false_positives: "Compatibility probes with an explanatory body comment, optional imports, and predicates whose false fallback is the negative answer are excluded.",
 };
 
 static DEAD005: RuleMetadata = RuleMetadata {
@@ -65,7 +65,7 @@ static DEAD005: RuleMetadata = RuleMetadata {
     suggestion: "Implement the function, remove it, or declare the containing interface abstract.",
     rationale: "Empty concrete functions create an API surface that promises behavior but performs none.",
     examples: &["def publish(event):\n    pass", "function publish() {}"],
-    false_positives: "Framework hooks with an explanatory body comment are excluded.",
+    false_positives: "Framework hooks with an explanatory body comment, decorated handlers, and test doubles in test code are excluded.",
 };
 
 static DEAD006: RuleMetadata = RuleMetadata {
@@ -78,7 +78,7 @@ static DEAD006: RuleMetadata = RuleMetadata {
     suggestion: "Remove the comment or explain the non-obvious constraint behind the operation.",
     rationale: "Narrating simple syntax increases maintenance cost without preserving intent.",
     examples: &["# Increment the counter\ncounter += 1"],
-    false_positives: "Teaching material may intentionally narrate syntax; generated tutorials can demote or disable this rule.",
+    false_positives: "Teaching material may intentionally narrate syntax; generated tutorials can demote or disable this rule. Lines inside longer comments are not candidates.",
 };
 
 static DEAD007: RuleMetadata = RuleMetadata {
@@ -91,7 +91,7 @@ static DEAD007: RuleMetadata = RuleMetadata {
     suggestion: "Keep one explanation at the narrowest scope where it remains accurate.",
     rationale: "Repeated comments are common residue from generated edits and drift independently from the code.",
     examples: &["// Validate the request\n// Validate the request"],
-    false_positives: "Inline shape annotations, type directives, and visual separators are not standalone comment candidates.",
+    false_positives: "Inline shape annotations, type directives, documentation comments, and visual separators are not standalone comment candidates.",
 };
 
 static DEAD008: RuleMetadata = RuleMetadata {
@@ -104,7 +104,7 @@ static DEAD008: RuleMetadata = RuleMetadata {
     suggestion: "Call the underlying function directly, or make the wrapper's policy or compatibility purpose explicit.",
     rationale: "One-line forwarding layers add navigation cost when they introduce no policy, validation, conversion, or stable boundary.",
     examples: &["def save(item):\n    return client.save(item)"],
-    false_positives: "Public facades and compatibility shims can be useful even when their current implementation delegates directly.",
+    false_positives: "Public facades and compatibility shims can be useful even when their current implementation delegates directly; methods that expose a member object's operation and decorated handlers are excluded.",
 };
 
 static DEAD009: RuleMetadata = RuleMetadata {
@@ -143,7 +143,7 @@ static DEAD011: RuleMetadata = RuleMetadata {
     suggestion: "Share the behavior when it represents one policy, or make intentional duplication visibly distinct.",
     rationale: "Generated patches frequently repeat a solved block instead of finding the existing ownership boundary.",
     examples: &["Ten or more equivalent non-empty lines repeated later in one file."],
-    false_positives: "Tables, generated sources, and intentionally unrolled hot paths can contain legitimate repeated blocks.",
+    false_positives: "Tables, generated sources, and intentionally unrolled hot paths can contain legitimate repeated blocks. Comments, embedded text, and test code are excluded.",
 };
 
 static DEAD012: RuleMetadata = RuleMetadata {
@@ -156,7 +156,7 @@ static DEAD012: RuleMetadata = RuleMetadata {
     suggestion: "Add concrete information, merge the section into a useful neighbor, or remove it.",
     rationale: "A polished heading with no additional information makes documentation look complete while leaving the reader unaided.",
     examples: &["## Configuration\nThis section describes configuration."],
-    false_positives: "Outline documents may intentionally contain empty headings while actively being drafted.",
+    false_positives: "Outline documents may intentionally contain empty headings while actively being drafted. Stacked headings that share one body are excluded.",
 };
 
 static DEAD013: RuleMetadata = RuleMetadata {
@@ -274,19 +274,40 @@ fn check_placeholder_marker(
     metadata: &'static RuleMetadata,
     findings: &mut Vec<crate::model::Finding>,
 ) {
-    if !matches!(context.source_type, SourceType::Code(_)) {
+    if !matches!(context.source_type, SourceType::Code(_)) || is_test_code(context.path) {
         return;
     }
-    let lower = context.prose().to_ascii_lowercase();
-    let mut offsets: Vec<_> = ["todo", "fixme", "hack", "xxx"]
+    let production = production_end(context);
+    let lower = context.lower_prose();
+    let mut offsets: Vec<_> = ["todo", "fixme"]
         .iter()
-        .flat_map(|marker| find_words(&lower, marker))
+        .flat_map(|marker| find_words(lower, marker))
+        .chain(
+            ["HACK", "XXX"]
+                .iter()
+                .flat_map(|marker| find_words(context.prose(), marker)),
+        )
         .collect();
+    // A marker quoted as code, such as the Sphinx `todo` extension, is a reference, not a marker.
+    offsets.retain(|offset| *offset < production && !context.prose()[..*offset].ends_with('`'));
     offsets.sort_unstable();
     offsets.dedup();
     for offset in offsets {
         emit(context, metadata, findings, offset, None::<String>);
     }
+}
+
+/// Returns where test code begins in a source file. Rust keeps unit tests in a trailing
+/// `#[cfg(test)]` module; other languages keep them in separate test files.
+fn production_end(context: &ScanContext<'_>) -> usize {
+    static MATCHER: OnceLock<Regex> = OnceLock::new();
+    let matcher = MATCHER.get_or_init(|| {
+        Regex::new(r"#\[cfg\(test\)\]\s*(?:#\[[^\]]*\]\s*)*(?:pub(?:\([^)]*\))?\s+)?mod\s")
+            .expect("test module regex must compile")
+    });
+    matcher
+        .find(context.code())
+        .map_or(context.source.len(), |found| found.start())
 }
 
 fn check_unimplemented(
@@ -329,8 +350,83 @@ fn check_unimplemented(
         {
             continue;
         }
+        if context.source_type == SourceType::Code(Language::Python)
+            && (is_python_method_stub(context, offset) || is_python_guard(context.code(), offset))
+        {
+            continue;
+        }
         emit(context, metadata, findings, offset, None::<String>);
     }
+}
+
+/// Reports whether the `raise` at `offset` is the whole body of a method, optionally after a
+/// docstring. Python documents this as the way base classes declare methods that subclasses
+/// must override, so it is an interface declaration rather than a forgotten placeholder.
+fn is_python_method_stub(context: &ScanContext<'_>, offset: usize) -> bool {
+    let code = context.code();
+    let line_start = code[..offset].rfind('\n').map_or(0, |index| index + 1);
+    if !code[line_start..offset].trim().is_empty()
+        || context
+            .line_at(offset)
+            .to_ascii_lowercase()
+            .contains("todo")
+    {
+        return false;
+    }
+    let Some(header_end) = code[..line_start]
+        .trim_end()
+        .strip_suffix(':')
+        .map(str::len)
+    else {
+        return false;
+    };
+    let Some(header_start) = python_header_start(code, header_end) else {
+        return false;
+    };
+    let header = &code[header_start..header_end];
+    let Some(parameters) = header.split_once('(').map(|(_, rest)| rest.trim_start()) else {
+        return false;
+    };
+    let receiver = parameters
+        .split(|character: char| !character.is_alphanumeric() && character != '_')
+        .next()
+        .unwrap_or("");
+    receiver == "self" || receiver == "cls"
+}
+
+/// Reports whether the statement at `offset` is the body of an `if`, `elif`, or `else` clause, as in
+/// `if files: raise NotImplementedError("streamed bodies cannot include files")`.
+fn is_python_guard(code: &str, offset: usize) -> bool {
+    code[..offset]
+        .lines()
+        .rev()
+        .skip(1)
+        .find(|line| !line.trim().is_empty())
+        .map(str::trim_start)
+        .is_some_and(|line| {
+            (line.starts_with("if ") || line.starts_with("elif ") || line.starts_with("else"))
+                && line.trim_end().ends_with(':')
+        })
+}
+
+/// Finds the start of the `def` statement whose header ends at `end`, matching parentheses so that
+/// multi-line signatures and annotated parameters are handled.
+fn python_header_start(code: &str, end: usize) -> Option<usize> {
+    let mut depth = 0_i32;
+    for (index, byte) in code.as_bytes()[..end].iter().enumerate().rev() {
+        match byte {
+            b')' | b']' => depth += 1,
+            b'(' | b'[' => depth -= 1,
+            b'\n' if depth == 0 => {
+                let line = code[index + 1..end].trim_start();
+                return (line.starts_with("def ") || line.starts_with("async def "))
+                    .then_some(index + 1);
+            }
+            _ => {}
+        }
+    }
+    let line = code[..end].trim_start();
+    (line.starts_with("def ") || line.starts_with("async def ")).then_some(0)
 }
 
 fn unimplemented_exception_matcher() -> &'static Regex {
@@ -352,11 +448,88 @@ fn check_exception_fallback(
         _ => return,
     };
     for found in matcher.find_iter(context.code()) {
-        if matched_source_has_explanatory_comment(context, found.start(), found.end()) {
+        if matched_source_has_explanatory_comment(context, found.start(), found.end())
+            || is_boolean_probe(context, found.start(), found.end())
+            || found.as_str().contains("ImportError")
+        {
             continue;
         }
         emit(context, metadata, findings, found.start(), None::<String>);
     }
+}
+
+/// Reports whether a `false` fallback is the negative answer of a predicate, such as
+/// `is_valid_cidr`, that also returns `true`. The Boolean is the contract, so the exception is the
+/// answer rather than lost failure detail.
+fn is_boolean_probe(context: &ScanContext<'_>, start: usize, end: usize) -> bool {
+    let code = context.code();
+    let returns_false = code[start..end]
+        .trim_end_matches(|character: char| {
+            character.is_whitespace() || matches!(character, ';' | '}')
+        })
+        .to_ascii_lowercase()
+        .ends_with("return false");
+    if !returns_false {
+        return false;
+    }
+    if context.source_type == SourceType::Code(Language::Python) {
+        return python_enclosing_function(code, start)
+            .is_some_and(|body| find_words(body, "return True").into_iter().next().is_some());
+    }
+    // Brace languages: `try { ...; return true; } catch { return false; }`, or the `true`
+    // result directly after the handler.
+    let before = code[..start]
+        .trim_end()
+        .trim_end_matches('}')
+        .trim_end()
+        .trim_end_matches(';')
+        .trim_end()
+        .to_ascii_lowercase();
+    let after = code[end..].trim_start().to_ascii_lowercase();
+    before.strip_suffix("return true").is_some_and(|rest| {
+        rest.ends_with(|character: char| !character.is_alphanumeric() && character != '_')
+    }) || after.starts_with("return true")
+}
+
+/// Returns the code of the innermost Python function containing `offset`.
+fn python_enclosing_function(code: &str, offset: usize) -> Option<&str> {
+    let line_start = code[..offset].rfind('\n').map_or(0, |index| index + 1);
+    let mut indent = indentation(&code[line_start..]);
+    let mut cursor = line_start;
+    let start = loop {
+        let previous = code[..cursor.checked_sub(1)?]
+            .rfind('\n')
+            .map_or(0, |index| index + 1);
+        let line = &code[previous..cursor];
+        cursor = previous;
+        if line.trim().is_empty() || indentation(line) >= indent {
+            continue;
+        }
+        indent = indentation(line);
+        let statement = line.trim_start();
+        if statement.starts_with("def ") || statement.starts_with("async def ") {
+            break previous;
+        }
+        if indent == 0 || statement.starts_with("class ") {
+            return None;
+        }
+    };
+    let mut end = code.len();
+    let mut position = code[start..]
+        .find('\n')
+        .map_or(code.len(), |index| start + index + 1);
+    while position < code.len() {
+        let next = code[position..]
+            .find('\n')
+            .map_or(code.len(), |index| position + index + 1);
+        let line = &code[position..next];
+        if !line.trim().is_empty() && indentation(line) <= indent {
+            end = position;
+            break;
+        }
+        position = next;
+    }
+    Some(&code[start..end])
 }
 
 fn python_fallback_matcher() -> &'static Regex {
@@ -401,6 +574,9 @@ fn check_empty_function(
         {
             continue;
         }
+        if is_decorated(context.code(), found.start()) || is_test_code(context.path) {
+            continue;
+        }
         emit(context, metadata, findings, found.start(), None::<String>);
     }
 }
@@ -416,7 +592,7 @@ fn python_empty_function_matcher() -> &'static Regex {
 fn brace_empty_function_matcher() -> &'static Regex {
     static MATCHER: OnceLock<Regex> = OnceLock::new();
     MATCHER.get_or_init(|| {
-        Regex::new(r"(?m)^[ \t]*(?:(?:pub|export|async|unsafe|extern|static)[ \t]+)*(?:fn|func|function)[ \t]+[A-Za-z_]\w*[^\n{]*\{[ \t]*\}")
+        Regex::new(r"(?m)^[ \t]*(?:(?:pub|export|async|unsafe|extern|static)[ \t]+)*(?:fn|func|function)[ \t]+[A-Za-z_]\w*[^\n]*\{[ \t]*\}[ \t]*;?[ \t]*$")
             .expect("DEAD005 brace regex must compile")
     })
 }
@@ -430,20 +606,26 @@ fn check_redundant_comment(
         return;
     };
     let lines: Vec<_> = context.source.split_inclusive('\n').collect();
+    let is_comment = |line: &str| is_standalone_line_comment(line, language);
     let mut offset = 0;
-    for pair in lines.windows(2) {
-        if !is_standalone_line_comment(pair[0], language) {
-            offset += pair[0].len();
+    for (index, line) in lines.iter().enumerate() {
+        let start = offset;
+        offset += line.len();
+        // Narration is a single comment line above the statement it describes. A line inside a
+        // longer comment block is part of a larger explanation, list, or commented-out example.
+        let Some(next) = lines.get(index + 1) else {
+            break;
+        };
+        if !is_comment(line) || is_comment(next) || index > 0 && is_comment(lines[index - 1]) {
             continue;
         }
-        let comment = context.prose()[offset..offset + pair[0].len()].trim();
-        let code = pair[1].trim();
+        let comment = context.prose()[start..offset].trim();
         if let Some(content) = line_comment_content(comment, language) {
+            let code = context.code()[offset..offset + next.len()].trim();
             if !content.starts_with(['/', '!', '#']) && comment_restates(content, code) {
-                emit(context, metadata, findings, offset, None::<String>);
+                emit(context, metadata, findings, start, None::<String>);
             }
         }
-        offset += pair[0].len();
     }
 }
 
@@ -504,8 +686,11 @@ fn check_duplicate_comment(
             context.prose()[offset..offset + line.len()].trim(),
             language,
         ) {
-            let normalized = words(content).join(" ");
-            if normalized.len() >= 12 {
+            let normalized = normalized_comment(content);
+            if !content.starts_with(['/', '!'])
+                && word_count(&normalized) >= 2
+                && normalized.len() >= 12
+            {
                 if let Some((prior, _, prior_line)) = &previous {
                     if *prior == normalized && line_number <= prior_line + 2 {
                         emit(context, metadata, findings, offset, None::<String>);
@@ -518,6 +703,27 @@ fn check_duplicate_comment(
         }
         offset += line.len();
     }
+}
+
+/// Normalizes case, spacing, and terminal punctuation while keeping symbols, so commented code
+/// such as `assert_eq!(f("a?"), 1)` and `assert_eq!(f("a["), 1)` stays distinct.
+fn normalized_comment(content: &str) -> String {
+    content
+        .split_whitespace()
+        .collect::<Vec<_>>()
+        .join(" ")
+        .trim_end_matches(['.', '!', '?', ':', ';'])
+        .to_lowercase()
+}
+
+/// Reports whether the line before `offset` applies a decorator, which registers the function with
+/// a framework such as a router or command group.
+fn is_decorated(code: &str, offset: usize) -> bool {
+    code[..offset]
+        .lines()
+        .rev()
+        .find(|line| !line.trim().is_empty())
+        .is_some_and(|line| line.trim_start().starts_with('@'))
 }
 
 fn is_standalone_line_comment(line: &str, language: Language) -> bool {
@@ -548,16 +754,22 @@ fn check_delegating_wrapper(
         _ => return,
     };
     for captures in matcher.captures_iter(context.code()) {
-        let name = captures.name("name").map(|value| value.as_str());
-        let call = captures.name("call").map(|value| value.as_str());
-        let params = captures
-            .name("params")
-            .map(|value| normalized_arguments(value.as_str()));
-        let args = captures
-            .name("args")
-            .map(|value| normalized_arguments(value.as_str()));
-        if name == call && params == args {
+        let source = |group| {
+            captures
+                .name(group)
+                .map(|value| &context.source[value.range()])
+        };
+        let params = source("params").map(normalized_arguments);
+        let args = source("args").map(normalized_arguments);
+        // `this.router.route(path)` exposes a collaborator's operation on the owning object, which
+        // is a facade rather than a redundant layer.
+        let member = source("receiver")
+            .is_some_and(|receiver| receiver.starts_with("self.") || receiver.starts_with("this."));
+        if source("name") == source("call") && params == args && !member {
             let offset = captures.get(0).map_or(0, |value| value.start());
+            if is_decorated(context.code(), offset) {
+                continue;
+            }
             if context.source_type == SourceType::Code(Language::Python)
                 && !python_block_ends_at(
                     context.code(),
@@ -575,7 +787,7 @@ fn check_delegating_wrapper(
 fn python_delegate_matcher() -> &'static Regex {
     static MATCHER: OnceLock<Regex> = OnceLock::new();
     MATCHER.get_or_init(|| {
-        Regex::new(r"(?mR)^[ \t]*(?:async[ \t]+)?def[ \t]+(?P<name>[A-Za-z_]\w*)\((?P<params>[^\r\n)]*)\):[ \t]*\r?\n[ \t]+return[ \t]+(?:await[ \t]+)?(?:[A-Za-z_]\w*\.)*(?P<call>[A-Za-z_]\w*)\((?P<args>[^\r\n)]*)\)[ \t]*$")
+        Regex::new(r"(?mR)^[ \t]*(?:async[ \t]+)?def[ \t]+(?P<name>[A-Za-z_]\w*)\((?P<params>[^\r\n)]*)\):[ \t]*\r?\n[ \t]+return[ \t]+(?:await[ \t]+)?(?P<receiver>(?:[A-Za-z_]\w*\.)*)(?P<call>[A-Za-z_]\w*)\((?P<args>[^\r\n)]*)\)[ \t]*$")
             .expect("DEAD008 Python regex must compile")
     })
 }
@@ -583,7 +795,7 @@ fn python_delegate_matcher() -> &'static Regex {
 fn brace_delegate_matcher() -> &'static Regex {
     static MATCHER: OnceLock<Regex> = OnceLock::new();
     MATCHER.get_or_init(|| {
-        Regex::new(r"(?s)function\s+(?P<name>[A-Za-z_$][\w$]*)\s*\((?P<params>[^)]*)\)\s*\{\s*return\s+(?:[A-Za-z_$][\w$]*\.)*(?P<call>[A-Za-z_$][\w$]*)\((?P<args>[^)]*)\)\s*;?\s*\}")
+        Regex::new(r"(?s)function\s+(?P<name>[A-Za-z_$][\w$]*)\s*\((?P<params>[^)]*)\)\s*\{\s*return\s+(?P<receiver>(?:[A-Za-z_$][\w$]*\.)*)(?P<call>[A-Za-z_$][\w$]*)\((?P<args>[^)]*)\)\s*;?\s*\}")
             .expect("DEAD008 brace regex must compile")
     })
 }
@@ -699,16 +911,39 @@ fn is_named_test_file(path: &Path) -> bool {
         || name.contains(".stories.")
 }
 
+/// Reports whether a file holds tests: a test-named file, or any file in a test directory.
+/// Fixture directories hold sample inputs that stand in for application code, so their files
+/// count as tests only when named like one.
+fn is_test_code(path: &Path) -> bool {
+    let directories: Vec<_> = path
+        .parent()
+        .into_iter()
+        .flat_map(Path::components)
+        .filter_map(|component| component.as_os_str().to_str())
+        .map(str::to_ascii_lowercase)
+        .collect();
+    let in_test_directory = directories.iter().any(|name| {
+        matches!(
+            name.as_str(),
+            "test" | "tests" | "__tests__" | "spec" | "specs"
+        )
+    }) && !directories
+        .iter()
+        .any(|name| matches!(name.as_str(), "fixtures" | "testdata"));
+    in_test_directory || is_named_test_file(path)
+}
+
 fn check_duplicate_block(
     context: &ScanContext<'_>,
     metadata: &'static RuleMetadata,
     findings: &mut Vec<crate::model::Finding>,
 ) {
     const BLOCK_LINES: usize = 10;
-    if !matches!(context.source_type, SourceType::Code(_)) {
+    if !matches!(context.source_type, SourceType::Code(_)) || is_test_code(context.path) {
         return;
     }
-    let lines: Vec<_> = context.source.lines().collect();
+    // Tests repeat their setup so that each case reads on its own.
+    let lines: Vec<_> = context.source[..production_end(context)].lines().collect();
     if lines.len() < BLOCK_LINES * 2 + 2 {
         return;
     }
@@ -718,9 +953,18 @@ fn check_duplicate_block(
         offsets.push(offset);
         offset += line.len();
     }
+    // A line that is only comment or literal text is blank in the code view and breaks a block,
+    // so repeated documentation and embedded text never count as duplicated code.
     let normalized: Vec<_> = lines
         .iter()
-        .map(|line| line.split_whitespace().collect::<Vec<_>>().join(" "))
+        .zip(context.code().lines())
+        .map(|(line, code)| {
+            if code.trim().is_empty() {
+                String::new()
+            } else {
+                line.split_whitespace().collect::<Vec<_>>().join(" ")
+            }
+        })
         .collect();
     let mut seen: HashMap<String, usize> = HashMap::new();
     let mut reported_keys = HashSet::new();
@@ -791,9 +1035,15 @@ fn check_empty_doc_section(
             .iter()
             .find(|(_, next_level, _)| next_level <= level)
             .map_or(context.source.len(), |next| next.0);
+        // Consecutive headings of one level, such as overloads of one API, share the next body.
+        let stacked = headings
+            .get(index + 1)
+            .is_some_and(|(next_offset, next_level, _)| {
+                *next_offset == content_start && next_level == level
+            });
         let source_body = context.source[content_start..content_end].trim();
         let prose_body = context.prose()[content_start..content_end].trim();
-        if source_body.is_empty() || restates_heading(title, prose_body) {
+        if !stacked && (source_body.is_empty() || restates_heading(title, prose_body)) {
             emit(context, metadata, findings, *heading_offset, None::<String>);
         }
     }
@@ -1005,6 +1255,10 @@ fn inventory_count_matcher() -> &'static Regex {
 }
 
 fn markdown_heading(line: &str) -> Option<(usize, &str)> {
+    // Four or more columns of indentation make the line an indented code block.
+    if indentation(line) > 3 {
+        return None;
+    }
     let trimmed = line.trim();
     let hashes = trimmed.bytes().take_while(|byte| *byte == b'#').count();
     if hashes == 0 || trimmed.as_bytes().get(hashes) != Some(&b' ') {
@@ -1155,6 +1409,249 @@ mod tests {
             assert_eq!(findings(rule, path, bad), 1, "{rule} should trigger");
             assert_eq!(findings(rule, path, clean), 0, "{rule} should stay quiet");
         }
+    }
+
+    #[test]
+    fn placeholder_markers_exclude_names_quoted_references_and_tests() {
+        assert_eq!(
+            findings("DEAD002", "app.py", "# XXX handle auth-int.\nrun()\n"),
+            1
+        );
+        assert_eq!(
+            findings(
+                "DEAD002",
+                "app.py",
+                "# Exclude --xxx and --yyy after --aaa.\nrun()\n"
+            ),
+            0
+        );
+        assert_eq!(
+            findings(
+                "DEAD002",
+                "conf.py",
+                "# If true, `todo` produces output.\nrun()\n"
+            ),
+            0
+        );
+        assert_eq!(
+            findings(
+                "DEAD002",
+                "tests/regression.rs",
+                "// TODO: re-enable\nfn run() {}\n"
+            ),
+            0
+        );
+        let module = "struct Sink {\n    #[cfg(test)]\n    line_term: u8,\n}\n// TODO: amortize allocation.\nfn run() {}\n#[cfg(test)]\nmod tests {\n    // TODO: cover CRLF.\n}\n";
+        assert_eq!(findings("DEAD002", "src/sink.rs", module), 1);
+    }
+
+    #[test]
+    fn python_interface_methods_and_guards_are_not_placeholders() {
+        let interface = "class Storage:\n    def load(self, key):\n        \"\"\"Return the value.\"\"\"\n        raise NotImplementedError\n\n    def save(\n        self, key: str, value: bytes\n    ) -> None:\n        raise NotImplementedError()\n";
+        assert_eq!(findings("DEAD003", "storage.py", interface), 0);
+        let guard = "def stream(body, files):\n    if files:\n        raise NotImplementedError(\"no files\")\n    send(body)\n";
+        assert_eq!(findings("DEAD003", "stream.py", guard), 0);
+        assert_eq!(
+            findings(
+                "DEAD003",
+                "app.py",
+                "def load(key):\n    raise NotImplementedError\n"
+            ),
+            1
+        );
+        assert_eq!(
+            findings(
+                "DEAD003",
+                "app.py",
+                "class Store:\n    def load(self):\n        raise NotImplementedError(\"TODO\")\n"
+            ),
+            1
+        );
+    }
+
+    #[test]
+    fn boolean_predicates_answer_with_their_fallback() {
+        for (path, source) in [
+            (
+                "net.py",
+                "def is_ipv4(value):\n    try:\n        parse(value)\n    except ValueError:\n        return False\n    return True\n",
+            ),
+            (
+                "net.py",
+                "def has_codec(name):\n    try:\n        lookup(name)\n        return True\n    except LookupError:\n        return False\n",
+            ),
+            (
+                "net.py",
+                "def has_winreg():\n    try:\n        import winreg\n    except ImportError:\n        return None\n",
+            ),
+            (
+                "regex.js",
+                "function isValid(source) {\n  try {\n    new RegExp(source)\n    return true\n  } catch (e) {\n    return false\n  }\n}\n",
+            ),
+            (
+                "regex.js",
+                "function isValid(source) {\n  try { compile(source); } catch (e) { return false; }\n  return true;\n}\n",
+            ),
+        ] {
+            assert_eq!(findings("DEAD004", path, source), 0, "{source}");
+        }
+        let lossy = "def is_ready():\n    try:\n        probe()\n    except OSError:\n        return None\n    return True\n";
+        assert_eq!(findings("DEAD004", "net.py", lossy), 1);
+    }
+
+    #[test]
+    fn decorated_handlers_test_doubles_and_signature_braces_are_not_empty_functions() {
+        assert_eq!(
+            findings(
+                "DEAD005",
+                "app.py",
+                "@app.route(\"/\")\ndef index():\n    pass\n"
+            ),
+            0
+        );
+        assert_eq!(
+            findings(
+                "DEAD005",
+                "tests/apps/factory.py",
+                "def no_app():\n    pass\n"
+            ),
+            0
+        );
+        for source in [
+            "func Gt(a interface{}, b interface{}) bool {\n\treturn true\n}\n",
+            "function h(tag, props = {}, ...children) {\n  return tag;\n}\n",
+        ] {
+            let path = if source.starts_with("func") {
+                "cobra.go"
+            } else {
+                "app.js"
+            };
+            assert_eq!(findings("DEAD005", path, source), 0, "{source}");
+        }
+        assert_eq!(
+            findings("DEAD005", "cobra.go", "func Noop(a interface{}) {}\n"),
+            1
+        );
+    }
+
+    #[test]
+    fn redundant_comments_are_single_lines_above_executable_code() {
+        let examples = "// $ curl http://localhost:3000/notfound\n// $ curl http://localhost:3000/notfound -H \"Accept: text/plain\"\napp.listen(3000);\n";
+        assert_eq!(findings("DEAD006", "app.js", examples), 0);
+        let tail = "// Building the parser is cheap: we get a static parser from\n// `Parser::new()`.\nParser::new().find(name);\n";
+        assert_eq!(findings("DEAD006", "flags.rs", tail), 0);
+        let data = "CODES = {\n    # Server error.\n    500: (\"internal_server_error\", \"server_error\"),\n}\n";
+        assert_eq!(findings("DEAD006", "codes.py", data), 0);
+        assert_eq!(
+            findings(
+                "DEAD006",
+                "app.js",
+                "run();\n// parse type\nvar parsed = contentType.parse(type);\n"
+            ),
+            1
+        );
+    }
+
+    #[test]
+    fn duplicate_comments_compare_text_including_symbols() {
+        let examples = "/// ```\n/// assert_eq!(escape(\"foo*bar\"), \"foo[*]bar\");\n/// assert_eq!(escape(\"foo?bar\"), \"foo[?]bar\");\n/// ```\nfn escape() {}\n";
+        assert_eq!(findings("DEAD007", "lib.rs", examples), 0);
+        let commented = "// println!(\"{:#?}\", analysis(r\"foo|bar\"));\n// println!(\"{:#?}\", analysis(r\"foo\"));\nrun();\n";
+        assert_eq!(findings("DEAD007", "lib.rs", commented), 0);
+        assert_eq!(
+            findings(
+                "DEAD007",
+                "app.ts",
+                "// Validate the incoming request.\n// validate the incoming request\nvalidate(request);\n"
+            ),
+            1
+        );
+    }
+
+    #[test]
+    fn delegation_compares_literal_arguments_and_allows_member_facades() {
+        assert_eq!(
+            findings(
+                "DEAD008",
+                "app.py",
+                "@app.route(\"/get\")\ndef get():\n    return session.get(\"user\")\n"
+            ),
+            0
+        );
+        assert_eq!(
+            findings(
+                "DEAD008",
+                "app.py",
+                "def get():\n    return session.get(\"user\")\n"
+            ),
+            0
+        );
+        assert_eq!(
+            findings(
+                "DEAD008",
+                "app.js",
+                "app.route = function route(path) { return this.router.route(path); };\n"
+            ),
+            0
+        );
+        assert_eq!(
+            findings(
+                "DEAD008",
+                "app.py",
+                "class App:\n    def route(self, path):\n        return self.router.route(path)\n"
+            ),
+            0
+        );
+        assert_eq!(
+            findings(
+                "DEAD008",
+                "app.js",
+                "function save(item) { return client.save(item); }\n"
+            ),
+            1
+        );
+    }
+
+    #[test]
+    fn duplicated_blocks_ignore_documentation_and_tests() {
+        let docs = (0..10).fold(String::new(), |mut block, index| {
+            writeln!(
+                block,
+                "/// Line {index} explains the shared platform behavior of hidden entries."
+            )
+            .expect("write doc block");
+            block
+        });
+        let source =
+            format!("{docs}fn first() {{}}\n{docs}fn second() {{}}\n{docs}fn third() {{}}\n");
+        assert_eq!(findings("DEAD011", "src/pathutil.rs", &source), 0);
+
+        let block = "let alpha = transform(first_value);\nlet beta = transform(second_value);\nlet gamma = combine(alpha, beta);\nvalidate(gamma, expected_schema);\npersist(gamma, transaction_context);\nnotify(gamma, subscription_registry);\naudit(gamma, compliance_context);\nindex(gamma, search_catalog);\nreplicate(gamma, secondary_region);\nrecord_metrics(gamma, telemetry_context);\n";
+        let tests = format!(
+            "fn run() {{}}\n#[cfg(test)]\nmod tests {{\nfn one() {{\n{block}}}\nfn two() {{\n{block}}}\n}}\n"
+        );
+        assert_eq!(findings("DEAD011", "src/printer.rs", &tests), 0);
+        let source = format!("fn one() {{\n{block}}}\nfn two() {{\n{block}}}\n");
+        assert_eq!(findings("DEAD011", "tests/printer.rs", &source), 0);
+        assert_eq!(findings("DEAD011", "src/printer.rs", &source), 1);
+    }
+
+    #[test]
+    fn stacked_and_indented_markdown_lines_are_not_empty_sections() {
+        let stacked =
+            "### ky.get(input)\n### ky.post(input)\n\nSends a request with the method name.\n";
+        assert_eq!(findings("DEAD012", "readme.md", stacked), 0);
+        let indented =
+            "## Example\n\nRun the server:\n\n    # Start on port 8000.\n    serve(8000)\n";
+        assert_eq!(findings("DEAD012", "README.md", indented), 0);
+        assert_eq!(
+            findings(
+                "DEAD012",
+                "README.md",
+                "## Configuration\n\n## Usage\n\nRun it.\n"
+            ),
+            1
+        );
     }
 
     #[test]

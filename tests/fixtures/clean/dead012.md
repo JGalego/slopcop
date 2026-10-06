@@ -15,3 +15,11 @@ Read the configuration reference before deployment.
 	```
 
 </details>
+
+### client.get(url)
+### client.post(url)
+
+Sends a request with the named method and returns the response.
+
+    # Indented code is not a heading.
+    client.get("/health")

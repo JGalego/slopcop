@@ -35,7 +35,7 @@ text / JSON / SARIF / GitHub reporter
 
 `language` classifies supported code, documentation, text, and configuration extensions. Unknown UTF-8 files can be discovered but do not receive prose rules.
 
-`analysis` creates byte-for-byte aligned views. A code view masks comments and strings for structural checks. A prose view keeps documentation, comments, and docstrings while masking Markdown front matter, HTML comments, nested code fences, and literals. Newlines and byte lengths remain stable, so findings map back to source without a side table.
+`analysis` creates byte-for-byte aligned views. A code view masks comments and strings for structural checks. A prose view keeps documentation, comments, and docstrings while masking Markdown front matter, HTML comments, nested code fences, and literals. reStructuredText files and Python docstrings also mask directives, literal and doctest blocks, roles, and field markers, and Rust documentation comments mask their fenced examples. Paragraphs end at lines without words, and sentences never cross a paragraph. Newlines and byte lengths remain stable, so findings map back to source without a side table.
 
 `scanner` rejects oversized, binary, invalid UTF-8, generated, and conservatively detected minified JavaScript or TypeScript files before analysis. Rayon distributes independent files across workers. Rules run sequentially within one file and share lazily cached lowercase text, sentence spans, paragraph spans, and word counts.
 

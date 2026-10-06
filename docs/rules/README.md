@@ -8,18 +8,18 @@ Confidence describes how directly the rule observes its quality smell. It never 
 
 | Rule | Default | Confidence | Trigger | Quiet boundary |
 | --- | --- | --- | --- | --- |
-| `DEAD001` | error | high | Empty Python, JavaScript, or TypeScript exception handler | Behavior or an explanatory body comment documenting intentional omission |
-| `DEAD002` | warning | high | `TODO`, `FIXME`, `HACK`, or `XXX` in code prose | Normal words and executable string literals; tracked debt can be suppressed with a reason |
-| `DEAD003` | error | high | Executable unimplemented calls or raised exceptions | Caught exception types, mock references, and nearby abstract, trait, or protocol declarations |
-| `DEAD004` | warning | high | An exception converted directly to `None`, `null`, `false`, or an empty collection | Narrow handling, translation, or an explanatory compatibility comment |
-| `DEAD005` | warning | medium | A concrete function whose body is empty, `pass`, or an ellipsis | Recognized abstract/interface context or an explanatory hook comment |
-| `DEAD006` | warning | medium | A short adjacent comment with near-complete token overlap with a simple operation | Comments that explain constraints, external behavior, ordering, or rationale |
-| `DEAD007` | warning | high | The same substantial standalone line comment repeated beside itself | Inline annotations, type directives, distinct comments, and punctuation-only separators |
-| `DEAD008` | info | medium | A function that forwards the same parameters to a same-named method and returns the result | Validation, conversion, policy, compatibility work, or different argument mapping |
+| `DEAD001` | error | high | Empty Python, JavaScript, or TypeScript exception handler | Behavior, an explanatory body comment, optional imports, exhausted iterators, or a guarded block that always raises |
+| `DEAD002` | warning | high | `TODO`, `FIXME`, `HACK`, or `XXX` in code prose | Normal words, lowercase `xxx`/`hack`, code-quoted references, executable string literals, and test code; tracked debt can be suppressed with a reason |
+| `DEAD003` | error | high | Executable unimplemented calls or raised exceptions | Caught exception types, mock references, nearby abstract, trait, or protocol declarations, Python methods whose whole body raises `NotImplementedError`, and conditional guards |
+| `DEAD004` | warning | high | An exception converted directly to `None`, `null`, `false`, or an empty collection | Narrow handling, translation, an explanatory compatibility comment, optional imports, or the `false` answer of a predicate that also returns `true` |
+| `DEAD005` | warning | medium | A concrete function whose body is empty, `pass`, or an ellipsis | Recognized abstract/interface context, an explanatory hook comment, decorated framework handlers, or test code |
+| `DEAD006` | warning | medium | A short adjacent comment with near-complete token overlap with a simple operation | Comments that explain constraints, external behavior, ordering, or rationale; lines inside multi-line comments; and string data |
+| `DEAD007` | warning | high | The same substantial standalone line comment repeated beside itself | Inline annotations, type directives, documentation comments, comments that differ in symbols, and punctuation-only separators |
+| `DEAD008` | info | medium | A function that forwards the same parameters to a same-named method and returns the result | Validation, conversion, policy, compatibility work, different argument mapping, decorated handlers, or methods that expose a member object's operation |
 | `DEAD009` | warning | high | Opposite Boolean literals returned from two branches of one conditional | Direct Boolean returns and branches with additional behavior |
 | `DEAD010` | error | high | A test-path assertion that can only pass, such as `assert True` | Assertions over produced values or side effects |
-| `DEAD011` | warning | medium | Ten substantial, identical, non-empty source lines repeated later in one file | Short scaffolding, blocks with literal differences, generated files, and intentionally distinct logic; each exact duplicate group reports once |
-| `DEAD012` | warning | medium | An empty Markdown section or a short body that only restates its heading | Sections containing concrete prose, nested sections, lists, fenced examples, or decorative heading underlines |
+| `DEAD011` | warning | medium | Ten substantial, identical, non-empty source lines repeated later in one file | Short scaffolding, blocks with literal differences, comments and embedded text, test code, generated files, and intentionally distinct logic; each exact duplicate group reports once |
+| `DEAD012` | warning | medium | An empty Markdown section or a short body that only restates its heading | Sections containing concrete prose, nested sections, lists, fenced or indented examples, stacked headings that share one body, or decorative heading underlines |
 | `DEAD013` | info | medium | An exact count of a mutable repository inventory such as rules, commands, or integrations | Release snapshots, generated summaries, compatibility limits, and fixed protocol cardinalities |
 | `DEAD014` | warning | high | A Python handler that only uses bare `raise`, or a JS/TS handler that throws the same caught identifier | Exception translation, cleanup, recovery, or added context |
 | `DEAD015` | warning | medium | A Python handler that only calls `print`, or a JS/TS handler that only calls `console.log`, `warn`, or `error` | Best-effort batch processing and interactive command loops that intentionally continue |
@@ -39,23 +39,23 @@ Confidence describes how directly the rule observes its quality smell. It never 
 | Rule | Default | Confidence | Trigger | Quiet boundary |
 | --- | --- | --- | --- | --- |
 | `VIBE001` | warning | medium | At least four stock transitions at a density of one per 120 words or more | One ordinary transition or sparse use in long-form prose |
-| `VIBE002` | warning | high | Two or more unquoted phrases that frame repository prose like an assistant response | Quoted examples, direct documentation, and isolated support language |
-| `VIBE003` | warning | medium | Six generic evaluative modifiers at a density of one per 80 words or more | Isolated technical uses such as a robust mutex |
+| `VIBE002` | warning | high | Two or more unquoted phrases that frame repository prose like an assistant response | Quoted examples, direct documentation, isolated support language, and one phrase repeated sparsely through a long guide |
+| `VIBE003` | warning | medium | Six generic evaluative modifiers at a density of one per 80 words or more | Isolated technical uses such as a robust mutex; `key` is not counted because repositories use it as a noun |
 | `VIBE004` | warning | medium | Seven hedging markers at a density of one per 70 words or more | Calibrated uncertainty attached to a bounded technical claim |
 | `VIBE005` | warning | medium | Two or more paired artificial-balance templates | A single contrast that affects a decision |
 | `VIBE006` | warning | medium | Five explicit structure announcements at a density of one per 100 words or more | Necessary navigation in a long tutorial or specification |
 | `VIBE007` | info | medium | At least five em dashes at a density of one per 100 words or more | Occasional editorial use |
-| `VIBE008` | info | medium | Four or more colon sentences comprising at least 40 percent of eight substantial sentences | Field references, glossaries, and occasional definitions |
+| `VIBE008` | info | medium | Four or more colon sentences comprising at least 40 percent of eight substantial sentences | Field references, glossaries, occasional definitions, lead-ins that end with a colon, code comments, and release notes |
 | `VIBE009` | warning | high | Four substantial sentences sharing the same first two words and forming at least half the sample | Short runs and intentional procedural parallelism |
-| `VIBE010` | info | low | Eight substantial consecutive sentences whose word counts vary by no more than three | Natural variation, controlled language, or shorter runs |
-| `VIBE011` | info | medium | Three separate exact triads that account for at least half of nonblank lines | One three-item list or a real three-part domain model |
+| `VIBE010` | info | low | Eight substantial consecutive sentences whose word counts vary by no more than three | Natural variation, controlled language, shorter runs, list entries, runs interrupted by code examples, code comments, and release notes |
+| `VIBE011` | info | medium | Three separate exact triads that account for at least half of nonblank lines | One three-item list, a real three-part domain model, or release notes |
 | `VIBE012` | warning | medium | Eight vague demonstrative abstractions at a density of one per 80 words or more | A few unambiguous local references |
 | `VIBE013` | warning | medium | Five generic metaphor markers using at least four forms, at one per 120 words or more | Literal discussion of maps, ecology, textiles, or travel |
 | `VIBE014` | warning | medium | Six corporate positivity markers using at least four forms, at one per 100 words or more | Concrete outcome language and isolated domain terms |
 | `VIBE015` | warning | medium | Four generic disclaimer phrases in one artifact | A specific caveat attached to the claim it changes |
 | `VIBE016` | warning | high | Three unquoted conclusion markers, with at least two in the latter half | Quoted examples, one closing section, or independent chapter conclusions |
-| `VIBE017` | warning | high | Adjacent substantial sentences with at least seven shared content words and 75 percent set overlap | Definitions and neighboring sentences that add distinct facts |
-| `VIBE018` | info | low | Five substantial consecutive paragraphs whose word counts remain within a 20 percent band | Paragraphs sized by their evidence or a constrained publication format |
+| `VIBE017` | warning | high | Adjacent substantial sentences with at least seven shared content words and 75 percent set overlap | Definitions, neighboring sentences that add distinct facts, sentences in different paragraphs or comments, list entries, and release notes |
+| `VIBE018` | info | low | Five substantial consecutive paragraphs whose word counts remain within a 20 percent band | Paragraphs sized by their evidence, a constrained publication format, walkthrough steps separated by code examples, or code comments |
 | `VIBE019` | warning | high | One unquoted chatbot identity, cutoff, or browsing-disclaimer artifact | Quoted examples and stored chat transcripts |
 
 ## Configuration

@@ -9,6 +9,23 @@ This project records user-visible changes in this file and follows Semantic Vers
 - Browser demo that scans public GitHub repositories with the WebAssembly build of the scanner, deployed to GitHub Pages.
 - `Config::from_toml` for loading configuration text without reading the filesystem.
 
+### Fixed
+
+- reStructuredText prose no longer includes directives, literal and doctest blocks, roles, or field markers. Python docstrings get the same masking, and Rust documentation comments no longer include their fenced examples.
+- Sentences and paragraphs no longer run across headings, code, or separate comments. Rhythm, symmetry, colon, and restatement rules no longer compare list entries, release notes, comments on different declarations, or walkthrough steps separated by examples.
+- `DEAD005` no longer reads `interface{}` or a `= {}` default in a signature as an empty body.
+- `DEAD008` no longer treats different string arguments as forwarded parameters.
+- `DEAD007` no longer treats comments that differ only in symbols as duplicates.
+- `DEAD006` no longer judges single lines of a longer comment block.
+- Common idioms no longer trigger findings:
+  - optional imports, exhausted iterators, and tests that raise or expect an exception on purpose (`DEAD001`, `DEAD004`)
+  - predicates that answer `false` on an exception (`DEAD004`)
+  - Python interface methods and guarded unsupported cases (`DEAD003`)
+  - decorated framework handlers (`DEAD005`, `DEAD008`)
+  - member facades (`DEAD008`)
+  - stacked headings and indented Markdown code (`DEAD012`)
+  - test code (`DEAD002`, `DEAD005`, `DEAD011`)
+
 ## 0.1.0 - 2026-10-05
 
 ### Fixed

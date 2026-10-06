@@ -1,7 +1,7 @@
 use std::collections::{HashMap, HashSet};
 
 use super::{BuiltinRule, Rule, ScanContext, emit};
-use crate::analysis::{word_count, words};
+use crate::analysis::{Span, word_count, words};
 use crate::language::SourceType;
 use crate::model::{Confidence, Module, RuleMetadata, Severity};
 
@@ -15,7 +15,7 @@ static VIBE002: RuleMetadata = RuleMetadata {
     suggestion: "Remove conversational service framing and state the useful information directly.",
     rationale: "Phrases that offer help, praise the question, or announce a guided tour are usually interface residue rather than repository documentation.",
     examples: &["Great question. Let's dive in. Feel free to ask for more."],
-    false_positives: "Double-quoted examples are excluded; unquoted chat transcripts and support templates may still need configuration.",
+    false_positives: "Double-quoted examples and one phrase repeated sparsely through a long guide are excluded; unquoted chat transcripts and support templates may still need configuration.",
 };
 
 static VIBE003: RuleMetadata = RuleMetadata {
@@ -97,7 +97,7 @@ static VIBE008: RuleMetadata = RuleMetadata {
     suggestion: "Keep colons for genuine expansions and vary sentences that do not introduce a list or definition.",
     rationale: "Repeated label: explanation sentences can make prose look organized while flattening every idea into the same template.",
     examples: &["Input: one value. Output: one value. Result: one value. Reason: one value."],
-    false_positives: "Glossaries, changelogs, and field-reference documents naturally use many colons.",
+    false_positives: "Glossaries and field-reference documents naturally use many colons; release notes, code comments, and lead-ins that end with a colon are excluded.",
 };
 
 static VIBE009: RuleMetadata = RuleMetadata {
@@ -125,7 +125,7 @@ static VIBE010: RuleMetadata = RuleMetadata {
     suggestion: "Combine or split sentences according to the ideas rather than preserving a repeated cadence.",
     rationale: "Eight similarly sized sentences in sequence can indicate templated prose, but the observation is intentionally low confidence.",
     examples: &["Eight consecutive sentences whose word counts vary by at most three."],
-    false_positives: "Controlled-language documentation and material written for early readers often targets uniform sentence length.",
+    false_positives: "Controlled-language documentation and material written for early readers often targets uniform sentence length; lists, code comments, and release notes are excluded.",
 };
 
 static VIBE011: RuleMetadata = RuleMetadata {
@@ -138,7 +138,7 @@ static VIBE011: RuleMetadata = RuleMetadata {
     suggestion: "Group items by the actual shape of the material instead of forcing each section into a triad.",
     rationale: "One three-item list is normal; repeated exact triads across most of a document are a structural fingerprint worth reviewing.",
     examples: &["Three separate list groups, each containing exactly three items."],
-    false_positives: "Reference material organized around a real three-part model can legitimately repeat triads.",
+    false_positives: "Reference material organized around a real three-part model can legitimately repeat triads; release notes are excluded.",
 };
 
 static VIBE012: RuleMetadata = RuleMetadata {
@@ -224,7 +224,7 @@ static VIBE017: RuleMetadata = RuleMetadata {
     examples: &[
         "The scanner reads every tracked source file in parallel. Every tracked source file is read in parallel by the scanner.",
     ],
-    false_positives: "Definitions may intentionally restate a term once in equivalent language.",
+    false_positives: "Definitions may intentionally restate a term once in equivalent language; list entries, release notes, and sentences in separate paragraphs or comments are not compared.",
 };
 
 static VIBE018: RuleMetadata = RuleMetadata {
@@ -237,7 +237,7 @@ static VIBE018: RuleMetadata = RuleMetadata {
     suggestion: "Let paragraph length follow the amount of evidence or explanation each point needs.",
     rationale: "Sustained paragraph-length symmetry is observable but weak evidence of templated expansion, so this rule is informational by default.",
     examples: &["Five 20-plus-word paragraphs whose lengths all fall within a narrow band."],
-    false_positives: "Edited publications, slide notes, and constrained layouts may enforce paragraph length intentionally.",
+    false_positives: "Edited publications, slide notes, and constrained layouts may enforce paragraph length intentionally; code comments and steps separated by examples are excluded.",
 };
 
 static VIBE019: RuleMetadata = RuleMetadata {
@@ -287,6 +287,51 @@ fn is_prose(context: &ScanContext<'_>) -> bool {
     ) && context.prose_word_count() > 0
 }
 
+/// Rhythm and symmetry are properties of continuous prose. Comments and docstrings attached to
+/// separate declarations are independent texts, so their lengths are not compared.
+fn is_running_text(context: &ScanContext<'_>) -> bool {
+    matches!(
+        context.source_type,
+        SourceType::Documentation | SourceType::Text
+    ) && context.prose_word_count() > 0
+}
+
+/// Release notes repeat one entry template by design, so structural rhythm rules skip them.
+fn is_release_notes(context: &ScanContext<'_>) -> bool {
+    context
+        .path
+        .file_stem()
+        .and_then(|stem| stem.to_str())
+        .is_some_and(|stem| {
+            let stem = stem.to_ascii_lowercase().replace(['-', '_'], "");
+            [
+                "changelog",
+                "changes",
+                "history",
+                "news",
+                "releases",
+                "releasenotes",
+            ]
+            .contains(&stem.as_str())
+        })
+}
+
+fn paragraph_index(context: &ScanContext<'_>, offset: usize) -> Option<usize> {
+    let paragraphs = context.paragraphs();
+    let index = paragraphs.partition_point(|paragraph| paragraph.end <= offset);
+    paragraphs
+        .get(index)
+        .filter(|paragraph| paragraph.start <= offset)
+        .map(|_| index)
+}
+
+/// Reports whether `offset` falls in a paragraph that begins with a list item. Neighboring list
+/// entries are parallel by design, as in changelogs and option references.
+fn in_list_paragraph(context: &ScanContext<'_>, offset: usize) -> bool {
+    paragraph_index(context, offset)
+        .is_some_and(|index| is_list_item(context.paragraphs()[index].text(context.prose())))
+}
+
 fn check_assistant_framing(
     context: &ScanContext<'_>,
     metadata: &'static RuleMetadata,
@@ -307,13 +352,18 @@ fn check_assistant_framing(
         "let's break down",
         "let us break down",
     ];
-    check_phrase_cluster(
+    // A long tutorial may say "here's how" a few times; framing is two different assistant
+    // phrases close enough together to set the document's voice.
+    check_distinct_cluster(
         context,
         metadata,
         findings,
         PHRASES,
-        2,
-        0,
+        DistinctThresholds {
+            minimum: 2,
+            distinct_minimum: 2,
+            words_per_hit: 300,
+        },
         "assistant-style phrases",
     );
 }
@@ -332,7 +382,6 @@ fn check_modifiers(
         "efficient",
         "crucial",
         "vital",
-        "key",
         "important",
         "significant",
         "valuable",
@@ -478,7 +527,7 @@ fn check_colons(
     metadata: &'static RuleMetadata,
     findings: &mut Vec<crate::model::Finding>,
 ) {
-    if !is_prose(context) {
+    if !is_running_text(context) || is_release_notes(context) {
         return;
     }
     let sentences: Vec<_> = context
@@ -493,7 +542,7 @@ fn check_colons(
         .iter()
         .filter(|span| {
             let text = span.text(context.prose());
-            text.contains(':') && !text.contains("://")
+            text.trim_end_matches([':', '.', '!', '?']).contains(':') && !text.contains("://")
         })
         .collect();
     if colon_sentences.len() >= 4 && colon_sentences.len() * 5 >= sentences.len() * 2 {
@@ -585,18 +634,11 @@ fn check_rhythm(
     metadata: &'static RuleMetadata,
     findings: &mut Vec<crate::model::Finding>,
 ) {
-    if !is_prose(context) {
+    if !is_running_text(context) || is_release_notes(context) {
         return;
     }
-    let measured: Vec<_> = context
-        .sentences()
-        .iter()
-        .filter_map(|span| {
-            let count = word_count(span.text(context.prose()));
-            (count >= 8).then_some((*span, count))
-        })
-        .collect();
-    for window in measured.windows(8) {
+    let runs = prose_runs(context, context.sentences(), 8);
+    for window in runs.iter().flat_map(|run| run.windows(8)) {
         let minimum = window.iter().map(|(_, count)| *count).min().unwrap_or(0);
         let maximum = window
             .iter()
@@ -618,12 +660,42 @@ fn check_rhythm(
     }
 }
 
+/// Groups sentences or paragraphs into uninterrupted runs of prose, pairing each span that has at
+/// least `minimum_words` with its word count. A code example or a list between two spans ends the
+/// run: text on either side belongs to separate steps of a walkthrough, and list entries are
+/// parallel by design.
+fn prose_runs(
+    context: &ScanContext<'_>,
+    spans: &[Span],
+    minimum_words: usize,
+) -> Vec<Vec<(Span, usize)>> {
+    let mut runs = vec![Vec::new()];
+    let mut previous_end = 0;
+    for span in spans {
+        let listed = in_list_paragraph(context, span.start);
+        let interrupted = context.source[previous_end..span.start]
+            .chars()
+            .any(char::is_alphanumeric);
+        if (listed || interrupted) && runs.last().is_some_and(|run| !run.is_empty()) {
+            runs.push(Vec::new());
+        }
+        previous_end = span.end;
+        let count = word_count(span.text(context.prose()));
+        if count >= minimum_words && !listed {
+            runs.last_mut()
+                .expect("at least one run")
+                .push((*span, count));
+        }
+    }
+    runs
+}
+
 fn check_triads(
     context: &ScanContext<'_>,
     metadata: &'static RuleMetadata,
     findings: &mut Vec<crate::model::Finding>,
 ) {
-    if context.source_type != SourceType::Documentation {
+    if context.source_type != SourceType::Documentation || is_release_notes(context) {
         return;
     }
     let mut groups = Vec::new();
@@ -843,10 +915,17 @@ fn check_restatement(
     metadata: &'static RuleMetadata,
     findings: &mut Vec<crate::model::Finding>,
 ) {
-    if !is_prose(context) {
+    if !is_prose(context) || is_release_notes(context) {
         return;
     }
     for pair in context.sentences().windows(2) {
+        let paragraph = paragraph_index(context, pair[0].start);
+        if paragraph.is_none()
+            || paragraph != paragraph_index(context, pair[1].start)
+            || in_list_paragraph(context, pair[0].start)
+        {
+            continue;
+        }
         let first = content_word_set(pair[0].text(context.prose()));
         let second = content_word_set(pair[1].text(context.prose()));
         if first.len() < 7 || second.len() < 7 {
@@ -884,21 +963,11 @@ fn check_paragraph_symmetry(
     metadata: &'static RuleMetadata,
     findings: &mut Vec<crate::model::Finding>,
 ) {
-    if !is_prose(context) {
+    if !is_running_text(context) || is_release_notes(context) {
         return;
     }
-    let paragraphs: Vec<_> = context
-        .paragraphs()
-        .iter()
-        .filter_map(|span| {
-            let count = word_count(span.text(context.prose()));
-            (count >= 20).then_some((*span, count))
-        })
-        .collect();
-    if paragraphs.len() < 5 {
-        return;
-    }
-    for window in paragraphs.windows(5) {
+    let runs = prose_runs(context, context.paragraphs(), 20);
+    for window in runs.iter().flat_map(|run| run.windows(5)) {
         let minimum = window.iter().map(|(_, count)| *count).min().unwrap_or(0);
         let maximum = window
             .iter()
@@ -1114,8 +1183,12 @@ mod tests {
     use super::*;
 
     fn findings(rule_id: &str, source: &str) -> usize {
-        let path = Path::new("README.md");
-        let context = ScanContext::new(path, source, SourceType::Documentation);
+        findings_at(rule_id, "README.md", source)
+    }
+
+    fn findings_at(rule_id: &str, path: &str, source: &str) -> usize {
+        let path = Path::new(path);
+        let context = ScanContext::new(path, source, crate::language::classify(path));
         let rule = rules()
             .into_iter()
             .find(|rule| rule.metadata().id == rule_id)
@@ -1282,6 +1355,99 @@ mod tests {
             findings("VIBE018", "A short note.\n\nA second short note."),
             0
         );
+    }
+
+    #[test]
+    fn sparse_tutorial_phrases_and_nouns_are_not_clusters() {
+        let filler =
+            "The search walks each directory and skips ignored files before reading. ".repeat(60);
+        let tutorial = format!(
+            "Here's how to search. {filler} Here's how to filter. {filler} Here is how to sort."
+        );
+        assert_eq!(findings("VIBE002", &tutorial), 0);
+        let keys = "Send the API key in the header. Each key belongs to one project. A revoked key fails. Rotate the key from the dashboard. The old key stays valid for an hour. Workers read the new key.";
+        assert_eq!(findings("VIBE003", keys), 0);
+    }
+
+    #[test]
+    fn colon_patterns_ignore_lead_ins_code_and_release_notes() {
+        let steps = [
+            "Install the package",
+            "Start the server",
+            "Open the dashboard",
+            "Create an account",
+            "Load the sample data",
+            "Stop the server",
+        ]
+        .iter()
+        .map(|step| format!("{step}:\n\n```sh\nrun\n```\n"))
+        .collect::<Vec<_>>()
+        .concat();
+        let lead_ins = format!(
+            "{steps}\nEach step runs in the project directory. Commands print their progress.\n"
+        );
+        assert_eq!(findings("VIBE008", &lead_ins), 0);
+        let colons = "Input: read bytes. Output: return tokens. Limit: reject overflow. Cost: one allocation. The parser is deterministic. The scanner is parallel. Errors name the path. Tests cover failures.";
+        assert_eq!(findings_at("VIBE008", "CHANGELOG.md", colons), 0);
+        let comments = colons
+            .split(". ")
+            .map(|sentence| format!("// {sentence}.\nrun();\n"))
+            .collect::<Vec<_>>()
+            .concat();
+        assert_eq!(findings_at("VIBE008", "src/views.rs", &comments), 0);
+    }
+
+    #[test]
+    fn rhythm_and_restatement_skip_lists_code_and_release_notes() {
+        let rhythm = "Workers read each source file exactly one time. Rules inspect cached prose without repeated allocation overhead. Findings retain exact source offsets for stable reporting. Reporters sort every result before emitting deterministic output. Configuration changes severity without mutating detector rule logic. Git modes restrict scans to currently relevant files. Tests cover positive and negative fixture behavior carefully. Benchmarks measure complete repository scans under realistic loads.";
+        let sentences: Vec<_> = rhythm.split_inclusive(". ").collect();
+        let listed = sentences
+            .iter()
+            .map(|sentence| format!("- {}\n", sentence.trim()))
+            .collect::<Vec<_>>()
+            .concat();
+        assert_eq!(findings("VIBE010", &listed), 0);
+        let interrupted = format!(
+            "{}\n\n```sh\nslopcop .\n```\n\n{}",
+            sentences[..4].concat(),
+            sentences[4..].concat()
+        );
+        assert_eq!(findings("VIBE010", &interrupted), 0);
+        assert_eq!(findings_at("VIBE010", "CHANGES.rst", rhythm), 0);
+        let comments = sentences
+            .iter()
+            .map(|sentence| format!("/// {}\nfn item() {{}}\n", sentence.trim()))
+            .collect::<Vec<_>>()
+            .concat();
+        assert_eq!(findings_at("VIBE010", "src/lib.rs", &comments), 0);
+
+        let triads =
+            "- alpha\n- beta\n- gamma\n\n- delta\n- epsilon\n- zeta\n\n- eta\n- theta\n- iota\n";
+        assert_eq!(findings_at("VIBE011", "History.md", triads), 0);
+
+        let first =
+            "The scanner reads every tracked source file in parallel during repository checks.";
+        let second = "Every tracked source file is read in parallel by the scanner during repository checks.";
+        assert_eq!(findings("VIBE017", &format!("- {first}\n- {second}\n")), 0);
+        assert_eq!(
+            findings_at("VIBE017", "CHANGELOG.md", &format!("{first} {second}")),
+            0
+        );
+        let separate = format!("/// {first}\nfn read() {{}}\n\n/// {second}\nfn scan() {{}}\n");
+        assert_eq!(findings_at("VIBE017", "src/lib.rs", &separate), 0);
+        let same_comment = format!("/// {first}\n/// {second}\nfn read() {{}}\n");
+        assert_eq!(findings_at("VIBE017", "src/lib.rs", &same_comment), 1);
+    }
+
+    #[test]
+    fn paragraph_symmetry_requires_one_uninterrupted_document_passage() {
+        let paragraph = "Each paragraph contains exactly enough ordinary words to cross the substantial length threshold while describing one measured behavior clearly today.";
+        let walkthrough = std::iter::repeat_n(paragraph, 5)
+            .collect::<Vec<_>>()
+            .join("\n\n```sh\nslopcop .\n```\n\n");
+        assert_eq!(findings("VIBE018", &walkthrough), 0);
+        let comments = format!("// {paragraph}\nrun();\n").repeat(5);
+        assert_eq!(findings_at("VIBE018", "src/app.ts", &comments), 0);
     }
 
     #[test]
