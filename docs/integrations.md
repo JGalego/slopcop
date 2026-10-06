@@ -57,3 +57,60 @@ steps:
 ```
 
 slopcop's own CI runs the action against a binary built from the same commit, through the `binary` input, and tests the release download on Linux, macOS, and Windows.
+
+## Editors
+
+`slopcop lsp` starts a language server on standard input and output. Any editor with a Language Server Protocol client can use it, and the findings match a command-line scan of the same file: every rule judges one file at a time, and the server uses the same configuration discovery as `--stdin`, starting in the directory of the file being edited.
+
+The server provides:
+
+- Diagnostics when a file is opened or edited. Each one names its rule and links to the rule reference.
+- Hover text with the rule's description, rationale, suggestion, and false-positive notes.
+- A quick fix that inserts a suppression directive above the finding, in the file's comment syntax. The directive does nothing until you write the reason after `--`.
+
+Saving `.slopcop.toml` in the editor lints every open file again. Configuration errors are shown once as an editor message, and diagnostics stay empty until the file is fixed. Documents without a `file:` URI, such as unsaved buffers, are not linted because they have no directory to discover configuration from.
+
+The language server is a default Cargo feature. Build without it with `cargo install slopcop --no-default-features`.
+
+### Neovim
+
+Neovim 0.11 and later:
+
+```lua
+vim.lsp.config("slopcop", {
+  cmd = { "slopcop", "lsp" },
+  filetypes = { "python", "javascript", "typescript", "go", "rust", "markdown" },
+  root_markers = { ".slopcop.toml", ".git" },
+})
+vim.lsp.enable("slopcop")
+```
+
+### Helix
+
+In `languages.toml`, define the server and add it to each language. Listing `language-servers` replaces the defaults, so keep the servers you already use:
+
+```toml
+[language-server.slopcop]
+command = "slopcop"
+args = ["lsp"]
+
+[[language]]
+name = "python"
+language-servers = ["pylsp", "slopcop"]
+```
+
+### Emacs
+
+With Eglot:
+
+```elisp
+(with-eval-after-load 'eglot
+  (add-to-list 'eglot-server-programs
+               '((python-mode python-ts-mode markdown-mode) . ("slopcop" "lsp"))))
+```
+
+Eglot runs one server per major mode, so this replaces another Python server in those modes.
+
+### JetBrains IDEs
+
+Install the LSP4IJ plugin, add a new language server with the command `slopcop lsp`, and map it to the file types you want linted.

@@ -33,9 +33,13 @@ enum Command {
     Benchmark,
     Check(CheckArgs),
     CommitMessage(CommitMessageArgs),
-    Explain { rule_id: String },
+    Explain {
+        rule_id: String,
+    },
     History(HistoryArgs),
     Init,
+    #[cfg(feature = "lsp")]
+    Lsp,
     Rules,
 }
 
@@ -129,6 +133,8 @@ fn main() -> ExitCode {
         Some(Command::Explain { rule_id }) => explain(&rule_id),
         Some(Command::History(args)) => load_and_check_history(&args, cli.config.as_deref()),
         Some(Command::Init) => initialize(),
+        #[cfg(feature = "lsp")]
+        Some(Command::Lsp) => serve_language_server(),
         Some(Command::Rules) => list_rules(),
         None => load_and_check(&cli.scan, cli.config.as_deref()),
     }
@@ -147,6 +153,17 @@ fn run_benchmark() -> ExitCode {
         );
     }
     ExitCode::SUCCESS
+}
+
+#[cfg(feature = "lsp")]
+fn serve_language_server() -> ExitCode {
+    match slopcop::lsp::run() {
+        Ok(()) => ExitCode::SUCCESS,
+        Err(error) => {
+            eprintln!("slopcop: language server failed: {error}");
+            ExitCode::from(3)
+        }
+    }
 }
 
 fn initialize() -> ExitCode {

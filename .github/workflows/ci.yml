@@ -51,6 +51,8 @@ jobs:
       - uses: Swatinem/rust-cache@v2
       - run: cargo fmt --all -- --check
       - run: cargo clippy --all-targets --all-features --locked -- -W clippy::all -W clippy::pedantic -D warnings
+      - name: Build without the language server
+        run: cargo clippy --all-targets --no-default-features --locked -- -W clippy::all -W clippy::pedantic -D warnings
       - run: cargo package --locked
       - run: cargo build --release --locked
       - name: Lint slopcop with slopcop

@@ -7,6 +7,8 @@ pub mod discovery;
 pub mod git;
 pub mod init;
 pub mod language;
+#[cfg(feature = "lsp")]
+pub mod lsp;
 pub mod model;
 pub mod papertrail;
 pub mod reporting;

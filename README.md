@@ -82,6 +82,7 @@ slopcop --stdin --stdin-filename src/app.py < src/app.py
 slopcop commit-message .git/COMMIT_EDITMSG
 slopcop history --base origin/main
 slopcop explain VIBE001
+slopcop lsp
 slopcop rules
 slopcop benchmark
 ```
@@ -162,6 +163,8 @@ On GitHub, use the bundled action. On pull requests it reports findings on chang
 ```
 
 Inputs select paths, the release, changed-line mode, and SARIF upload to code scanning. They are documented with the other [integrations](docs/integrations.md).
+
+In editors, `slopcop lsp` runs a language server with diagnostics, rule explanations on hover, and a quick fix that inserts a suppression directive. Setup for Neovim, Helix, Emacs, and JetBrains IDEs is in [integrations](docs/integrations.md).
 
 JSON, SARIF 2.1.0, GitHub workflow annotations, and HTML reports are built in:
 
