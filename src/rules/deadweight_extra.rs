@@ -19,7 +19,7 @@ static DEAD002: RuleMetadata = RuleMetadata {
     suggestion: "Implement the missing behavior or link the marker to tracked work with a concrete reason.",
     rationale: "Unowned TODO-style scaffolding is easily mistaken for completed agent output.",
     examples: &["# TODO: implement retry handling"],
-    false_positives: "Tracked debt can be intentional; configure this rule for repositories that enforce issue-linked markers separately. Test code, code-quoted references, and lowercase xxx or hack are excluded.",
+    false_positives: "Tracked debt can be intentional; configure this rule for repositories that enforce issue-linked markers separately. Test code, code-quoted references, lowercase xxx or hack, and a lowercase or capitalized todo or fixme that does not open its comment, such as a Todo app, are excluded.",
 };
 
 static DEAD003: RuleMetadata = RuleMetadata {
@@ -278,23 +278,59 @@ fn check_placeholder_marker(
         return;
     }
     let production = production_end(context);
+    let prose = context.prose();
     let lower = context.lower_prose();
     let mut offsets: Vec<_> = ["todo", "fixme"]
         .iter()
-        .flat_map(|marker| find_words(lower, marker))
+        .flat_map(|marker| {
+            find_words(lower, marker)
+                .into_iter()
+                .map(move |offset| (offset, marker.len()))
+        })
+        // Uppercase markers count anywhere. Other spellings count only when they open the
+        // comment, because elsewhere they are usually nouns or names, as in `todo-app`.
+        .filter(|(offset, length)| {
+            prose[*offset..offset + length]
+                .bytes()
+                .all(|byte| byte.is_ascii_uppercase())
+                || opens_comment(prose, *offset) && !joins_name(&prose[offset + length..])
+        })
+        .map(|(offset, _)| offset)
         .chain(
             ["HACK", "XXX"]
                 .iter()
-                .flat_map(|marker| find_words(context.prose(), marker)),
+                .flat_map(|marker| find_words(prose, marker)),
         )
         .collect();
     // A marker quoted as code, such as the Sphinx `todo` extension, is a reference, not a marker.
-    offsets.retain(|offset| *offset < production && !context.prose()[..*offset].ends_with('`'));
+    offsets.retain(|offset| *offset < production && !prose[..*offset].ends_with('`'));
     offsets.sort_unstable();
-    offsets.dedup();
+    let mut reported_line = None;
     for offset in offsets {
-        emit(context, metadata, findings, offset, None::<String>);
+        let line = context.location(offset).line;
+        if reported_line != Some(line) {
+            reported_line = Some(line);
+            emit(context, metadata, findings, offset, None::<String>);
+        }
     }
+}
+
+/// Whether only comment punctuation precedes `offset` on its line of the prose view, which keeps
+/// comment markers and blanks code.
+fn opens_comment(prose: &str, offset: usize) -> bool {
+    let line_start = prose[..offset]
+        .rfind('\n')
+        .map_or(0, |position| position + 1);
+    prose[line_start..offset]
+        .chars()
+        .all(|character| character.is_whitespace() || "#/*!-;<\"'".contains(character))
+}
+
+/// Whether text continues a name, as in `todo-app`, `todo.py`, or `todo/list`.
+fn joins_name(after: &str) -> bool {
+    let mut characters = after.chars();
+    matches!(characters.next(), Some('-' | '.' | '/'))
+        && characters.next().is_some_and(char::is_alphanumeric)
 }
 
 /// Returns where test code begins in a source file. Rust keeps unit tests in a trailing
@@ -1440,6 +1476,36 @@ mod tests {
                 "// TODO: re-enable\nfn run() {}\n"
             ),
             0
+        );
+        assert_eq!(
+            findings(
+                "DEAD002",
+                "tasks.py",
+                "# todo-null -- in-memory Todo REST API. A body of null must not crash.\nrun()\n"
+            ),
+            0
+        );
+        assert_eq!(
+            findings(
+                "DEAD002",
+                "server.py",
+                "def boot():\n    \"\"\"Boot the produced Todo server on a free port.\"\"\"\n"
+            ),
+            0
+        );
+        assert_eq!(
+            findings("DEAD002", "app.js", "run(); // todo: handle retries\n"),
+            1
+        );
+        assert_eq!(findings("DEAD002", "app.py", "# Fixme later.\nrun()\n"), 1);
+        assert_eq!(
+            findings(
+                "DEAD002",
+                "app.py",
+                "# TODO: retry. FIXME: and log.\nrun()\n"
+            ),
+            1,
+            "one line yields one finding"
         );
         let module = "struct Sink {\n    #[cfg(test)]\n    line_term: u8,\n}\n// TODO: amortize allocation.\nfn run() {}\n#[cfg(test)]\nmod tests {\n    // TODO: cover CRLF.\n}\n";
         assert_eq!(findings("DEAD002", "src/sink.rs", module), 1);
