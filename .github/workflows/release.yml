@@ -121,6 +121,8 @@ jobs:
       VSCE_PAT: ${{ secrets.VSCE_PAT }}
     strategy:
       fail-fast: false
+      # Concurrent first publishes of a new extension conflict on the Marketplace.
+      max-parallel: 1
       matrix:
         include:
           - vscode: linux-x64
