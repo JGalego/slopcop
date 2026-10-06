@@ -35,10 +35,11 @@ Pin the action to a release tag or a commit SHA in real workflows. When the acti
 | `mode` | `auto` | `auto` reports findings on changed lines for pull requests and scans everything for other events. `changed` and `all` force one behavior. |
 | `base` | the pull request base commit | Base revision for changed-line mode. |
 | `config` | discovered from the repository root | Path to a `.slopcop.toml`. |
+| `fail-on-findings` | `true` | Set to `false` to pass the step when findings reach the fail level. |
 | `sarif` | `false` | Also upload a SARIF report to GitHub code scanning. |
 | `sarif-file` | `slopcop.sarif` | Where the SARIF report is written. |
 
-The action sets two outputs: `findings`, the number of findings reported, and `exit-code`, which follows the CLI's exit codes. The step fails when a finding reaches the configured `fail-level`.
+The action sets two outputs: `findings`, the number of findings reported, and `exit-code`, which follows the CLI's exit codes. The step fails when a finding reaches the configured `fail-level`. To read the outputs and decide in a later step, set `fail-on-findings: false`.
 
 Changed-line mode is what makes adoption practical in an existing repository: a pull request is judged on the lines it adds, not on everything that came before it. The default `actions/checkout` clone has one commit, so the action fetches more history until the merge base with `base` is reachable. Checking out with `fetch-depth: 0` skips that step.
 

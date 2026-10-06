@@ -34,6 +34,12 @@ inputs:
     description: Path to a .slopcop.toml file. Defaults to discovery from the repository root.
     required: false
     default: ""
+  fail-on-findings:
+    description: >-
+      Set to "false" to pass the step even when findings reach the configured fail level. The
+      exit-code output still reports 1, so a later step can decide.
+    required: false
+    default: "true"
   sarif:
     description: >-
       Set to "true" to also upload a SARIF report to GitHub code scanning. The job needs
@@ -101,7 +107,8 @@ runs:
         INPUT_SARIF_FILE: ${{ inputs.sarif-file }}
         PR_BASE: ${{ github.event.pull_request.base.sha }}
       run: |
-        set -o pipefail
+        # GitHub runs bash with -e; slopcop's exit status is recorded and checked later instead.
+        set +e -o pipefail
         base="${INPUT_BASE:-$PR_BASE}"
         case "$INPUT_MODE" in
           all) changed=false ;;
@@ -163,9 +170,17 @@ runs:
       shell: bash
       env:
         STATUS: ${{ steps.scan.outputs.exit-code }}
+        FAIL_ON_FINDINGS: ${{ inputs.fail-on-findings }}
       run: |
         case "$STATUS" in
           0) ;;
-          1) echo "::error title=slopcop::findings at or above the configured fail level"; exit 1 ;;
+          1)
+            if [ "$FAIL_ON_FINDINGS" = false ]; then
+              echo "::warning title=slopcop::findings at or above the configured fail level"
+            else
+              echo "::error title=slopcop::findings at or above the configured fail level"
+              exit 1
+            fi
+            ;;
           *) echo "::error title=slopcop::slopcop exited with status $STATUS"; exit "$STATUS" ;;
         esac

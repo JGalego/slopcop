@@ -6,7 +6,7 @@ This project records user-visible changes in this file and follows Semantic Vers
 
 ### Added
 
-- The repository is a GitHub Action (`uses: JGalego/slopcop@<tag>`). It installs a checksum-verified release binary, reports findings on pull request changed lines as workflow annotations, scans everything on other events, and can upload SARIF to code scanning. slopcop's own CI lints itself through the action.
+- The repository is a GitHub Action (`uses: JGalego/slopcop@<tag>`). It installs a checksum-verified release binary, reports findings on pull request changed lines as workflow annotations, scans everything on other events, and can upload SARIF to code scanning. `fail-on-findings: false` reports without failing the step. slopcop's own CI lints itself through the action.
 - `--stdin --stdin-filename PATH` lints one file read from standard input, such as an unsaved editor buffer. The filename selects the language and path filters, and configuration discovery starts in its directory.
 - Findings carry an end position. JSON locations add `end_line` and `end_column`, and SARIF regions add `endLine` and `endColumn`. The range runs from the reported position to the end of that line's content.
 - `slopcop lsp` runs a Language Server Protocol server. It publishes findings as diagnostics while files are edited, shows rule explanations on hover, and offers a quick fix that inserts a suppression directive in the file's comment syntax. It is a default Cargo feature named `lsp`.

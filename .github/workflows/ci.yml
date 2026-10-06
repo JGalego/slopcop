@@ -105,18 +105,29 @@ jobs:
           paths: tests/fixtures/slop
           mode: all
           config: ${{ runner.temp }}/slopcop.toml
+      - name: Report the slop fixtures without failing
+        id: report
+        uses: ./
+        with:
+          version: v0.2.0
+          paths: tests/fixtures/slop
+          mode: all
+          config: ${{ runner.temp }}/slopcop.toml
+          fail-on-findings: false
       - name: Check the action outputs
         shell: bash
         env:
           CLEAN_FINDINGS: ${{ steps.clean.outputs.findings }}
+          CLEAN_EXIT: ${{ steps.clean.outputs.exit-code }}
           SLOP_OUTCOME: ${{ steps.slop.outcome }}
-          SLOP_FINDINGS: ${{ steps.slop.outputs.findings }}
-          SLOP_EXIT: ${{ steps.slop.outputs.exit-code }}
+          REPORT_FINDINGS: ${{ steps.report.outputs.findings }}
+          REPORT_EXIT: ${{ steps.report.outputs.exit-code }}
         run: |
           test "$CLEAN_FINDINGS" = 0
+          test "$CLEAN_EXIT" = 0
           test "$SLOP_OUTCOME" = failure
-          test "$SLOP_EXIT" = 1
-          test "$SLOP_FINDINGS" -gt 0
+          test "$REPORT_EXIT" = 1
+          test "$REPORT_FINDINGS" -gt 0
       - name: Scan changed lines from a shallow checkout
         if: github.event_name == 'pull_request' && runner.os == 'Linux'
         uses: ./
