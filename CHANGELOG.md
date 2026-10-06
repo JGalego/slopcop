@@ -11,6 +11,7 @@ This project records user-visible changes in this file and follows Semantic Vers
 - `VIBE021` reports repeated correlative emphasis such as "not only X, but also Y" and "everything from X to Y".
 - `VIBE022` reports dense workplace productivity jargon such as "leverage", "streamline", "key stakeholders", and "drive alignment".
 - `VIBE023` reports dense generic AI vocabulary such as "nuanced", "holistic", "meaningful", and "delve".
+- `VIBE024` reports generalized moral framing such as "this is a reminder that", "a testament to", and "is only as good as the people using it".
 
 ### Changed
 

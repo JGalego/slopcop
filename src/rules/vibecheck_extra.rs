@@ -326,6 +326,21 @@ static VIBE023: RuleMetadata = RuleMetadata {
     false_positives: "Common technical terms such as context, pattern, constraint, and edge case are not counted; essays about strategy or design may legitimately use several of these words.",
 };
 
+static VIBE024: RuleMetadata = RuleMetadata {
+    id: "VIBE024",
+    module: Module::Vibecheck,
+    description: "Generalized moral framing",
+    default_severity: Severity::Warning,
+    default_confidence: Confidence::Medium,
+    message: "The prose turns specific observations into generalized life lessons.",
+    suggestion: "End on the specific finding; drop the general lesson unless the source actually argues for it.",
+    rationale: "Closers such as \"this is a reminder that\" or \"technology is only as good as the people using it\" add philosophical weight the evidence does not carry.",
+    examples: &[
+        "This is a reminder that progress isn't always linear. Ultimately, a tool is only as good as the people using it.",
+    ],
+    false_positives: "One reflective sentence never triggers this rule, and double-quoted examples are excluded; essays and retrospectives may draw lessons on purpose.",
+};
+
 pub(super) fn rules() -> Vec<Box<dyn Rule>> {
     vec![
         boxed(&VIBE002, check_assistant_framing),
@@ -350,6 +365,7 @@ pub(super) fn rules() -> Vec<Box<dyn Rule>> {
         boxed(&VIBE021, check_correlatives),
         boxed(&VIBE022, check_workplace_jargon),
         boxed(&VIBE023, check_ai_vocabulary),
+        boxed(&VIBE024, check_moral_framing),
     ]
 }
 
@@ -1279,6 +1295,45 @@ fn check_ai_vocabulary(
             )),
         );
     }
+}
+
+fn check_moral_framing(
+    context: &ScanContext<'_>,
+    metadata: &'static RuleMetadata,
+    findings: &mut Vec<crate::model::Finding>,
+) {
+    const PHRASES: &[&str] = &[
+        "is a reminder that",
+        "serves as a reminder that",
+        "reminds us that",
+        "teaches us that",
+        "the lesson is that",
+        "there's a lesson here",
+        "speaks to the importance of",
+        "a testament to",
+        "isn't always linear",
+        "is not always linear",
+        "is a journey, not a destination",
+        "is only as good as the",
+        "is only as effective as the",
+        "is only as strong as the",
+        "the human element",
+        "what matters most",
+        "at the end of the day, it's about",
+        "in a world where",
+    ];
+    check_distinct_cluster(
+        context,
+        metadata,
+        findings,
+        PHRASES,
+        DistinctThresholds {
+            minimum: 2,
+            distinct_minimum: 2,
+            words_per_hit: 400,
+        },
+        "generalized lesson phrases",
+    );
 }
 
 fn check_disclaimers(
@@ -2375,5 +2430,25 @@ mod tests {
     fn conclusions_include_takeaways_and_reminders() {
         let closing = "The parser reads tokens and reports the first invalid byte with its offset. The scanner runs files in parallel and sorts results before printing. The key takeaway is speed. This serves as a reminder to measure. In the end, the tests pass.";
         assert_eq!(findings("VIBE016", closing), 1);
+    }
+
+    #[test]
+    fn moral_framing_needs_two_distinct_lessons() {
+        let lessons = "The migration took three weeks. This is a reminder that progress isn\u{2019}t always linear.";
+        assert_eq!(findings("VIBE024", lessons), 1);
+        assert_eq!(
+            findings(
+                "VIBE024",
+                "The migration took three weeks. A chain is only as strong as the weakest link, so every hop is retried."
+            ),
+            0
+        );
+        assert_eq!(
+            findings(
+                "VIBE024",
+                r#"Cut closers like "this is a reminder that" and "a testament to" from reports."#
+            ),
+            0
+        );
     }
 }
