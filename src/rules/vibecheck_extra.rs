@@ -1,6 +1,8 @@
+use std::cell::RefCell;
 use std::collections::{HashMap, HashSet};
 use std::sync::OnceLock;
 
+use aho_corasick::AhoCorasick;
 use regex::Regex;
 
 use super::{BuiltinRule, Rule, ScanContext, emit};
@@ -1935,30 +1937,27 @@ fn report_distinct_cluster(
 /// `it may be helpful to`, is not counted again.
 fn phrase_hits<'a>(haystack: &str, phrases: &'a [&str]) -> Vec<(usize, &'a str)> {
     let mut hits = Vec::new();
-    for phrase in phrases {
-        let typographic = phrase.replace('\'', "\u{2019}");
-        let spellings = if typographic == *phrase {
-            vec![*phrase]
-        } else {
-            vec![*phrase, typographic.as_str()]
-        };
-        for spelling in spellings {
-            let mut search_start = 0;
-            while let Some(relative) = haystack[search_start..].find(spelling) {
-                let offset = search_start + relative;
-                let end = offset + spelling.len();
-                let before = haystack[..offset].chars().next_back();
-                let after = haystack[end..].chars().next();
-                let boundary = |character: Option<char>| {
-                    character.is_none_or(|value| !value.is_alphanumeric() && value != '_')
-                };
-                if boundary(before) && boundary(after) {
-                    hits.push((offset, end, *phrase));
-                }
-                search_start = end;
+    with_phrase_matcher(phrases, |matcher, owners| {
+        // Each spelling advances past its own previous match, as repeated `str::find` calls do, so
+        // a spelling never overlaps itself; different phrases may overlap and are resolved below.
+        // One spelling has one length, so its matches arrive in start order.
+        let mut resume = vec![0; owners.len()];
+        for found in matcher.find_overlapping_iter(haystack) {
+            let pattern = found.pattern().as_usize();
+            if found.start() < resume[pattern] {
+                continue;
+            }
+            resume[pattern] = found.end();
+            let before = haystack[..found.start()].chars().next_back();
+            let after = haystack[found.end()..].chars().next();
+            let boundary = |character: Option<char>| {
+                character.is_none_or(|value| !value.is_alphanumeric() && value != '_')
+            };
+            if boundary(before) && boundary(after) {
+                hits.push((found.start(), found.end(), phrases[owners[pattern]]));
             }
         }
-    }
+    });
     hits.sort_by_key(|(offset, end, _)| (*offset, std::cmp::Reverse(*end)));
     let mut covered = 0;
     hits.into_iter()
@@ -1970,6 +1969,37 @@ fn phrase_hits<'a>(haystack: &str, phrases: &'a [&str]) -> Vec<(usize, &'a str)>
             Some((offset, phrase))
         })
         .collect()
+}
+
+/// Runs `search` with one automaton over every spelling of `phrases`, plain and with a typographic
+/// apostrophe, and the index of the phrase each spelling belongs to. Rules pass the same few phrase
+/// lists for every file, so each worker thread builds an automaton once per list. The cache is
+/// keyed by content rather than address because callers may pass temporary arrays.
+fn with_phrase_matcher<R>(phrases: &[&str], search: impl FnOnce(&AhoCorasick, &[usize]) -> R) -> R {
+    type Matchers = HashMap<Vec<String>, (AhoCorasick, Vec<usize>)>;
+    thread_local! {
+        static MATCHERS: RefCell<Matchers> = RefCell::new(HashMap::new());
+    }
+    MATCHERS.with(|matchers| {
+        let mut matchers = matchers.borrow_mut();
+        let key: Vec<String> = phrases.iter().map(|phrase| (*phrase).to_owned()).collect();
+        let (matcher, owners) = matchers.entry(key).or_insert_with(|| {
+            let mut spellings = Vec::new();
+            let mut owners = Vec::new();
+            for (index, phrase) in phrases.iter().enumerate() {
+                let typographic = phrase.replace('\'', "\u{2019}");
+                if typographic != *phrase {
+                    spellings.push(typographic);
+                    owners.push(index);
+                }
+                spellings.push((*phrase).to_owned());
+                owners.push(index);
+            }
+            let matcher = AhoCorasick::new(&spellings).expect("phrase automaton must build");
+            (matcher, owners)
+        });
+        search(matcher, owners)
+    })
 }
 
 fn context_phrase_hits<'a>(

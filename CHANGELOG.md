@@ -14,6 +14,10 @@ This project records user-visible changes in this file and follows Semantic Vers
 - `--format gitlab` writes a GitLab Code Quality report. Fingerprints come from the rule, path, and line text, so findings keep their identity when edits move them.
 - `docs/integrations.md` covers the GitHub Action, GitLab CI, reviewdog, Azure Pipelines, and editor setup for VS Code, Neovim, Helix, Emacs, and JetBrains IDEs.
 
+### Changed
+
+- Phrase-based prose rules search for all phrases of a list in one Aho-Corasick pass instead of one pass per phrase. Findings are unchanged. On one machine, a scan of openclaw (52,294 files) went from 61 s to 14 s and from 665 to 137 CPU seconds, and the docs-heavy benchmark profile from 85 ms to 25-33 ms. `aho-corasick`, already built as a dependency of `regex`, is now a direct dependency.
+
 ### Fixed
 
 - `DEAD002` treats a marker in straight or curly quotes as a reference, as it already did for backticks. Comments such as `// 'todo' - show a11y violations` or `# reject literal "TODO" text on a slide` are no longer reported. A triple-quoted docstring that holds only a marker still is.
