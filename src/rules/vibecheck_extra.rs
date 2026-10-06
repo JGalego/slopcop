@@ -434,7 +434,7 @@ fn check_assistant_framing(
         if let Some(interjection) = INTERJECTIONS
             .iter()
             .find(|interjection| word.eq_ignore_ascii_case(interjection))
-            && !inside_double_quotes(context.prose(), sentence.start)
+            .filter(|_| !inside_double_quotes(context.prose(), sentence.start))
         {
             hits.push((sentence.start, *interjection));
         }
@@ -575,9 +575,7 @@ fn check_balance(
         .chain(stock.first())
         .map(|(offset, _)| *offset)
         .min();
-    if let Some(offset) = first
-        && count >= 2
-    {
+    if let Some(offset) = first.filter(|_| count >= 2) {
         emit(
             context,
             metadata,
@@ -1382,8 +1380,8 @@ fn check_rhetorical_contrasts(
                     .find(trimmed)
                     .map(|found| (base + found.start(), template))
             });
-        if let Some((offset, template)) = hit
-            && !inside_double_quotes(prose, offset)
+        if let Some((offset, template)) =
+            hit.filter(|(offset, _)| !inside_double_quotes(prose, *offset))
         {
             hits.push((offset, template));
         }
