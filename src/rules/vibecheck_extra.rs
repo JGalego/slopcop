@@ -483,6 +483,23 @@ fn check_hedging(
         "depending on",
         "it seems",
         "tends to",
+        "it may be helpful to",
+        "it might be worth",
+        "it can be argued",
+        "it could be said",
+        "one could argue",
+        "there is a possibility that",
+        "it is possible that",
+        "generally speaking",
+        "to some extent",
+        "to a certain extent",
+        "in certain situations",
+        "in some respects",
+        "it is worth considering",
+        "doesn't necessarily",
+        "does not necessarily",
+        "depending on the circumstances",
+        "while this may be true",
     ];
     check_phrase_cluster(
         context,
@@ -1768,5 +1785,13 @@ mod tests {
         assert_eq!(findings("VIBE003", labels), 1);
         let technical = "Hold the lock in a critical section. Measure the critical path before changing the scheduler, then compare throughput, latency, and memory under the same workload.";
         assert_eq!(findings("VIBE003", technical), 0);
+    }
+
+    #[test]
+    fn hedging_counts_padding_phrases_once() {
+        let padding = "It can be argued that the cache helps. To some extent, it is possible that reads improve. One could argue it doesn't necessarily matter. In some respects, generally speaking, it is worth considering the cost.";
+        assert_eq!(findings("VIBE004", padding), 1);
+        let nested = "It may be helpful to cache. It might be worth a test. While this may be true, measure it.";
+        assert_eq!(findings("VIBE004", nested), 0);
     }
 }
