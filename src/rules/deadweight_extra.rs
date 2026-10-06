@@ -19,7 +19,7 @@ static DEAD002: RuleMetadata = RuleMetadata {
     suggestion: "Implement the missing behavior or link the marker to tracked work with a concrete reason.",
     rationale: "Unowned TODO-style scaffolding is easily mistaken for completed agent output.",
     examples: &["# TODO: implement retry handling"],
-    false_positives: "Tracked debt can be intentional; configure this rule for repositories that enforce issue-linked markers separately. Test code, quoted references such as `todo` or \"TODO:\", lowercase xxx or hack, and a lowercase or capitalized todo or fixme that does not open its comment, such as a Todo app, are excluded.",
+    false_positives: "Tracked debt can be intentional; configure this rule for repositories that enforce issue-linked markers separately. Test code, quoted references such as `todo` or \"TODO:\", lowercase xxx or hack, and a lowercase or capitalized todo or fixme that does not open its comment or that heads a noun phrase, such as a Todo app or a todo list, are excluded.",
 };
 
 static DEAD003: RuleMetadata = RuleMetadata {
@@ -293,7 +293,9 @@ fn check_placeholder_marker(
             prose[*offset..offset + length]
                 .bytes()
                 .all(|byte| byte.is_ascii_uppercase())
-                || opens_comment(prose, *offset) && !joins_name(&prose[offset + length..])
+                || opens_comment(prose, *offset)
+                    && !joins_name(&prose[offset + length..])
+                    && !heads_noun(&prose[offset + length..])
         })
         .chain(["HACK", "XXX"].iter().flat_map(|marker| {
             find_words(prose, marker)
@@ -346,6 +348,39 @@ fn is_quoted(prose: &str, offset: usize, length: usize) -> bool {
             && !before[..before.len() - open.len_utf8()].ends_with(open)
             && after.starts_with(close)
     })
+}
+
+/// Whether the next word makes the marker part of a noun phrase, as in "todo list" or "Todo
+/// snapshot". These are the to-do items an application manages, not missing work.
+fn heads_noun(after: &str) -> bool {
+    const HEADS: &[&str] = &[
+        "app",
+        "apps",
+        "card",
+        "cards",
+        "content",
+        "entries",
+        "entry",
+        "item",
+        "items",
+        "list",
+        "lists",
+        "row",
+        "rows",
+        "snapshot",
+        "snapshots",
+        "state",
+        "status",
+    ];
+    let Some(rest) = after.strip_prefix(' ') else {
+        return false;
+    };
+    let word: String = rest
+        .chars()
+        .take_while(char::is_ascii_alphabetic)
+        .collect::<String>()
+        .to_ascii_lowercase();
+    HEADS.contains(&word.as_str())
 }
 
 /// Whether text continues a name, as in `todo-app`, `todo.py`, or `todo/list`.
@@ -1574,6 +1609,20 @@ mod tests {
             1
         );
         assert_eq!(findings("DEAD002", "app.py", "# Fixme later.\nrun()\n"), 1);
+        for source in [
+            "// Todo snapshot. The frozen prompt bypasses that list.\nrun();\n",
+            "// todo list to expanded while there is in-progress work\nrun();\n",
+            "/**\n * todo list was open, out of the todo it belonged to.\n */\nrun();\n",
+        ] {
+            assert_eq!(findings("DEAD002", "app.ts", source), 0, "{source}");
+        }
+        for source in [
+            "// todo listen for resize events\nrun();\n",
+            "// TODO list the remaining providers\nrun();\n",
+            "// todo: list the remaining providers\nrun();\n",
+        ] {
+            assert_eq!(findings("DEAD002", "app.ts", source), 1, "{source}");
+        }
         assert_eq!(
             findings(
                 "DEAD002",
