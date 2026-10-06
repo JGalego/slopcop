@@ -61,7 +61,7 @@ function targetFromHash() {
   return parseTarget(repo, ref);
 }
 
-function startScan(target) {
+function startScan(target, fresh = false) {
   $("repo").value = target.repo;
   $("ref").value = target.ref;
   const hash = "#" + target.repo + (target.ref ? "@" + target.ref : "");
@@ -73,7 +73,7 @@ function startScan(target) {
   $("status").hidden = false;
   $("scan-button").disabled = true;
   setProgress("Loading scanner", 0, 0);
-  worker.postMessage({ ...target, token: $("token").value.trim() });
+  worker.postMessage({ ...target, token: $("token").value.trim(), fresh });
 }
 
 function setProgress(stage, done, total) {
@@ -156,6 +156,10 @@ worker.onmessage = ({ data }) => {
     setProgress(data.stage, data.done, data.total);
     return;
   }
+  if (data.type === "stale") {
+    showStale(data);
+    return;
+  }
   $("status").hidden = true;
   $("scan-button").disabled = false;
   if (data.type === "error") {
@@ -209,6 +213,14 @@ function showResults(data) {
   $("results").hidden = false;
 }
 
+function showStale({ repo, ref, sha }) {
+  if (state.data?.repo !== repo || state.data.ref !== ref || $("scan-button").disabled) return;
+  $("notices").prepend(h("li", { class: "stale" },
+    `${ref || "The default branch"} has moved to ${sha.slice(0, 7)} since this scan. `,
+    h("button", { type: "button", class: "link-button", onclick: () => startScan({ repo, ref: ref || "" }, true) }, "Rescan"),
+  ));
+}
+
 function renderSummary() {
   const { repo, ref, sha, result, stats } = state.data;
   const counts = countBy(result.findings, (finding) => finding.severity);
@@ -224,6 +236,7 @@ function renderSummary() {
     h("div", { class: "summary-target" },
       h("a", { href: treeUrl, class: "summary-repo" }, repo),
       h("span", { class: "summary-ref" }, (ref ? ref + " · " : "") + sha.slice(0, 7)),
+      state.data.cachedAt && h("span", { class: "summary-ref", title: new Date(state.data.cachedAt).toLocaleString() }, `cached ${formatAge(state.data.cachedAt)}`),
     ),
     h("dl", { class: "summary-stats" },
       stat(result.summary.findings, result.summary.findings === 1 ? "finding" : "findings", "total"),
@@ -245,6 +258,13 @@ function stat(value, label, tone) {
 
 function formatMillis(millis) {
   return millis < 1000 ? `${Math.round(millis)} ms` : `${(millis / 1000).toFixed(1)} s`;
+}
+
+function formatAge(time) {
+  const minutes = Math.floor((Date.now() - time) / 60000);
+  if (minutes < 1) return "just now";
+  const [value, unit] = minutes < 60 ? [minutes, "minute"] : minutes < 1440 ? [Math.floor(minutes / 60), "hour"] : [Math.floor(minutes / 1440), "day"];
+  return `${value} ${unit}${value === 1 ? "" : "s"} ago`;
 }
 
 function countBy(items, key) {
@@ -485,7 +505,7 @@ $("scan-form").addEventListener("submit", (event) => {
     showError("Enter a repository as owner/name or a github.com URL.");
     return;
   }
-  startScan(target);
+  startScan(target, true);
 });
 
 function saveToken() {

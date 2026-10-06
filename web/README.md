@@ -21,6 +21,12 @@ Open <http://localhost:8000>. Append `#owner/repo` or `#owner/repo@ref` to the U
 3. Selected files are downloaded from `raw.githubusercontent.com`, pinned to the commit, with bounded concurrency. The demo caps a scan at 3,000 files or 60 MB.
 4. The worker passes the bytes to `Scanner::add`, and `Scanner::finish` returns the same JSON report as `slopcop --format json`. `Scanner::html` then renders the same page as `slopcop --format html`, with the scan notices and links to the commit on GitHub, for the Download HTML button.
 
+## Cached reports
+
+The worker keeps the 10 most recent complete reports in IndexedDB, keyed by repository and ref. A key also carries a hash of the WebAssembly module, so a deploy that changes any rule invalidates every cached report.
+
+Opening or reloading a `#owner/repo` link shows the cached report at once and labels it with its age. The worker then makes one API request to resolve the ref, and if the branch has moved since the scan, a notice offers a rescan. A ref given as a full commit hash cannot move, so it is never checked. The Scan button always resolves the ref, and downloads and rescans files only when the commit has changed. A scan where any download failed is not cached, so the next visit tries again. When IndexedDB is blocked or full, scans run as before without a cache.
+
 Each finding links to the false-positive issue form, prefilled with the rule, version, a link to the line, the surrounding source, and the finding output. The page sends nothing itself: GitHub shows the form, and the user reviews and submits it.
 
 Two behaviors differ from a local run. Files with unrecognized extensions are never downloaded, although the CLI reads them, and `papertrail` history checks need a clone, so they do not run here. Private repositories are not supported.
