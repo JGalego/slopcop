@@ -56,13 +56,14 @@ static VIBE005: RuleMetadata = RuleMetadata {
     description: "Repeated artificial balance",
     default_severity: Severity::Warning,
     default_confidence: Confidence::Medium,
-    message: "The prose repeatedly forces claims into symmetrical contrasts.",
-    suggestion: "Keep contrasts that affect the decision and state unrelated claims independently.",
-    rationale: "Repeated not-only/but-also and one-hand/other-hand templates create polished symmetry even when the ideas do not need it.",
+    message: "The prose repeatedly manufactures balance between positions.",
+    suggestion: "State the position the evidence supports, and present alternatives only when they change the decision.",
+    rationale: "One-hand/other-hand pairs and stock both-sides lines create an appearance of nuance and turn a clear opinion into a falsely balanced discussion.",
     examples: &[
-        "Not only is it fast, but it is also clear. Not only is it small, but it is also complete.",
+        "There are valid arguments on both sides. Both approaches have their advantages and disadvantages.",
+        "On the one hand, it is fast. On the other hand, it is small. On the one hand, it is new. On the other hand, it is tested.",
     ],
-    false_positives: "Comparative analysis may legitimately use several explicit contrasts.",
+    false_positives: "Comparative analysis may legitimately weigh several named alternatives.",
 };
 
 static VIBE006: RuleMetadata = RuleMetadata {
@@ -517,34 +518,50 @@ fn check_balance(
     metadata: &'static RuleMetadata,
     findings: &mut Vec<crate::model::Finding>,
 ) {
+    const STOCK_BALANCE: &[&str] = &[
+        "arguments on both sides",
+        "both sides have",
+        "both approaches have their",
+        "each approach has its",
+        "have their own strengths",
+        "has its own strengths",
+        "also has its strengths",
+        "advantages and disadvantages",
+        "pros and cons",
+        "neither approach is inherently",
+        "neither option is inherently",
+        "neither is inherently better",
+        "there is no clear winner",
+        "the answer depends on your",
+        "depends on your goals",
+        "depends on your priorities",
+    ];
     if !is_prose(context) {
         return;
     }
-    let hits = context_phrase_hits(
-        context,
-        &["not only", "also", "on the one hand", "on the other hand"],
-    );
-    let count = hits
+    let pairs = context_phrase_hits(context, &["on the one hand", "on the other hand"]);
+    let opening = pairs
         .iter()
-        .filter(|(_, phrase)| *phrase == "not only")
-        .count()
-        .min(hits.iter().filter(|(_, phrase)| *phrase == "also").count())
-        + hits
-            .iter()
-            .filter(|(_, phrase)| *phrase == "on the one hand")
-            .count()
-            .min(
-                hits.iter()
-                    .filter(|(_, phrase)| *phrase == "on the other hand")
-                    .count(),
-            );
-    if count >= 2 {
+        .filter(|(_, phrase)| *phrase == "on the one hand")
+        .count();
+    let paired = opening.min(pairs.len() - opening);
+    let stock = context_phrase_hits(context, STOCK_BALANCE);
+    let count = paired + stock.len();
+    let first = pairs
+        .first()
+        .into_iter()
+        .chain(stock.first())
+        .map(|(offset, _)| *offset)
+        .min();
+    if let Some(offset) = first
+        && count >= 2
+    {
         emit(
             context,
             metadata,
             findings,
-            hits[0].0,
-            Some(format!("observed {count} symmetrical contrast templates")),
+            offset,
+            Some(format!("observed {count} artificial balance templates")),
         );
     }
 }
@@ -1424,7 +1441,7 @@ mod tests {
             ),
             (
                 "VIBE005",
-                "Not only is it fast, but it is also clear. Not only is it small, but it is also tested.",
+                "There are valid arguments on both sides. Both approaches have their advantages and disadvantages.",
                 "The binary is small, but startup time matters more.",
             ),
             (
@@ -1793,5 +1810,30 @@ mod tests {
         assert_eq!(findings("VIBE004", padding), 1);
         let nested = "It may be helpful to cache. It might be worth a test. While this may be true, measure it.";
         assert_eq!(findings("VIBE004", nested), 0);
+    }
+
+    #[test]
+    fn artificial_balance_counts_both_sides_lines_and_paired_hands() {
+        assert_eq!(
+            findings(
+                "VIBE005",
+                "Neither approach is inherently better. The answer depends on your goals."
+            ),
+            1
+        );
+        assert_eq!(
+            findings(
+                "VIBE005",
+                "On the one hand, it is fast. On the other hand, it is small. On the one hand, it is new. On the other hand, it is tested."
+            ),
+            1
+        );
+        assert_eq!(
+            findings(
+                "VIBE005",
+                "On the other hand, the parser rejects tabs. The table lists the pros and cons of each backend."
+            ),
+            0
+        );
     }
 }

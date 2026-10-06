@@ -1,1 +1,1 @@
-Not only is it fast, but it is also clear. Not only is it small, but it is also tested.
+There are valid arguments on both sides. Both approaches have their advantages and disadvantages, and neither approach is inherently better.
