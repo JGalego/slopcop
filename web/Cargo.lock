@@ -397,6 +397,7 @@ dependencies = [
 name = "slopcop"
 version = "0.2.0"
 dependencies = [
+ "aho-corasick",
  "clap",
  "ignore",
  "percent-encoding",
