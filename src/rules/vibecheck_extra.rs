@@ -1,4 +1,7 @@
 use std::collections::{HashMap, HashSet};
+use std::sync::OnceLock;
+
+use regex::Regex;
 
 use super::{BuiltinRule, Rule, ScanContext, emit};
 use crate::analysis::{Span, word_count, words};
@@ -253,6 +256,21 @@ static VIBE019: RuleMetadata = RuleMetadata {
     false_positives: "Double-quoted examples are excluded; stored chat transcripts may need a named suppression.",
 };
 
+static VIBE020: RuleMetadata = RuleMetadata {
+    id: "VIBE020",
+    module: Module::Vibecheck,
+    description: "Rhetorical contrast formulas",
+    default_severity: Severity::Warning,
+    default_confidence: Confidence::Medium,
+    message: "The prose repeatedly frames claims as stock rhetorical contrasts.",
+    suggestion: "State the claim directly and keep a contrast only where the rejected alternative is one a reader would actually consider.",
+    rationale: "Templates such as \"it's X, not Y\" and \"the goal isn't X; it's Y\" manufacture a reversal around each claim and make prose predictable without adding information.",
+    examples: &[
+        "It's a cache, not a database. The goal isn't speed; it's predictability. Rather than tuning the size, measure the misses.",
+    ],
+    false_positives: "One or two contrasts never trigger this rule, and double-quoted examples are excluded; comparison guides that weigh named alternatives may still need configuration.",
+};
+
 pub(super) fn rules() -> Vec<Box<dyn Rule>> {
     vec![
         boxed(&VIBE002, check_assistant_framing),
@@ -273,6 +291,7 @@ pub(super) fn rules() -> Vec<Box<dyn Rule>> {
         boxed(&VIBE017, check_restatement),
         boxed(&VIBE018, check_paragraph_symmetry),
         boxed(&VIBE019, check_chatbot_residue),
+        boxed(&VIBE020, check_rhetorical_contrasts),
     ]
 }
 
@@ -1023,6 +1042,95 @@ fn check_chatbot_residue(
     }
 }
 
+/// Sentence templates that stage a claim as the reversal of a weaker alternative. Each entry is
+/// matched case-insensitively against one trimmed sentence; `'` also matches `\u{2019}`.
+const CONTRAST_TEMPLATES: &[&str] = &[
+    // "It's X, not Y."
+    r"^(?:it|this|that)(?:'s| is| was) [^,;.!?]{1,60}, not [^,;.!?]{1,60}[.!]?$",
+    // "It's not X; it's Y."
+    r"^(?:it|this|that)(?:'s| is| was)(?: not|n't) [^.!?]{1,80}?[,;:\u{2013}\u{2014}] *(?:it|this|that)(?:'s| is| was)\b",
+    // "The goal isn't X; it's Y."
+    r"^the (?:[a-z-]+ ){0,2}?[a-z-]+ (?:is not|isn't|was not|wasn't) [^.!?]{1,80}?[,;:\u{2013}\u{2014}] *(?:it|this|that)(?:'s| is| was)\b",
+    // "Not just X, but Y."
+    r"\bnot (?:just|merely) [^.!?]{1,80}?,? but\b",
+    // "It's less about X and more about Y."
+    r"\bless about [^.!?]{1,80}? (?:and |but )?more about\b",
+    // "X isn't the point; Y is."
+    r"\b(?:is not|isn't|was not|wasn't) the point\b",
+    // "Rather than X, Y."
+    r"^rather than [^,.!?]{1,80},",
+    // "Instead of asking X, ask Y."
+    r"^instead of asking\b",
+    // "There's a difference between X and Y."
+    r"^there(?:'s| is) an? (?:[a-z]+ )?difference between\b",
+    // "The answer isn't necessarily X."
+    r"^the answer (?:is not|isn't) necessarily\b",
+];
+
+fn contrast_matchers() -> &'static [Regex] {
+    static MATCHERS: OnceLock<Vec<Regex>> = OnceLock::new();
+    MATCHERS.get_or_init(|| {
+        CONTRAST_TEMPLATES
+            .iter()
+            .map(|template| {
+                Regex::new(&format!("(?i){}", template.replace('\'', "['\u{2019}]")))
+                    .expect("VIBE020 contrast regexes must compile")
+            })
+            .collect()
+    })
+}
+
+fn check_rhetorical_contrasts(
+    context: &ScanContext<'_>,
+    metadata: &'static RuleMetadata,
+    findings: &mut Vec<crate::model::Finding>,
+) {
+    if !is_prose(context) || is_release_notes(context) {
+        return;
+    }
+    let prose = context.prose();
+    let mut hits = Vec::new();
+    for sentence in context.sentences() {
+        let text = sentence.text(prose);
+        // Comment markers and list bullets stay in the prose view; skip them to reach the
+        // sentence's first word.
+        let trimmed = text.trim_start_matches(|character: char| {
+            character.is_whitespace()
+                || matches!(character, '-' | '*' | '+' | '>' | '/' | '#' | '!')
+        });
+        let base = sentence.start + text.len() - trimmed.len();
+        let trimmed = trimmed.trim_end();
+        let hit = contrast_matchers()
+            .iter()
+            .enumerate()
+            .find_map(|(template, matcher)| {
+                matcher
+                    .find(trimmed)
+                    .map(|found| (base + found.start(), template))
+            });
+        if let Some((offset, template)) = hit
+            && !inside_double_quotes(prose, offset)
+        {
+            hits.push((offset, template));
+        }
+    }
+    let distinct: HashSet<_> = hits.iter().map(|(_, template)| *template).collect();
+    if hits.len() >= 3 && distinct.len() >= 2 && hits.len() * 250 >= context.prose_word_count() {
+        emit(
+            context,
+            metadata,
+            findings,
+            hits[0].0,
+            Some(format!(
+                "observed {} rhetorical contrasts using {} distinct templates across {} words",
+                hits.len(),
+                distinct.len(),
+                context.prose_word_count()
+            )),
+        );
+    }
+}
+
 fn check_word_density(
     context: &ScanContext<'_>,
     metadata: &'static RuleMetadata,
@@ -1473,5 +1581,58 @@ mod tests {
             ),
             0
         );
+    }
+
+    #[test]
+    fn rhetorical_contrasts_need_a_dense_varied_cluster() {
+        let cluster = "It's a cache, not a database. The goal isn't speed; it's predictability. Rather than tuning the size, measure the misses.";
+        assert_eq!(findings("VIBE020", cluster), 1);
+        assert_eq!(
+            findings(
+                "VIBE020",
+                "This isn't a style rule, it's a parser limit. Instead of asking whether it is fast, ask whether it is bounded. Not just the parser, but the lexer too."
+            ),
+            1
+        );
+        assert_eq!(
+            findings(
+                "VIBE020",
+                "It\u{2019}s a cache, not a database. There\u{2019}s a real difference between a miss and an error. Speed isn\u{2019}t the point; bounded latency is."
+            ),
+            1
+        );
+        assert_eq!(
+            findings_at(
+                "VIBE020",
+                "src/cache.rs",
+                "// It's a cache, not a database.\n// The goal isn't speed; it's predictability.\n// Rather than tuning the size, measure the misses.\n"
+            ),
+            1
+        );
+    }
+
+    #[test]
+    fn rhetorical_contrasts_ignore_sparse_repeated_quoted_and_release_note_uses() {
+        assert_eq!(
+            findings(
+                "VIBE020",
+                "It is a cache, not a database. Rather than tuning the size, measure the misses."
+            ),
+            0
+        );
+        let repeated = "It's a cache, not a database. It's a hint, not a guarantee. It's a draft, not a release.";
+        assert_eq!(findings("VIBE020", repeated), 0);
+        let cluster = "It's a cache, not a database. The goal isn't speed; it's predictability. Rather than tuning the size, measure the misses.";
+        let filler =
+            " The cache stores rendered pages and rebuilds them from the origin.".repeat(80);
+        assert_eq!(findings("VIBE020", &format!("{cluster}{filler}")), 0);
+        assert_eq!(
+            findings(
+                "VIBE020",
+                r#"Avoid "It's X, not Y." Avoid "The goal isn't X; it's Y." Avoid "Rather than X, Y.""#
+            ),
+            0
+        );
+        assert_eq!(findings_at("VIBE020", "CHANGELOG.md", cluster), 0);
     }
 }
