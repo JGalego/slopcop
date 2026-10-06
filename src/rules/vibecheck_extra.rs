@@ -1267,34 +1267,18 @@ fn check_ai_vocabulary(
         "profound",
         "profoundly",
     ];
-    if !is_prose(context) {
-        return;
-    }
-    let tokens = words(context.prose());
-    let used: Vec<_> = tokens
-        .iter()
-        .filter(|word| TERMS.contains(&word.as_str()))
-        .collect();
-    let distinct: HashSet<_> = used.iter().collect();
-    if used.len() >= 5 && distinct.len() >= 3 && used.len() * 120 >= tokens.len() {
-        let offset = TERMS
-            .iter()
-            .filter_map(|term| find_word(context.lower_prose(), term))
-            .min()
-            .unwrap_or(0);
-        emit(
-            context,
-            metadata,
-            findings,
-            offset,
-            Some(format!(
-                "observed {} generic AI vocabulary words using {} distinct forms across {} words",
-                used.len(),
-                distinct.len(),
-                tokens.len()
-            )),
-        );
-    }
+    check_distinct_cluster(
+        context,
+        metadata,
+        findings,
+        TERMS,
+        DistinctThresholds {
+            minimum: 5,
+            distinct_minimum: 3,
+            words_per_hit: 120,
+        },
+        "generic AI vocabulary words",
+    );
 }
 
 fn check_moral_framing(
@@ -2405,6 +2389,17 @@ mod tests {
             findings(
                 "VIBE022",
                 "Use the covering index to streamline this query. The guide lists best practices for indexes."
+            ),
+            0
+        );
+    }
+
+    #[test]
+    fn ai_vocabulary_ignores_quoted_words() {
+        assert_eq!(
+            findings(
+                "VIBE023",
+                r#"Avoid "nuanced", "holistic", "meaningful", "thoughtful", and "delve" in summaries."#
             ),
             0
         );
