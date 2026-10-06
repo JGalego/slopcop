@@ -88,12 +88,20 @@ jobs:
       - name: Write an empty configuration
         shell: bash
         run: printf '[slopcop]\n' > "$RUNNER_TEMP/slopcop.toml"
-      - name: Scan the clean fixtures with a released binary
+      # The clean fixtures gain cases as unreleased fixes land, so the pinned release could report
+      # them. A small project written here stays clean for any release.
+      - name: Write a clean project
+        shell: bash
+        run: |
+          mkdir -p action-clean
+          printf 'def total(values):\n    return sum(values)\n' > action-clean/totals.py
+          printf '# Totals\n\nThe script prints the sum of the numbers in each input file.\n' > action-clean/README.md
+      - name: Scan the clean project with a released binary
         id: clean
         uses: ./
         with:
           version: v0.2.0
-          paths: tests/fixtures/clean
+          paths: action-clean
           mode: all
           config: ${{ runner.temp }}/slopcop.toml
       - name: Scan the slop fixtures
@@ -133,7 +141,7 @@ jobs:
         uses: ./
         with:
           version: v0.2.0
-          paths: tests/fixtures/clean
+          paths: action-clean
           config: ${{ runner.temp }}/slopcop.toml
 
   vscode:
