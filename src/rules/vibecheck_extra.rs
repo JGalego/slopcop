@@ -1330,6 +1330,12 @@ fn check_conclusions(
         "all in all",
         "at the end of the day",
         "ultimately",
+        "in the end",
+        "taken together",
+        "the key takeaway",
+        "the broader lesson",
+        "this serves as a reminder",
+        "this reinforces the importance",
     ];
     if !is_prose(context) {
         return;
@@ -2363,5 +2369,11 @@ mod tests {
     fn disclaimers_include_one_size_fits_all_caveats() {
         let caveats = "There is no one-size-fits-all answer. Of course, it depends on the specific situation. Consider your individual circumstances, because every situation is different.";
         assert_eq!(findings("VIBE015", caveats), 1);
+    }
+
+    #[test]
+    fn conclusions_include_takeaways_and_reminders() {
+        let closing = "The parser reads tokens and reports the first invalid byte with its offset. The scanner runs files in parallel and sorts results before printing. The key takeaway is speed. This serves as a reminder to measure. In the end, the tests pass.";
+        assert_eq!(findings("VIBE016", closing), 1);
     }
 }
