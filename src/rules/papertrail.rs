@@ -24,12 +24,7 @@ impl<'a> CommitContext<'a> {
     }
 
     fn location(&self, offset: usize) -> Location {
-        let prefix = &self.source[..offset.min(self.source.len())];
-        let line_start = prefix.rfind('\n').map_or(0, |position| position + 1);
-        Location {
-            line: prefix.bytes().filter(|byte| *byte == b'\n').count() + 1,
-            column: prefix[line_start..].chars().count() + 1,
-        }
+        Location::at(self.source, offset)
     }
 }
 
@@ -215,7 +210,15 @@ mod tests {
     fn commit_templates_preserve_subject_locations() {
         let findings = findings("# Explain the change\n\n  fix\n", false);
         assert_eq!(findings.len(), 1);
-        assert_eq!(findings[0].location, Location { line: 3, column: 3 });
+        assert_eq!(
+            findings[0].location,
+            Location {
+                line: 3,
+                column: 3,
+                end_line: 3,
+                end_column: 6
+            }
+        );
     }
 
     #[test]

@@ -408,7 +408,7 @@ mod tests {
     fn finding(path: &str, line: usize, rule_id: &'static str, severity: Severity) -> Finding {
         Finding {
             path: path.into(),
-            location: Location { line, column: 1 },
+            location: Location::point(line, 1),
             rule_id,
             module: Module::Deadweight,
             severity,

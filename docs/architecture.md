@@ -45,7 +45,7 @@ text / JSON / SARIF / GitHub / HTML reporter
 
 `git` reads staged content directly from the index. Working-tree comparisons read local content, while base comparisons read committed `HEAD` blobs. Both parse zero-context diff hunks and retain findings whose source line intersects an added range. Selection, configuration, and hunk lookup use normalized absolute paths; reports use invocation-relative paths where possible.
 
-`reporting` consumes sorted findings. JSON includes scan counts; SARIF includes every rule descriptor; GitHub output escapes workflow-command control characters; HTML is a self-contained page that escapes all source text and runs no scripts.
+`reporting` consumes sorted findings. Each finding carries a range from its reported position to the end of that line's content, since rules report one position and judge the line or construct that starts there. JSON includes scan counts and both ends of each range; SARIF includes every rule descriptor and full regions; GitHub output escapes workflow-command control characters; HTML is a self-contained page that escapes all source text and runs no scripts.
 
 ## Determinism
 

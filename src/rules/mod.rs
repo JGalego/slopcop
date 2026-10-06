@@ -96,13 +96,7 @@ impl ScanContext<'_> {
 
     #[must_use]
     pub fn location(&self, offset: usize) -> Location {
-        let safe_offset = offset.min(self.source.len());
-        let prefix = &self.source[..safe_offset];
-        let line_start = prefix.rfind('\n').map_or(0, |position| position + 1);
-        Location {
-            line: prefix.bytes().filter(|byte| *byte == b'\n').count() + 1,
-            column: prefix[line_start..].chars().count() + 1,
-        }
+        Location::at(self.source, offset)
     }
 
     #[must_use]

@@ -84,10 +84,52 @@ pub struct RuleMetadata {
     pub false_positives: &'static str,
 }
 
+/// A one-based source range. Columns count Unicode scalar values, and `end_column` is the column
+/// just past the last character, as in SARIF.
 #[derive(Clone, Debug, Eq, PartialEq, Serialize)]
 pub struct Location {
     pub line: usize,
     pub column: usize,
+    pub end_line: usize,
+    pub end_column: usize,
+}
+
+impl Location {
+    /// An empty range at one position.
+    #[must_use]
+    pub const fn point(line: usize, column: usize) -> Self {
+        Self {
+            line,
+            column,
+            end_line: line,
+            end_column: column,
+        }
+    }
+
+    /// Locates a byte offset and extends the range to the end of that line's content. Rules
+    /// report a position, and most of them judge a whole line or a construct that starts on it,
+    /// so the line is the narrowest span that holds the evidence.
+    #[must_use]
+    pub fn at(source: &str, offset: usize) -> Self {
+        let mut offset = offset.min(source.len());
+        while !source.is_char_boundary(offset) {
+            offset -= 1;
+        }
+        let prefix = &source[..offset];
+        let line_start = prefix.rfind('\n').map_or(0, |position| position + 1);
+        let line_end = source[offset..]
+            .find('\n')
+            .map_or(source.len(), |position| offset + position);
+        let line = prefix.bytes().filter(|byte| *byte == b'\n').count() + 1;
+        let column = prefix[line_start..].chars().count() + 1;
+        let content_end = source[line_start..line_end].trim_end().chars().count() + 1;
+        Self {
+            line,
+            column,
+            end_line: line,
+            end_column: content_end.max(column),
+        }
+    }
 }
 
 #[derive(Clone, Debug, Eq, PartialEq, Serialize)]
@@ -102,4 +144,21 @@ pub struct Finding {
     pub evidence: Option<String>,
     pub observation: Option<String>,
     pub suggestion: &'static str,
+}
+
+#[cfg(test)]
+mod tests {
+    use super::Location;
+
+    #[test]
+    fn locations_span_the_rest_of_the_line_content() {
+        let source = "first\r\n  é = todo()   \r\nlast";
+        let offset = source.find('é').expect("marker");
+        let location = Location::at(source, offset);
+        assert_eq!((location.line, location.column), (2, 3));
+        assert_eq!((location.end_line, location.end_column), (2, 13));
+        assert_eq!(Location::at(source, source.len()), Location::point(3, 5));
+        let blank = Location::at("a\n\nb", 2);
+        assert_eq!(blank, Location::point(2, 1));
+    }
 }

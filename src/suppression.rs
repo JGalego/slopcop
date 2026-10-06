@@ -63,7 +63,7 @@ mod tests {
     fn finding(line: usize) -> Finding {
         Finding {
             path: PathBuf::from("app.py"),
-            location: Location { line, column: 1 },
+            location: Location::point(line, 1),
             rule_id: "DEAD004",
             module: Module::Deadweight,
             severity: Severity::Warning,

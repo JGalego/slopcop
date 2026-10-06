@@ -145,7 +145,9 @@ pub fn write_sarif(mut writer: impl Write, result: &ScanResult) -> serde_json::R
                         "artifactLocation": { "uri": artifact_uri(&finding.path) },
                         "region": {
                             "startLine": finding.location.line,
-                            "startColumn": finding.location.column
+                            "startColumn": finding.location.column,
+                            "endLine": finding.location.end_line,
+                            "endColumn": finding.location.end_column
                         }
                     }
                 }],
@@ -262,7 +264,12 @@ mod tests {
             skipped_files: 0,
             findings: vec![Finding {
                 path: "README.md".into(),
-                location: Location { line: 4, column: 2 },
+                location: Location {
+                    line: 4,
+                    column: 2,
+                    end_line: 4,
+                    end_column: 9,
+                },
                 rule_id: "VIBE001",
                 module: Module::Vibecheck,
                 severity: Severity::Warning,
@@ -312,5 +319,10 @@ mod tests {
             serde_json::from_slice(&sarif_output).expect("valid SARIF JSON");
         assert_eq!(sarif["version"], "2.1.0");
         assert_eq!(sarif["runs"][0]["results"][0]["ruleId"], "VIBE001");
+        let region = &sarif["runs"][0]["results"][0]["locations"][0]["physicalLocation"]["region"];
+        assert_eq!(region["startColumn"], 2);
+        assert_eq!(region["endLine"], 4);
+        assert_eq!(region["endColumn"], 9);
+        assert_eq!(json["findings"][0]["location"]["end_column"], 9);
     }
 }
