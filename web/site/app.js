@@ -1,0 +1,394 @@
+const SEVERITIES = ["error", "warning", "info"];
+const MODULES = ["deadweight", "vibecheck", "papertrail"];
+const PAGE_SIZE = 250;
+const CONTEXT_LINES = 2;
+
+const $ = (id) => document.getElementById(id);
+const worker = new Worker(new URL("worker.js", import.meta.url), { type: "module" });
+
+const state = {
+  data: null,
+  rules: new Map(),
+  severity: new Set(SEVERITIES),
+  module: new Set(MODULES),
+  rule: null,
+  file: null,
+  query: "",
+  limit: PAGE_SIZE,
+  selected: -1,
+};
+
+function h(tag, props, ...children) {
+  const node = document.createElement(tag);
+  for (const [key, value] of Object.entries(props)) {
+    if (value === undefined || value === null || value === false) continue;
+    if (key === "class") node.className = value;
+    else if (key.startsWith("on")) node.addEventListener(key.slice(2), value);
+    else if (key in node && key !== "list") node[key] = value;
+    else node.setAttribute(key, value === true ? "" : value);
+  }
+  node.append(...children.flat().filter((child) => child !== null && child !== undefined && child !== false));
+  return node;
+}
+
+function parseTarget(input, explicitRef) {
+  const text = input.trim().replace(/\.git$/, "").replace(/\/+$/, "");
+  const match = text.match(/^(?:https?:\/\/)?(?:www\.)?(?:github\.com\/)?([\w.-]+)\/([\w.-]+)(?:\/(?:tree|blob|commit)\/(.+))?(?:@(.+))?$/);
+  if (!match) return null;
+  const [, owner, name, pathRef, atRef] = match;
+  return { repo: `${owner}/${name}`, ref: explicitRef.trim() || atRef || pathRef || "" };
+}
+
+function targetFromHash() {
+  const value = decodeURIComponent(location.hash.slice(1));
+  if (!value) return null;
+  const [repo, ref = ""] = value.split("@");
+  return parseTarget(repo, ref);
+}
+
+function startScan(target) {
+  $("repo").value = target.repo;
+  $("ref").value = target.ref;
+  const hash = "#" + target.repo + (target.ref ? "@" + target.ref : "");
+  if (location.hash !== hash) history.replaceState(null, "", hash);
+  document.title = `${target.repo} · slopcop`;
+
+  $("error").hidden = true;
+  $("results").hidden = true;
+  $("status").hidden = false;
+  $("scan-button").disabled = true;
+  setProgress("Loading scanner", 0, 0);
+  worker.postMessage(target);
+}
+
+function setProgress(stage, done, total) {
+  $("status-text").textContent = stage + "…";
+  $("status-count").textContent = total ? `${done} / ${total}` : "";
+  const bar = $("progress-bar");
+  bar.classList.toggle("indeterminate", !total);
+  bar.style.width = total ? `${(100 * done) / total}%` : "";
+}
+
+worker.onmessage = ({ data }) => {
+  if (data.type === "progress") {
+    setProgress(data.stage, data.done, data.total);
+    return;
+  }
+  $("status").hidden = true;
+  $("scan-button").disabled = false;
+  if (data.type === "error") {
+    $("error").textContent = data.message;
+    $("error").hidden = false;
+    return;
+  }
+  showResults(data);
+};
+
+worker.onerror = (event) => {
+  $("status").hidden = true;
+  $("scan-button").disabled = false;
+  $("error").textContent = `The scanner failed to load: ${event.message || "unknown error"}.`;
+  $("error").hidden = false;
+};
+
+function showResults(data) {
+  state.data = data;
+  state.rules = new Map(data.rules.map((rule) => [rule.id, rule]));
+  state.severity = new Set(SEVERITIES);
+  state.module = new Set(MODULES);
+  state.rule = null;
+  state.file = null;
+  state.query = "";
+  state.limit = PAGE_SIZE;
+  state.selected = -1;
+  $("query").value = "";
+
+  renderSummary();
+  $("notices").replaceChildren(...data.notices.map((notice) => h("li", {}, notice)));
+  renderFacets();
+  renderFindings();
+  document.body.classList.add("has-results");
+  $("results").hidden = false;
+}
+
+function renderSummary() {
+  const { repo, ref, sha, result, stats } = state.data;
+  const counts = countBy(result.findings, (finding) => finding.severity);
+  const treeUrl = `https://github.com/${repo}/tree/${sha}`;
+  const download = () => {
+    const blob = new Blob([JSON.stringify(result, null, 2)], { type: "application/json" });
+    const link = h("a", { href: URL.createObjectURL(blob), download: `slopcop-${repo.replace("/", "-")}.json` });
+    link.click();
+    URL.revokeObjectURL(link.href);
+  };
+
+  $("summary").replaceChildren(
+    h("div", { class: "summary-target" },
+      h("a", { href: treeUrl, class: "summary-repo" }, repo),
+      h("span", { class: "summary-ref" }, (ref ? ref + " · " : "") + sha.slice(0, 7)),
+    ),
+    h("dl", { class: "summary-stats" },
+      stat(result.summary.findings, result.summary.findings === 1 ? "finding" : "findings", "total"),
+      ...SEVERITIES.map((severity) => stat(counts.get(severity) || 0, severity, severity)),
+      stat(result.summary.scanned_files, "files scanned"),
+      stat(result.summary.skipped_files, "skipped"),
+      stat(formatMillis(stats.totalMillis), `total, ${formatMillis(stats.scanMillis)} scanning`),
+    ),
+    h("button", { type: "button", class: "secondary", onclick: download }, "Download JSON"),
+  );
+}
+
+function stat(value, label, tone) {
+  return h("div", { class: "stat" + (tone ? " stat-" + tone : "") }, h("dt", {}, String(value)), h("dd", {}, label));
+}
+
+function formatMillis(millis) {
+  return millis < 1000 ? `${Math.round(millis)} ms` : `${(millis / 1000).toFixed(1)} s`;
+}
+
+function countBy(items, key) {
+  const counts = new Map();
+  for (const item of items) counts.set(key(item), (counts.get(key(item)) || 0) + 1);
+  return counts;
+}
+
+function renderFacets() {
+  const findings = state.data.result.findings;
+  const severityCounts = countBy(findings, (finding) => finding.severity);
+  const moduleCounts = countBy(findings, (finding) => finding.module);
+
+  $("facet-severity").replaceChildren(...SEVERITIES.map((severity) =>
+    toggleChip(severity, severityCounts.get(severity) || 0, state.severity, "sev-" + severity)));
+  $("facet-module").replaceChildren(...MODULES.filter((name) => moduleCounts.has(name)).map((name) =>
+    toggleChip(name, moduleCounts.get(name), state.module)));
+
+  const ruleCounts = [...countBy(findings, (finding) => finding.rule_id)].sort((a, b) => b[1] - a[1] || a[0].localeCompare(b[0]));
+  $("facet-rule").replaceChildren(...ruleCounts.map(([id, count]) =>
+    facetItem(id, state.rules.get(id)?.description || "", count, state.rule === id, () => {
+      state.rule = state.rule === id ? null : id;
+      refresh();
+    })));
+
+  const fileCounts = [...countBy(findings, (finding) => finding.path)].sort((a, b) => b[1] - a[1] || a[0].localeCompare(b[0]));
+  $("facet-file").replaceChildren(...fileCounts.map(([path, count]) =>
+    facetItem(path, "", count, state.file === path, () => {
+      state.file = state.file === path ? null : path;
+      refresh();
+    })));
+}
+
+function toggleChip(label, count, set, extraClass = "") {
+  return h("button", {
+    type: "button",
+    class: `chip ${extraClass}`,
+    "aria-pressed": String(set.has(label)),
+    onclick: () => {
+      if (set.has(label)) set.delete(label);
+      else set.add(label);
+      refresh();
+    },
+  }, label, h("span", { class: "count" }, String(count)));
+}
+
+function facetItem(label, title, count, active, onclick) {
+  return h("li", {},
+    h("button", { type: "button", class: "facet-item", title: title || label, "aria-pressed": String(active), onclick },
+      h("span", { class: "facet-label" }, label),
+      h("span", { class: "count" }, String(count))));
+}
+
+function refresh() {
+  state.limit = PAGE_SIZE;
+  state.selected = -1;
+  renderFacets();
+  renderFindings();
+}
+
+function matches(finding) {
+  if (!state.severity.has(finding.severity) || !state.module.has(finding.module)) return false;
+  if (state.rule && finding.rule_id !== state.rule) return false;
+  if (state.file && finding.path !== state.file) return false;
+  if (!state.query) return true;
+  const haystack = [finding.path, finding.rule_id, finding.message, finding.evidence, finding.observation].join("\n").toLowerCase();
+  return state.query.split(/\s+/).every((term) => haystack.includes(term));
+}
+
+function renderFindings() {
+  const all = state.data.result.findings;
+  const visible = all.filter(matches);
+  const filtered = visible.length !== all.length;
+  $("match-count").textContent = filtered ? `${visible.length} of ${all.length} findings` : `${all.length} findings`;
+  $("clear-filters").hidden = !filtered;
+
+  const container = $("findings");
+  if (all.length === 0) {
+    container.replaceChildren(h("div", { class: "empty" },
+      h("strong", {}, "No findings."),
+      ` slopcop scanned ${state.data.result.summary.scanned_files} files and found nothing to report.`));
+    return;
+  }
+  if (visible.length === 0) {
+    container.replaceChildren(h("div", { class: "empty" }, "No findings match the current filters."));
+    return;
+  }
+
+  const groups = [];
+  for (const finding of visible.slice(0, state.limit)) {
+    const last = groups[groups.length - 1];
+    if (last && last.path === finding.path) last.findings.push(finding);
+    else groups.push({ path: finding.path, findings: [finding] });
+  }
+
+  container.replaceChildren(
+    ...groups.map(renderGroup),
+    visible.length > state.limit
+      ? h("button", { type: "button", class: "secondary more", onclick: () => { state.limit += PAGE_SIZE; renderFindings(); } },
+        `Show ${Math.min(PAGE_SIZE, visible.length - state.limit)} more of ${visible.length - state.limit} remaining`)
+      : null,
+  );
+  if (state.selected >= 0) select(state.selected, false);
+}
+
+function blobUrl(path, line) {
+  const { repo, sha } = state.data;
+  return `https://github.com/${repo}/blob/${sha}/${path.split("/").map(encodeURIComponent).join("/")}` + (line ? `#L${line}` : "");
+}
+
+function renderGroup(group) {
+  return h("section", { class: "file-group" },
+    h("header", { class: "file-header" },
+      h("button", { type: "button", class: "file-path", title: "Show only this file", onclick: () => { state.file = group.path; refresh(); } }, group.path),
+      h("span", { class: "count" }, String(group.findings.length)),
+      h("a", { href: blobUrl(group.path), target: "_blank", rel: "noopener" }, "GitHub ↗")),
+    ...group.findings.map(renderFinding));
+}
+
+function renderFinding(finding) {
+  const rule = state.rules.get(finding.rule_id);
+  const { line, column } = finding.location;
+  const explanation = rule ? renderExplanation(rule) : null;
+  const toggleExplanation = () => {
+    if (explanation) explanation.hidden = !explanation.hidden;
+  };
+
+  return h("article", { class: `finding sev-${finding.severity}`, tabindex: "-1", onclick: (event) => {
+    const cards = [...document.querySelectorAll(".finding")];
+    select(cards.indexOf(event.currentTarget), false);
+  } },
+    h("div", { class: "finding-head" },
+      h("span", { class: `badge sev-${finding.severity}` }, finding.severity),
+      h("button", { type: "button", class: "rule-id", title: "Explain this rule (e)", onclick: toggleExplanation }, finding.rule_id),
+      h("span", { class: "finding-message" }, finding.message),
+      h("a", { class: "location", href: blobUrl(finding.path, line), target: "_blank", rel: "noopener", title: "Open on GitHub (o)" }, `${line}:${column}`)),
+    finding.observation ? h("p", { class: "observation" }, finding.observation) : null,
+    renderSnippet(finding),
+    finding.suggestion ? h("p", { class: "suggestion" }, h("span", {}, "Fix: "), finding.suggestion) : null,
+    explanation);
+}
+
+function renderSnippet(finding) {
+  const source = state.data.sources[finding.path];
+  if (source === undefined) {
+    return finding.evidence ? h("pre", { class: "evidence" }, finding.evidence) : null;
+  }
+  const lines = source.split("\n");
+  const target = finding.location.line;
+  const first = Math.max(1, target - CONTEXT_LINES);
+  const last = Math.min(lines.length, target + CONTEXT_LINES);
+  const rows = [];
+  for (let number = first; number <= last; number += 1) {
+    rows.push(h("div", { class: "code-line" + (number === target ? " hit" : "") },
+      h("span", { class: "gutter" }, String(number)),
+      h("span", { class: "text" }, lines[number - 1].replace(/\r$/, "") || " ")));
+  }
+  return h("div", { class: "code" }, rows);
+}
+
+function renderExplanation(rule) {
+  return h("div", { class: "explanation", hidden: true },
+    h("p", { class: "explanation-title" }, h("strong", {}, rule.id), ` · ${rule.module} · default ${rule.default_severity}, ${rule.default_confidence} confidence`),
+    h("p", {}, rule.description),
+    h("h3", {}, "Why it matters"),
+    h("p", {}, rule.rationale),
+    rule.examples.length ? [h("h3", {}, "Example"), ...rule.examples.map((example) => h("pre", {}, example))] : null,
+    h("h3", {}, "False positives"),
+    h("p", {}, rule.false_positives),
+    h("p", { class: "explanation-hint" }, "Suppress with a reason: ", h("code", {}, `slopcop: ignore ${rule.id} -- reason`)));
+}
+
+function select(index, scroll = true) {
+  const cards = [...document.querySelectorAll(".finding")];
+  if (cards.length === 0) return;
+  state.selected = Math.max(0, Math.min(index, cards.length - 1));
+  for (const card of cards) card.classList.remove("selected");
+  const card = cards[state.selected];
+  card.classList.add("selected");
+  if (scroll) {
+    card.scrollIntoView({ block: "nearest", behavior: "smooth" });
+    card.focus({ preventScroll: true });
+  }
+}
+
+document.addEventListener("keydown", (event) => {
+  if (!state.data || $("results").hidden || event.metaKey || event.ctrlKey || event.altKey) return;
+  const typing = event.target.matches("input, textarea");
+  if (event.key === "Escape" && event.target === $("query")) {
+    $("query").blur();
+    return;
+  }
+  if (typing) return;
+  const card = document.querySelectorAll(".finding")[state.selected];
+  switch (event.key) {
+    case "j": select(state.selected + 1); break;
+    case "k": select(state.selected - 1); break;
+    case "o": card?.querySelector(".location").click(); break;
+    case "e": card?.querySelector(".rule-id").click(); break;
+    case "/": event.preventDefault(); $("query").focus(); break;
+    default: return;
+  }
+});
+
+$("query").addEventListener("input", (event) => {
+  state.query = event.target.value.trim().toLowerCase();
+  state.limit = PAGE_SIZE;
+  state.selected = -1;
+  renderFindings();
+});
+
+$("clear-filters").addEventListener("click", () => {
+  state.severity = new Set(SEVERITIES);
+  state.module = new Set(MODULES);
+  state.rule = null;
+  state.file = null;
+  state.query = "";
+  $("query").value = "";
+  refresh();
+});
+
+$("scan-form").addEventListener("submit", (event) => {
+  event.preventDefault();
+  const target = parseTarget($("repo").value, $("ref").value);
+  if (!target) {
+    $("error").textContent = "Enter a repository as owner/name or a github.com URL.";
+    $("error").hidden = false;
+    return;
+  }
+  startScan(target);
+});
+
+$("examples").addEventListener("click", (event) => {
+  const repo = event.target.closest("button")?.dataset.repo;
+  if (repo) startScan({ repo, ref: "" });
+});
+
+window.addEventListener("hashchange", () => {
+  const target = targetFromHash();
+  if (target && !$("scan-button").disabled) startScan(target);
+});
+
+if (matchMedia("(max-width: 860px)").matches) {
+  for (const facet of document.querySelectorAll(".collapsible")) facet.open = false;
+}
+
+const initial = targetFromHash();
+if (initial) startScan(initial);

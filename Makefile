@@ -1,4 +1,4 @@
-.PHONY: benchmark bootstrap check self-lint
+.PHONY: benchmark bootstrap check self-lint web web-serve
 
 bootstrap:
 	cargo build --locked
@@ -22,3 +22,9 @@ self-lint:
 
 benchmark:
 	cargo run --release -- benchmark
+
+web:
+	cd web && wasm-pack build --target web --out-dir site/pkg --no-pack --no-typescript --release
+
+web-serve: web
+	python3 -m http.server --directory web/site 8000

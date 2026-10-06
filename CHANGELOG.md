@@ -2,6 +2,13 @@
 
 This project records user-visible changes in this file and follows Semantic Versioning.
 
+## Unreleased
+
+### Added
+
+- Browser demo that scans public GitHub repositories with the WebAssembly build of the scanner, deployed to GitHub Pages.
+- `Config::from_toml` for loading configuration text without reading the filesystem.
+
 ## 0.1.0 - 2026-10-05
 
 ### Fixed

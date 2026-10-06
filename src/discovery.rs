@@ -7,7 +7,7 @@ use thiserror::Error;
 
 use crate::config::{PathFilter, absolute_path};
 
-const SKIPPED_DIRECTORIES: &[&str] = &[
+pub const SKIPPED_DIRECTORIES: &[&str] = &[
     ".git",
     ".hg",
     ".svn",

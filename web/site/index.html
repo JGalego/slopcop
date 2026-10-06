@@ -1,0 +1,99 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>slopcop · Slop stops here</title>
+  <meta name="description" content="Scan any public GitHub repository with slopcop, entirely in your browser.">
+  <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 160 160'%3E%3Ccircle cx='80' cy='80' r='68' fill='%23fff'/%3E%3Ctext x='80' y='105' text-anchor='middle' font-size='88'%3E💩%3C/text%3E%3Cg fill='none' stroke='%23e53935' stroke-width='11'%3E%3Ccircle cx='80' cy='80' r='68'/%3E%3Cpath d='M32 32 L128 128'/%3E%3C/g%3E%3C/svg%3E">
+  <link rel="stylesheet" href="style.css">
+  <script type="module" src="app.js"></script>
+</head>
+<body>
+  <header class="masthead">
+    <div class="masthead-inner">
+      <a class="brand" href="./" aria-label="slopcop home">
+        <svg class="logo" viewBox="0 0 160 160" aria-hidden="true">
+          <circle cx="80" cy="80" r="68" fill="#ffffff"/>
+          <text x="80" y="105" text-anchor="middle" font-size="88">💩</text>
+          <g fill="none" stroke="#e53935" stroke-width="11"><circle cx="80" cy="80" r="68"/><path d="M32 32 L128 128"/></g>
+        </svg>
+        <span>slopcop</span>
+      </a>
+      <nav class="masthead-links">
+        <a href="https://github.com/JGalego/slopcop/blob/main/docs/rules/README.md">Rules</a>
+        <a href="https://github.com/JGalego/slopcop">GitHub</a>
+      </nav>
+    </div>
+  </header>
+
+  <main>
+    <section class="intro" id="intro">
+      <h1>Slop stops here.</h1>
+      <p class="lede">Point slopcop at a public GitHub repository. Files are fetched straight from GitHub and scanned by the real linter compiled to WebAssembly. Nothing leaves your browser.</p>
+
+      <form id="scan-form" class="scan-form" autocomplete="off">
+        <label class="visually-hidden" for="repo">Repository</label>
+        <input id="repo" name="repo" type="text" placeholder="owner/repo or GitHub URL" spellcheck="false" required>
+        <label class="visually-hidden" for="ref">Branch, tag, or commit</label>
+        <input id="ref" name="ref" type="text" placeholder="ref (optional)" spellcheck="false">
+        <button id="scan-button" type="submit">Scan</button>
+      </form>
+      <p class="examples" id="examples">Try
+        <button type="button" data-repo="JGalego/slopcop">JGalego/slopcop</button>
+        <button type="button" data-repo="pallets/flask">pallets/flask</button>
+        <button type="button" data-repo="expressjs/express">expressjs/express</button>
+        <button type="button" data-repo="BurntSushi/ripgrep">BurntSushi/ripgrep</button>
+      </p>
+
+      <div id="status" class="status" hidden>
+        <div class="status-row">
+          <span id="status-text">Starting…</span>
+          <span id="status-count"></span>
+        </div>
+        <div class="progress"><div id="progress-bar"></div></div>
+      </div>
+      <p id="error" class="error" role="alert" hidden></p>
+    </section>
+
+    <section id="results" class="results" hidden>
+      <div class="summary" id="summary"></div>
+      <ul class="notices" id="notices"></ul>
+      <div class="workspace">
+        <aside class="sidebar" aria-label="Filters">
+          <label class="visually-hidden" for="query">Filter findings</label>
+          <input id="query" type="search" placeholder="Filter by path, rule, or text  ( / )" spellcheck="false">
+          <div class="facet">
+            <h2>Severity</h2>
+            <div id="facet-severity" class="chips"></div>
+          </div>
+          <div class="facet">
+            <h2>Module</h2>
+            <div id="facet-module" class="chips"></div>
+          </div>
+          <details class="facet collapsible" open>
+            <summary><h2>Rules</h2></summary>
+            <ul id="facet-rule" class="facet-list"></ul>
+          </details>
+          <details class="facet collapsible" open>
+            <summary><h2>Files</h2></summary>
+            <ul id="facet-file" class="facet-list"></ul>
+          </details>
+        </aside>
+        <div class="findings-pane">
+          <div class="findings-toolbar">
+            <span id="match-count"></span>
+            <button type="button" id="clear-filters" class="link-button" hidden>Clear filters</button>
+            <span class="keys"><kbd>j</kbd>/<kbd>k</kbd> move · <kbd>o</kbd> open on GitHub · <kbd>e</kbd> explain rule</span>
+          </div>
+          <div id="findings"></div>
+        </div>
+      </div>
+    </section>
+  </main>
+
+  <footer class="footer">
+    <p>Scans skip dependency directories, unsupported file types, and files over the size limit before downloading. Commit-history checks need a local clone: run <code>slopcop history</code>.</p>
+  </footer>
+</body>
+</html>

@@ -271,7 +271,18 @@ impl Config {
             path: path.clone(),
             source,
         })?;
-        let document: Document = toml::from_str(&source).map_err(|source| ConfigError::Parse {
+        Self::from_toml(path, &source)
+    }
+
+    /// Parses configuration text as though it had been read from `path`. Path filters are
+    /// anchored at the parent of `path`, which does not need to exist.
+    ///
+    /// # Errors
+    ///
+    /// Returns an error for invalid TOML, unknown rules, invalid globs, invalid severities, or a
+    /// configuration that disables every rule.
+    pub fn from_toml(path: PathBuf, source: &str) -> Result<Self, ConfigError> {
+        let document: Document = toml::from_str(source).map_err(|source| ConfigError::Parse {
             path: path.clone(),
             source,
         })?;
