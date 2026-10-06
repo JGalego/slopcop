@@ -38,6 +38,13 @@ fn exit_codes_formats_configuration_and_suppressions_are_stable() {
         serde_json::from_slice(&sarif_output.stdout).expect("valid SARIF");
     assert_eq!(sarif["version"], "2.1.0");
 
+    let gitlab_output = slopcop(directory.path(), &["bad.py", "--format", "gitlab"]);
+    assert_eq!(gitlab_output.status.code(), Some(1));
+    let gitlab: serde_json::Value =
+        serde_json::from_slice(&gitlab_output.stdout).expect("valid Code Quality JSON");
+    assert_eq!(gitlab[0]["check_name"], "DEAD002");
+    assert_eq!(gitlab[0]["location"]["path"], "bad.py");
+
     let html_output = slopcop(directory.path(), &["bad.py", "--format", "html"]);
     assert_eq!(html_output.status.code(), Some(1));
     let html = String::from_utf8(html_output.stdout).expect("UTF-8 HTML");

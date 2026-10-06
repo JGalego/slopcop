@@ -166,12 +166,13 @@ Inputs select paths, the release, changed-line mode, and SARIF upload to code sc
 
 In editors, `slopcop lsp` runs a language server with diagnostics, rule explanations on hover, and a quick fix that inserts a suppression directive. Releases include a VS Code extension, and setup for Neovim, Helix, Emacs, and JetBrains IDEs is in [integrations](docs/integrations.md).
 
-JSON, SARIF 2.1.0, GitHub workflow annotations, and HTML reports are built in:
+JSON, SARIF 2.1.0, GitHub workflow annotations, GitLab Code Quality, and HTML reports are built in:
 
 ```sh
 slopcop . --format json
 slopcop . --format sarif > slopcop.sarif
 slopcop . --format github
+slopcop . --format gitlab > gl-code-quality-report.json
 slopcop . --format html > slopcop.html
 ```
 

@@ -10,7 +10,7 @@ use slopcop::git;
 use slopcop::init;
 use slopcop::papertrail;
 use slopcop::reporting::{
-    HtmlContext, write_github, write_html, write_json, write_sarif, write_text,
+    HtmlContext, write_github, write_gitlab, write_html, write_json, write_sarif, write_text,
 };
 use slopcop::rules::metadata_registry;
 use slopcop::{ScanOptions, ScanResult, Severity, SourceFile, scan_paths, scan_sources};
@@ -119,6 +119,7 @@ enum OutputFormat {
     Json,
     Sarif,
     Github,
+    Gitlab,
     Html,
 }
 
@@ -324,6 +325,9 @@ fn write_result(
         }
         OutputFormat::Github => {
             write_github(stdout.lock(), &result.findings).map_err(|error| error.to_string())
+        }
+        OutputFormat::Gitlab => {
+            write_gitlab(stdout.lock(), &result.findings).map_err(|error| error.to_string())
         }
         OutputFormat::Html => write_html(stdout.lock(), result, &HtmlContext::default())
             .map_err(|error| error.to_string()),

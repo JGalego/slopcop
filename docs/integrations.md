@@ -58,6 +58,29 @@ steps:
 
 slopcop's own CI runs the action against a binary built from the same commit, through the `binary` input, and tests the release download on Linux, macOS, and Windows.
 
+## GitLab CI
+
+`--format gitlab` writes a [Code Quality](https://docs.gitlab.com/ci/testing/code_quality/) report. GitLab compares the reports from the source and target branches and shows new and resolved findings in the merge request:
+
+```yaml
+slopcop:
+  image: ubuntu:24.04
+  before_script:
+    - apt-get update -qq && apt-get install -y -qq curl ca-certificates
+    - curl -fsSL https://raw.githubusercontent.com/JGalego/slopcop/main/install/install.sh | sh
+    - export PATH="$HOME/.local/bin:$PATH"
+  script:
+    - slopcop . --format gitlab > gl-code-quality-report.json
+  artifacts:
+    when: always
+    reports:
+      codequality: gl-code-quality-report.json
+```
+
+The job fails when a finding reaches the configured `fail-level`, and `when: always` keeps the report in that case. Set `SLOPCOP_VERSION` in the install step to pin a release. Release binaries need glibc 2.39 or later, which `ubuntu:24.04` provides; they do not run on Alpine.
+
+Each issue's fingerprint is built from the rule, the path, and the text of the line, not the line number, so a finding that moves because of edits above it is not reported as new.
+
 ## Editors
 
 `slopcop lsp` starts a language server on standard input and output. Any editor with a Language Server Protocol client can use it, and the findings match a command-line scan of the same file: every rule judges one file at a time, and the server uses the same configuration discovery as `--stdin`, starting in the directory of the file being edited.

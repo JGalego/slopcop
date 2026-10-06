@@ -1,3 +1,4 @@
+use std::collections::HashMap;
 use std::io::{self, Write};
 use std::path::Path;
 
@@ -203,6 +204,66 @@ pub fn write_github(mut writer: impl Write, findings: &[Finding]) -> io::Result<
     Ok(())
 }
 
+/// Writes a GitLab Code Quality report, the Code Climate issue format that merge requests read.
+///
+/// Fingerprints identify a finding by rule, path, and the text of its line rather than its line
+/// number, so GitLab can match findings between the base and head pipelines when nearby edits
+/// move them. Repeated identical lines are told apart by their order.
+///
+/// # Errors
+///
+/// Returns an error when serialization or writing fails.
+pub fn write_gitlab(mut writer: impl Write, findings: &[Finding]) -> serde_json::Result<()> {
+    let mut occurrences: HashMap<(&str, String, &str), usize> = HashMap::new();
+    let issues: Vec<_> = findings
+        .iter()
+        .map(|finding| {
+            let path = finding.path.to_string_lossy().replace('\\', "/");
+            let evidence = finding.evidence.as_deref().unwrap_or_default().trim();
+            let occurrence = occurrences
+                .entry((finding.rule_id, path.clone(), evidence))
+                .or_default();
+            *occurrence += 1;
+            let fingerprint = fnv1a_128(
+                format!("{}\0{path}\0{evidence}\0{occurrence}", finding.rule_id).as_bytes(),
+            );
+            let description = match &finding.observation {
+                Some(observation) => format!("{} Observed: {observation}.", finding.message),
+                None => finding.message.clone(),
+            };
+            json!({
+                "type": "issue",
+                "description": description,
+                "check_name": finding.rule_id,
+                "categories": ["Style"],
+                "fingerprint": format!("{fingerprint:032x}"),
+                "severity": match finding.severity {
+                    Severity::Info => "info",
+                    Severity::Warning => "minor",
+                    Severity::Error => "major",
+                },
+                "location": {
+                    "path": path,
+                    "lines": {
+                        "begin": finding.location.line,
+                        "end": finding.location.end_line
+                    }
+                }
+            })
+        })
+        .collect();
+    serde_json::to_writer_pretty(&mut writer, &issues)?;
+    writeln!(writer).map_err(serde_json::Error::io)
+}
+
+fn fnv1a_128(bytes: &[u8]) -> u128 {
+    const OFFSET: u128 = 0x6c62_272e_07bb_0142_62b8_2175_6295_c58d;
+    const PRIME: u128 = 0x0000_0000_0100_0000_0000_0000_0000_013b;
+    bytes.iter().fold(OFFSET, |hash, byte| {
+        (hash ^ u128::from(*byte)).wrapping_mul(PRIME)
+    })
+}
+
 fn escape_message(value: &str) -> String {
     value
         .replace('%', "%25")
@@ -304,6 +365,40 @@ mod tests {
         let output = String::from_utf8(output).expect("UTF-8 report");
         assert!(output.starts_with("::notice file=bad%2C%25%0A.py,"));
         assert!(output.ends_with("::message%25%0Anext\n"));
+    }
+
+    #[test]
+    fn gitlab_fingerprints_survive_line_moves_and_separate_repeats() {
+        let mut result = result();
+        result.findings[0].path = "docs\\guide.md".into();
+        result.findings[0].evidence = Some("  Moreover, it is robust.".to_owned());
+        let mut moved = result.findings[0].clone();
+        moved.location.line = 40;
+        moved.location.end_line = 40;
+        result.findings.push(moved);
+
+        let mut output = Vec::new();
+        write_gitlab(&mut output, &result.findings).expect("GitLab report");
+        let issues: serde_json::Value = serde_json::from_slice(&output).expect("valid JSON");
+        assert_eq!(issues[0]["check_name"], "VIBE001");
+        assert_eq!(issues[0]["severity"], "minor");
+        assert_eq!(issues[0]["location"]["path"], "docs/guide.md");
+        assert_eq!(issues[0]["location"]["lines"]["end"], 4);
+        assert_eq!(
+            issues[0]["description"],
+            "Dense transitions. Observed: four markers."
+        );
+        let first = issues[0]["fingerprint"].as_str().expect("fingerprint");
+        assert_eq!(first.len(), 32);
+        assert_ne!(Some(first), issues[1]["fingerprint"].as_str());
+
+        let mut alone = Vec::new();
+        write_gitlab(&mut alone, &result.findings[1..]).expect("GitLab report");
+        let alone: serde_json::Value = serde_json::from_slice(&alone).expect("valid JSON");
+        assert_eq!(
+            alone[0]["fingerprint"], first,
+            "a moved finding keeps its fingerprint"
+        );
     }
 
     #[test]
