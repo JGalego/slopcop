@@ -18,6 +18,7 @@ from pathlib import Path
 
 API = "https://api.github.com"
 GEMINI = "https://generativelanguage.googleapis.com/v1beta/models/{model}:generateContent"
+DEFAULT_MODEL = "gemini-3.5-flash"
 MARKER = "<!-- slopcop-triage -->"
 LABELS = ["bug", "enhancement", "false positive", "documentation", "question", "accessibility", "needs info"]
 MAX_BODY = 12000
@@ -174,7 +175,7 @@ def ask_gemini(issue, kind, reproduction, rule_text, open_issues):
         if part
     )
     request = urllib.request.Request(
-        GEMINI.format(model=os.environ.get("GEMINI_MODEL") or "gemini-2.5-flash"),
+        GEMINI.format(model=os.environ.get("GEMINI_MODEL") or DEFAULT_MODEL),
         method="POST",
         data=json.dumps(
             {
@@ -241,7 +242,7 @@ def main():
     if kind == "false positive":
         rule, reproduction = reproduce(parse_form(issue["body"]), slopcop)
 
-    notes, failure, model = None, None, os.environ.get("GEMINI_MODEL") or "gemini-2.5-flash"
+    notes, failure, model = None, None, os.environ.get("GEMINI_MODEL") or DEFAULT_MODEL
     if os.environ.get("GEMINI_API_KEY"):
         listed = github("GET", f"/repos/{repo}/issues?state=open&per_page=100")
         open_issues = [(item["number"], item["title"]) for item in listed if "pull_request" not in item and item["number"] != number]
