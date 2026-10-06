@@ -1643,6 +1643,30 @@ mod tests {
     }
 
     #[test]
+    fn empty_functions_with_explanatory_comments_are_quiet_in_every_language() {
+        for (path, source) in [
+            (
+                "main.go",
+                "func onStart() { /* Hooks run before the listener opens; none needed. */ }\n",
+            ),
+            (
+                "src/hooks.rs",
+                "pub fn on_start() { /* Hooks run before the listener opens. */ }\n",
+            ),
+            (
+                "src/hooks.ts",
+                "export function onStart() { /* Hooks run before the listener opens. */ }\n",
+            ),
+        ] {
+            assert_eq!(findings("DEAD005", path, source), 0, "{source}");
+        }
+        assert_eq!(
+            findings("DEAD005", "main.go", "func onStart() { /* TODO */ }\n"),
+            1
+        );
+    }
+
+    #[test]
     fn decorated_handlers_test_doubles_and_signature_braces_are_not_empty_functions() {
         assert_eq!(
             findings(

@@ -20,6 +20,7 @@ This project records user-visible changes in this file and follows Semantic Vers
 
 ### Fixed
 
+- An explanatory comment exempts a one-line empty function from `DEAD005` in Go and Rust, as it already did in Python, JavaScript, and TypeScript. Explanatory comments were read only in those three languages, so `func onStart() { /* Hooks run before the listener opens. */ }` was reported.
 - `DEAD002` treats a marker in straight or curly quotes as a reference, as it already did for backticks. Comments such as `// 'todo' - show a11y violations` or `# reject literal "TODO" text on a slide` are no longer reported. A triple-quoted docstring that holds only a marker still is.
 - `VIBE017` and `VIBE010` skip Markdown table rows as they skip list entries. Neighboring rows repeat their column vocabulary by design, so adjacent cells no longer read as restated sentences or a uniform rhythm.
 - Release notes kept as one file per release count as release notes, so `VIBE008`, `VIBE010`, `VIBE011`, `VIBE017`, `VIBE018`, `VIBE020`, and `VIBE021` skip them as they skip `CHANGELOG.md`. A file qualifies when it sits under a `changelog`, `changelogs`, `releases`, or `release-notes` directory and the file or a directory below that one is named for a version or `Unreleased`, as in `CHANGELOG/2026.3.24.md` or `docs/CHANGELOG/v0.14.1/en.md`.

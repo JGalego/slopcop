@@ -155,6 +155,8 @@ pub(super) fn emit(
     });
 }
 
+/// Reports whether a matched span carries an explanatory comment. Comment syntax follows the code
+/// view: `#` in Python, Ruby, and shell, and `//` or `/* */` in every other language.
 pub(super) fn matched_source_has_explanatory_comment(
     context: &ScanContext<'_>,
     start: usize,
@@ -162,11 +164,11 @@ pub(super) fn matched_source_has_explanatory_comment(
 ) -> bool {
     let source = &context.source[start..end];
     match context.source_type {
-        SourceType::Code(Language::Python) => source
+        SourceType::Code(Language::Python | Language::Ruby | Language::Shell) => source
             .lines()
             .filter_map(|line| line.split_once('#').map(|(_, comment)| comment))
             .any(is_explanatory_comment),
-        SourceType::Code(Language::JavaScript | Language::TypeScript) => {
+        SourceType::Code(_) => {
             source
                 .lines()
                 .filter_map(|line| line.split_once("//").map(|(_, comment)| comment))
