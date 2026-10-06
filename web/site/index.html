@@ -170,10 +170,21 @@
           </p>
         </div>
         <div class="terminal">
+          <div class="terminal-tabs" role="tablist" aria-label="Install method">
+            <button type="button" role="tab" id="tab-unix" aria-controls="install-unix" aria-selected="true">macOS / Linux</button>
+            <button type="button" role="tab" id="tab-windows" aria-controls="install-windows" aria-selected="false" tabindex="-1">Windows</button>
+            <button type="button" role="tab" id="tab-cargo" aria-controls="install-cargo" aria-selected="false" tabindex="-1">Cargo</button>
+          </div>
           <button type="button" id="copy-install" class="copy" aria-label="Copy commands"><svg class="icon"><use href="#i-copy"/></svg></button>
-<pre><code><span class="prompt">$</span> cargo install slopcop
-<span class="prompt">$</span> slopcop init
-<span class="prompt">$</span> slopcop .</code></pre>
+<pre id="install-unix" role="tabpanel" aria-labelledby="tab-unix"><code><span class="prompt">$ </span>curl -fsSL https://raw.githubusercontent.com/JGalego/slopcop/main/install/install.sh | sh
+<span class="prompt">$ </span>slopcop init
+<span class="prompt">$ </span>slopcop .</code></pre>
+<pre id="install-windows" role="tabpanel" aria-labelledby="tab-windows" hidden><code><span class="prompt">&gt; </span>irm https://raw.githubusercontent.com/JGalego/slopcop/main/install/install.ps1 | iex
+<span class="prompt">&gt; </span>slopcop init
+<span class="prompt">&gt; </span>slopcop .</code></pre>
+<pre id="install-cargo" role="tabpanel" aria-labelledby="tab-cargo" hidden><code><span class="prompt">$ </span>cargo install slopcop
+<span class="prompt">$ </span>slopcop init
+<span class="prompt">$ </span>slopcop .</code></pre>
         </div>
       </section>
     </div>

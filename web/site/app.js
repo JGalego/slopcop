@@ -493,10 +493,36 @@ $("report-bug").addEventListener("click", (event) => {
   event.currentTarget.href = bugReportUrl();
 });
 
+const installTabs = [...document.querySelectorAll(".terminal-tabs [role=tab]")];
+
+function selectInstallTab(tab) {
+  for (const other of installTabs) {
+    const selected = other === tab;
+    other.setAttribute("aria-selected", String(selected));
+    other.tabIndex = selected ? 0 : -1;
+    $(other.getAttribute("aria-controls")).hidden = !selected;
+  }
+}
+
+for (const tab of installTabs) {
+  tab.addEventListener("click", () => selectInstallTab(tab));
+  tab.addEventListener("keydown", (event) => {
+    const step = { ArrowRight: 1, ArrowLeft: -1 }[event.key];
+    if (!step) return;
+    const next = installTabs[(installTabs.indexOf(tab) + step + installTabs.length) % installTabs.length];
+    selectInstallTab(next);
+    next.focus();
+  });
+}
+
+if (/Windows/.test(navigator.userAgent)) selectInstallTab($("tab-windows"));
+
 $("copy-install").addEventListener("click", async (event) => {
   const button = event.currentTarget;
+  const panel = document.querySelector(".terminal [role=tabpanel]:not([hidden])").cloneNode(true);
+  for (const prompt of panel.querySelectorAll(".prompt")) prompt.remove();
   try {
-    await navigator.clipboard.writeText(button.nextElementSibling.textContent.replace(/^\$ /gm, ""));
+    await navigator.clipboard.writeText(panel.textContent);
   } catch {
     return;
   }

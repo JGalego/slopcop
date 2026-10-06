@@ -368,7 +368,14 @@ kbd {
 .cli-links a { display: inline-flex; align-items: center; gap: 4px; color: var(--ink); font-weight: 600; text-decoration: none; }
 .cli-links a:hover { text-decoration: underline; }
 .terminal { position: relative; background: #171717; color: #ecece6; border-radius: 12px; border: 1px solid #2c2c29; }
-.terminal pre { margin: 0; padding: 22px 56px 22px 22px; font-size: 14px; line-height: 1.8; overflow-x: auto; }
+.terminal pre { margin: 0; padding: 22px; font-size: 14px; line-height: 1.8; overflow-x: auto; }
+.terminal-tabs { display: flex; gap: 4px; padding: 10px 56px 0 12px; border-bottom: 1px solid #2c2c29; overflow-x: auto; }
+.terminal-tabs button {
+  font: 600 13px var(--mono); color: #9b9b93; background: transparent; white-space: nowrap;
+  border: 0; border-bottom: 2px solid transparent; padding: 6px 10px 8px; margin-bottom: -1px;
+}
+.terminal-tabs button:hover { color: #ecece6; }
+.terminal-tabs button[aria-selected="true"] { color: var(--lime); border-bottom-color: var(--lime); }
 .prompt { color: var(--lime); user-select: none; }
 .copy {
   position: absolute; top: 12px; right: 12px; display: grid; place-items: center; width: 32px; height: 32px;
@@ -398,6 +405,8 @@ kbd {
 
 @media (max-width: 520px) {
   .masthead-links { gap: 16px; font-size: 16px; }
+  .terminal-tabs { gap: 0; padding-left: 6px; }
+  .terminal-tabs button { font-size: 12px; padding: 6px 7px 8px; }
   .nav-label { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
   .workspace { grid-template-columns: minmax(0, 1fr); }
   .sidebar { position: static; max-height: none; overflow: visible; }
