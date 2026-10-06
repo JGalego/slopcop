@@ -1072,6 +1072,15 @@ fn check_metaphors(
         "game-changer",
         "transformative",
         "paradigm",
+        "game changer",
+        "tip of the iceberg",
+        "double-edged sword",
+        "slippery slope",
+        "moving target",
+        "level the playing field",
+        "connect the dots",
+        "piece of the puzzle",
+        "north star",
     ];
     check_distinct_cluster(
         context,
@@ -2147,5 +2156,11 @@ mod tests {
     fn vague_abstractions_include_dynamics_and_perspectives() {
         let vague = "This dynamic shapes that perspective. This shift reflects this reality. That insight explains this phenomenon. This distinction drives this mindset.";
         assert_eq!(findings("VIBE012", vague), 1);
+    }
+
+    #[test]
+    fn metaphors_include_stock_idioms() {
+        let idioms = "Caching is a double-edged sword and a moving target. Latency is the tip of the iceberg, a game changer, and the north star that helps us connect the dots.";
+        assert_eq!(findings("VIBE013", idioms), 1);
     }
 }

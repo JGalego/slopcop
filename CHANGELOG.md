@@ -22,6 +22,7 @@ This project records user-visible changes in this file and follows Semantic Vers
 - `VIBE008` reports staged reveals such as "The reason is simple: X.", "The result: X.", and short self-answered questions such as "What changed? X.".
 - `VIBE011` reports repeated inline triads of abstract qualities such as "clear, concise, and compelling" and "speed, reliability, and flexibility".
 - `VIBE012` counts more vague demonstratives, including "this dynamic", "this shift", "this reality", and "that perspective".
+- `VIBE013` recognizes stock idioms such as "double-edged sword", "tip of the iceberg", "moving target", and "north star".
 
 ## 0.1.1 - 2026-10-06
 
