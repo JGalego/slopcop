@@ -16,6 +16,7 @@ This project records user-visible changes in this file and follows Semantic Vers
 
 ### Fixed
 
+- `DEAD003` no longer reports a thrown error or panic whose message merely contains the letters "todo", such as `"Mastodon login failed"`, `"expected set_todos tool"`, or a task-board message like `"cards must move to todo"`. A message still counts when it says "not implemented", contains an uppercase `TODO`, or opens with `todo`.
 - `DEAD014` no longer reports a Python `except X: raise` that is followed by another `except` clause of the same `try`. The rethrow keeps `X` out of the broader handler below it, so removing it would change behavior.
 - `DEAD002` no longer reports "Todo" used as a noun, as in "an in-memory Todo REST API", or names such as `todo-null`. Uppercase `TODO` and `FIXME` still count anywhere in a comment; other spellings count when they open the comment. A line with several markers is reported once.
 - `VIBE008` counts a colon only when a space and more text follow it on the same line. Bold Markdown labels such as `**Task:**`, lead-ins such as `**Using pandas:**` or a colon before a list, and joined tokens such as `<file>:<line>` no longer count toward colon density. A sentence that contains a URL is no longer skipped when it also has a colon in its text.

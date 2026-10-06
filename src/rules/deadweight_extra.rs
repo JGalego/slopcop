@@ -36,7 +36,7 @@ static DEAD003: RuleMetadata = RuleMetadata {
         "raise NotImplementedError",
         "throw new Error(\"not implemented\")",
     ],
-    false_positives: "Abstract methods, Python methods whose whole body raises NotImplementedError, and raises guarded by a condition are excluded.",
+    false_positives: "Abstract methods, Python methods whose whole body raises NotImplementedError, and raises guarded by a condition are excluded. A thrown message counts only when it says \"not implemented\", contains an uppercase TODO, or opens with todo, so a todo status or a word such as Mastodon does not.",
 };
 
 static DEAD004: RuleMetadata = RuleMetadata {
@@ -371,8 +371,7 @@ fn check_unimplemented(
             let end = lower[found..]
                 .find([';', '\n'])
                 .map_or(lower.len(), |relative| found + relative);
-            let statement = context.source[found..end].to_ascii_lowercase();
-            if statement.contains("not implemented") || statement.contains("todo") {
+            if names_placeholder(&context.source[found..end]) {
                 offsets.push(found);
             }
         }
@@ -1360,6 +1359,21 @@ fn restates_heading(title: &str, body: &str) -> bool {
         && body_words.iter().any(|word| heading.contains(word))
 }
 
+/// Whether a thrown message marks missing work: "not implemented", an uppercase `TODO`, or a
+/// message that opens with `todo`. Elsewhere a lowercase todo is the domain noun, as in
+/// "move the card to todo", and a substring match would also catch words such as "Mastodon".
+fn names_placeholder(statement: &str) -> bool {
+    if statement.to_ascii_lowercase().contains("not implemented")
+        || !find_words(statement, "TODO").is_empty()
+    {
+        return true;
+    }
+    statement
+        .find(['"', '\'', '`'])
+        .map(|quote| statement[quote + 1..].trim_start().to_ascii_lowercase())
+        .is_some_and(|message| find_words(&message, "todo").first() == Some(&0))
+}
+
 fn find_words(haystack: &str, needle: &str) -> Vec<usize> {
     haystack
         .match_indices(needle)
@@ -1886,6 +1900,30 @@ mod tests {
             results[0].location,
             context.location(source.rfind("throw").expect("unimplemented throw"))
         );
+    }
+
+    #[test]
+    fn thrown_todo_counts_only_as_a_marker() {
+        for source in [
+            "function f() { throw new Error(\"Mastodon login failed\"); }\n",
+            "function f() { throw new Error(\"specified cards must move to todo.\"); }\n",
+            "function f() { if (!todos) throw new Error('expected set_todos tool'); }\n",
+            "func f() { panic(\"todos: missing owner\") }\n",
+        ] {
+            let path = if source.starts_with("func") {
+                "app.go"
+            } else {
+                "app.js"
+            };
+            assert_eq!(findings("DEAD003", path, source), 0, "{source}");
+        }
+        for source in [
+            "function f() { throw new Error(\"TODO\"); }\n",
+            "function f() { throw new Error('todo: wire the exporter'); }\n",
+            "function f() { throw new Error(`Export is a TODO for ${format}`); }\n",
+        ] {
+            assert_eq!(findings("DEAD003", "app.js", source), 1, "{source}");
+        }
     }
 
     #[test]
