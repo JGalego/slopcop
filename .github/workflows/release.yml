@@ -4,6 +4,12 @@ on:
   push:
     tags:
       - "v*.*.*"
+  # Rebuilds and publishes the VS Code extension for a release that already exists.
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: Release tag, such as v0.3.0
+        required: true
 
 permissions:
   contents: read
@@ -14,6 +20,7 @@ env:
 jobs:
   verify:
     name: Verify release source
+    if: github.event_name == 'push'
     runs-on: ubuntu-24.04
     steps:
       - uses: actions/checkout@v5
@@ -34,6 +41,7 @@ jobs:
 
   msrv:
     name: Minimum Rust (1.85)
+    if: github.event_name == 'push'
     runs-on: ubuntu-24.04
     steps:
       - uses: actions/checkout@v5
@@ -45,6 +53,7 @@ jobs:
 
   github-release:
     name: Create GitHub release
+    if: github.event_name == 'push'
     needs: [verify, msrv]
     runs-on: ubuntu-24.04
     permissions:
@@ -64,6 +73,7 @@ jobs:
 
   publish:
     name: Publish to crates.io
+    if: github.event_name == 'push'
     needs: [verify, msrv, binaries]
     runs-on: ubuntu-24.04
     permissions:
@@ -77,6 +87,7 @@ jobs:
 
   binaries:
     name: ${{ matrix.target }}
+    if: github.event_name == 'push'
     needs: [verify, msrv, github-release]
     permissions:
       contents: write
@@ -114,10 +125,12 @@ jobs:
   vscode:
     name: VS Code extension (${{ matrix.vscode }})
     needs: [binaries]
+    if: ${{ !cancelled() && (needs.binaries.result == 'success' || github.event_name == 'workflow_dispatch') }}
     runs-on: ubuntu-24.04
     permissions:
       contents: write
     env:
+      TAG: ${{ inputs.tag || github.ref_name }}
       VSCE_PAT: ${{ secrets.VSCE_PAT }}
     strategy:
       fail-fast: false
@@ -140,6 +153,8 @@ jobs:
             target: ""
     steps:
       - uses: actions/checkout@v5
+        with:
+          ref: ${{ env.TAG }}
       - uses: actions/setup-node@v7
         with:
           node-version: 22
@@ -151,9 +166,10 @@ jobs:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           TARGET: ${{ matrix.target }}
         run: |
-          stem="slopcop-${GITHUB_REF_NAME}-${TARGET}"
-          gh release download "${GITHUB_REF_NAME}" --repo "${GITHUB_REPOSITORY}" --pattern "${stem}.*" --dir dist
-          archive="$(ls dist/"${stem}".tar.gz dist/"${stem}".zip 2>/dev/null)"
+          stem="slopcop-${TAG}-${TARGET}"
+          gh release download "${TAG}" --repo "${GITHUB_REPOSITORY}" --pattern "${stem}.*" --dir dist
+          archive="dist/${stem}.tar.gz"
+          [ -f "$archive" ] || archive="dist/${stem}.zip"
           test "$(cut -d' ' -f1 "dist/${stem}.sha256")" = "$(sha256sum "$archive" | cut -d' ' -f1)"
           mkdir -p editors/vscode/bin
           case "$archive" in
@@ -167,17 +183,17 @@ jobs:
           PLATFORM: ${{ matrix.vscode }}
         run: |
           npm ci
-          npm version --no-git-tag-version --allow-same-version "${GITHUB_REF_NAME#v}"
-          vsix="slopcop-${GITHUB_REF_NAME}-${PLATFORM}.vsix"
+          npm version --no-git-tag-version --allow-same-version "${TAG#v}"
+          vsix="slopcop-${TAG}-${PLATFORM}.vsix"
           if [ "$PLATFORM" = universal ]; then
             npx vsce package --out "$vsix"
           else
             npx vsce package --target "$PLATFORM" --out "$vsix"
           fi
-          gh release upload "${GITHUB_REF_NAME}" "$vsix" --repo "${GITHUB_REPOSITORY}" --clobber
+          gh release upload "${TAG}" "$vsix" --repo "${GITHUB_REPOSITORY}" --clobber
       - name: Publish to the Visual Studio Marketplace
         if: env.VSCE_PAT != ''
         working-directory: editors/vscode
         env:
           PLATFORM: ${{ matrix.vscode }}
-        run: npx vsce publish --packagePath "slopcop-${GITHUB_REF_NAME}-${PLATFORM}.vsix"
+        run: npx vsce publish --skip-duplicate --packagePath "slopcop-${TAG}-${PLATFORM}.vsix"
