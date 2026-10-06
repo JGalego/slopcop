@@ -81,6 +81,42 @@ The job fails when a finding reaches the configured `fail-level`, and `when: alw
 
 Each issue's fingerprint is built from the rule, the path, and the text of the line, not the line number, so a finding that moves because of edits above it is not reported as new.
 
+## reviewdog
+
+[reviewdog](https://github.com/reviewdog/reviewdog) reads SARIF and posts findings as review comments on GitHub, GitLab, Bitbucket, or Gitea. It filters the findings to the diff itself, so scan the whole tree rather than using `--changed`:
+
+```sh
+slopcop . --format sarif | reviewdog -f=sarif -name=slopcop -reporter=github-pr-review -filter-mode=added
+```
+
+slopcop exits with `1` when it reports findings. Without `pipefail`, the pipeline takes reviewdog's exit status, which reviewdog's `-fail-level` option controls.
+
+## Azure Pipelines
+
+Azure DevOps shows SARIF results in a **Scans** tab when the [SARIF SAST Scans Tab](https://marketplace.visualstudio.com/items?itemName=sariftools.scans) extension is installed and the report is published as a build artifact named `CodeAnalysisLogs`:
+
+```yaml
+pool:
+  vmImage: ubuntu-24.04
+
+steps:
+  - script: |
+      curl -fsSL https://raw.githubusercontent.com/JGalego/slopcop/main/install/install.sh | sh
+      echo "##vso[task.prependpath]$HOME/.local/bin"
+    displayName: Install slopcop
+  - script: |
+      mkdir -p "$(Build.ArtifactStagingDirectory)/CodeAnalysisLogs"
+      slopcop . --format sarif > "$(Build.ArtifactStagingDirectory)/CodeAnalysisLogs/slopcop.sarif"
+    displayName: Run slopcop
+  - task: PublishBuildArtifacts@1
+    condition: succeededOrFailed()
+    inputs:
+      PathtoPublish: $(Build.ArtifactStagingDirectory)/CodeAnalysisLogs
+      ArtifactName: CodeAnalysisLogs
+```
+
+The run step fails when a finding reaches the configured `fail-level`; `succeededOrFailed()` still publishes the report.
+
 ## Editors
 
 `slopcop lsp` starts a language server on standard input and output. Any editor with a Language Server Protocol client can use it, and the findings match a command-line scan of the same file: every rule judges one file at a time, and the server uses the same configuration discovery as `--stdin`, starting in the directory of the file being edited.

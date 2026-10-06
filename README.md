@@ -162,7 +162,7 @@ On GitHub, use the bundled action. On pull requests it reports findings on chang
 - uses: JGalego/slopcop@main
 ```
 
-Inputs select paths, the release, changed-line mode, and SARIF upload to code scanning. They are documented with the other [integrations](docs/integrations.md).
+Inputs select paths, the release, changed-line mode, and SARIF upload to code scanning. They are documented with the other [integrations](docs/integrations.md), which also cover GitLab CI, reviewdog, and Azure Pipelines.
 
 In editors, `slopcop lsp` runs a language server with diagnostics, rule explanations on hover, and a quick fix that inserts a suppression directive. Releases include a VS Code extension, and setup for Neovim, Helix, Emacs, and JetBrains IDEs is in [integrations](docs/integrations.md).
 
