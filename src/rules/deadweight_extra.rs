@@ -185,7 +185,7 @@ static DEAD014: RuleMetadata = RuleMetadata {
         "catch (error) { throw error; }",
         "except NetworkError:\n    raise",
     ],
-    false_positives: "A temporary debugger breakpoint may use this shape during local diagnosis but should not remain committed.",
+    false_positives: "A temporary debugger breakpoint may use this shape during local diagnosis but should not remain committed. A Python rethrow followed by another `except` clause of the same `try` is excluded, because it keeps those exceptions out of the broader handler.",
 };
 
 static DEAD015: RuleMetadata = RuleMetadata {
@@ -1106,7 +1106,9 @@ fn check_redundant_rethrow(
     match context.source_type {
         SourceType::Code(Language::Python) => {
             for found in python_rethrow_matcher().find_iter(context.code()) {
-                if python_block_ends_at(context.code(), found.start(), found.end()) {
+                if python_block_ends_at(context.code(), found.start(), found.end())
+                    && !python_shields_later_handler(context.code(), found.start(), found.end())
+                {
                     emit(context, metadata, findings, found.start(), None::<String>);
                 }
             }
@@ -1124,6 +1126,26 @@ fn check_redundant_rethrow(
         }
         _ => {}
     }
+}
+
+/// Whether another `except` clause of the same `try` follows the handler. A bare `raise` there
+/// keeps the named exceptions out of the broader handler below, so removing it changes behavior.
+fn python_shields_later_handler(code: &str, start: usize, end: usize) -> bool {
+    let handler_indent = indentation(&code[start..]);
+    code[end..]
+        .lines()
+        .find(|line| !line.trim().is_empty())
+        .is_some_and(|line| {
+            indentation(line) == handler_indent
+                && line
+                    .trim_start()
+                    .strip_prefix("except")
+                    .is_some_and(|rest| {
+                        rest.starts_with(|character: char| {
+                            character.is_whitespace() || matches!(character, ':' | '*' | '(')
+                        })
+                    })
+        })
 }
 
 fn python_rethrow_matcher() -> &'static Regex {
@@ -1995,6 +2017,23 @@ mod tests {
                 "try:\n    run()\nexcept NetworkError:\n    cleanup()\n    raise\n"
             ),
             0
+        );
+        // The rethrow keeps these exceptions out of the broad handler that follows.
+        for source in [
+            "try:\n    run()\nexcept asyncio.CancelledError:\n    raise\nexcept Exception as error:\n    log(error)\n",
+            "try:\n    run()\nexcept ConflictError, NotFoundError:\n\n    raise\n\nexcept Exception:\n    recover()\n",
+            "def save():\n    try:\n        run()\n    except KeyError:\n        raise\n    except* ValueError:\n        recover()\n",
+        ] {
+            assert_eq!(findings("DEAD014", "app.py", source), 0, "{source}");
+        }
+        assert_eq!(
+            findings(
+                "DEAD014",
+                "app.py",
+                "try:\n    run()\nexcept NetworkError:\n    raise\nfinally:\n    close()\nexcept_count = 0\n"
+            ),
+            1,
+            "a finally clause or a later name that starts with except shields nothing"
         );
     }
 
