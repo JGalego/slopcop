@@ -49,7 +49,7 @@ Confidence describes how directly the rule observes its quality smell. It never 
 | `VIBE009` | warning | high | Four substantial sentences sharing the same first two words and forming at least half the sample | Short runs and intentional procedural parallelism |
 | `VIBE010` | info | low | Eight substantial consecutive sentences whose word counts vary by no more than three | Natural variation, controlled language, shorter runs, list entries, runs interrupted by code examples, code comments, and release notes |
 | `VIBE011` | info | medium | Three separate exact list triads that account for at least half of nonblank lines, or three inline triads of abstract qualities such as "clear, concise, and compelling" at one per 150 words or more | One three-item list, a real three-part domain model, inline series of concrete names or actions, or release notes |
-| `VIBE012` | warning | medium | Eight vague demonstrative abstractions at a density of one per 80 words or more | A few unambiguous local references |
+| `VIBE012` | warning | medium | Eight vague demonstrative abstractions, such as "this approach", "this dynamic", or "that perspective", at a density of one per 80 words or more | A few unambiguous local references |
 | `VIBE013` | warning | medium | Five generic metaphor markers using at least four forms, at one per 120 words or more | Literal discussion of maps, ecology, textiles, or travel |
 | `VIBE014` | warning | medium | Six corporate positivity markers using at least four forms, at one per 100 words or more | Concrete outcome language and isolated domain terms |
 | `VIBE015` | warning | medium | Four generic disclaimer phrases in one artifact | A specific caveat attached to the claim it changes |

@@ -1029,6 +1029,19 @@ fn check_vague_abstractions(
         "that aspect",
         "this thing",
         "that thing",
+        "this dynamic",
+        "that dynamic",
+        "this distinction",
+        "that distinction",
+        "this phenomenon",
+        "this shift",
+        "this reality",
+        "this perspective",
+        "that perspective",
+        "this insight",
+        "that insight",
+        "this mindset",
+        "this tension",
     ];
     check_phrase_cluster(
         context,
@@ -2128,5 +2141,11 @@ mod tests {
         let concrete = "It runs on Linux, macOS, and Windows. Parse, validate, and store each record. Reads use the client, server, and agent tokens. Output is JSON, YAML, or TOML.";
         assert_eq!(findings("VIBE011", concrete), 0);
         assert_eq!(findings_at("VIBE011", "CHANGELOG.md", inline), 0);
+    }
+
+    #[test]
+    fn vague_abstractions_include_dynamics_and_perspectives() {
+        let vague = "This dynamic shapes that perspective. This shift reflects this reality. That insight explains this phenomenon. This distinction drives this mindset.";
+        assert_eq!(findings("VIBE012", vague), 1);
     }
 }
