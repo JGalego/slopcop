@@ -16,8 +16,11 @@ static VIBE002: RuleMetadata = RuleMetadata {
     default_confidence: Confidence::High,
     message: "The prose repeatedly addresses the reader like a chat assistant.",
     suggestion: "Remove conversational service framing and state the useful information directly.",
-    rationale: "Phrases that offer help, praise the question, or announce a guided tour are usually interface residue rather than repository documentation.",
-    examples: &["Great question. Let's dive in. Feel free to ask for more."],
+    rationale: "Phrases that offer help, praise the question, agree with the reader, or announce a guided tour are usually interface residue rather than repository documentation.",
+    examples: &[
+        "Great question. Let's dive in. Feel free to ask for more.",
+        "Absolutely! Here's a breakdown. Let me know if you'd like more detail.",
+    ],
     false_positives: "Double-quoted examples and one phrase repeated sparsely through a long guide are excluded; unquoted chat transcripts and support templates may still need configuration.",
 };
 
@@ -358,26 +361,67 @@ fn check_assistant_framing(
 ) {
     const PHRASES: &[&str] = &[
         "great question",
+        "good question",
+        "that's a great point",
+        "you're absolutely right",
+        "you are absolutely right",
         "here's how",
         "here is how",
+        "here's a breakdown",
+        "here is a breakdown",
+        "here's what you need to know",
+        "here is what you need to know",
+        "a few things to keep in mind",
+        "there are a few things to consider",
         "let's dive",
         "let us dive",
-        "feel free to",
-        "hope this helps",
-        "i'd be happy to",
-        "i would be happy to",
         "let's explore",
         "let us explore",
         "let's break down",
         "let us break down",
+        "let's break this down",
+        "let's break it down",
+        "let's unpack",
+        "let's take a closer look",
+        "let's take a step back",
+        "feel free to",
+        "hope this helps",
+        "hope that helps",
+        "i'd be happy to",
+        "i would be happy to",
+        "happy to help",
+        "i can help with that",
+        "i'd recommend",
+        "i would recommend",
+        "let me know if you'd like",
+        "let me know if you want",
+        "if you'd like, i can",
     ];
-    // A long tutorial may say "here's how" a few times; framing is two different assistant
-    // phrases close enough together to set the document's voice.
-    check_distinct_cluster(
+    /// Interjections count only as a whole sentence, the way an assistant opens a reply.
+    const INTERJECTIONS: &[&str] = &["absolutely", "certainly", "of course", "definitely", "sure"];
+    if !is_prose(context) {
+        return;
+    }
+    let mut hits = context_phrase_hits(context, PHRASES);
+    for sentence in context.sentences() {
+        let text = sentence.text(context.prose()).trim();
+        let Some(word) = text.strip_suffix(['!', '.']) else {
+            continue;
+        };
+        if let Some(interjection) = INTERJECTIONS
+            .iter()
+            .find(|interjection| word.eq_ignore_ascii_case(interjection))
+            && !inside_double_quotes(context.prose(), sentence.start)
+        {
+            hits.push((sentence.start, *interjection));
+        }
+    }
+    hits.sort_by_key(|(offset, _)| *offset);
+    report_distinct_cluster(
         context,
         metadata,
         findings,
-        PHRASES,
+        &hits,
         DistinctThresholds {
             minimum: 2,
             distinct_minimum: 2,
@@ -1216,6 +1260,17 @@ fn check_distinct_cluster(
         return;
     }
     let hits = context_phrase_hits(context, phrases);
+    report_distinct_cluster(context, metadata, findings, &hits, thresholds, label);
+}
+
+fn report_distinct_cluster(
+    context: &ScanContext<'_>,
+    metadata: &'static RuleMetadata,
+    findings: &mut Vec<crate::model::Finding>,
+    hits: &[(usize, &str)],
+    thresholds: DistinctThresholds,
+    label: &str,
+) {
     let distinct: HashSet<_> = hits.iter().map(|(_, phrase)| *phrase).collect();
     if hits.len() >= thresholds.minimum
         && distinct.len() >= thresholds.distinct_minimum
@@ -1668,5 +1723,37 @@ mod tests {
             vec![(0, "it's worth noting"), (21, "it may be helpful to")]
         );
         assert_eq!(phrase_hits("it may help.", &phrases), vec![(3, "may")]);
+    }
+
+    #[test]
+    fn assistant_framing_counts_whole_sentence_interjections_only() {
+        assert_eq!(
+            findings(
+                "VIBE002",
+                "Absolutely! Here\u{2019}s a breakdown of the options."
+            ),
+            1
+        );
+        assert_eq!(
+            findings(
+                "VIBE002",
+                "You're absolutely right. Let me know if you'd like more."
+            ),
+            1
+        );
+        assert_eq!(
+            findings(
+                "VIBE002",
+                "Of course, the cache can be disabled. Certainly the parser is strict. I'd recommend measuring first."
+            ),
+            0
+        );
+        assert_eq!(
+            findings(
+                "VIBE002",
+                r#"Replies such as "Absolutely!" and "Hope this helps" are stripped."#
+            ),
+            0
+        );
     }
 }

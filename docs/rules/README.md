@@ -39,7 +39,7 @@ Confidence describes how directly the rule observes its quality smell. It never 
 | Rule | Default | Confidence | Trigger | Quiet boundary |
 | --- | --- | --- | --- | --- |
 | `VIBE001` | warning | medium | At least four unquoted stock transitions or pivot phrases, such as "the real question is", "put differently", or "notably,", at a density of one per 120 words or more | One ordinary transition, sparse use in long-form prose, or quoted examples |
-| `VIBE002` | warning | high | Two or more unquoted phrases that frame repository prose like an assistant response | Quoted examples, direct documentation, isolated support language, and one phrase repeated sparsely through a long guide |
+| `VIBE002` | warning | high | Two or more unquoted assistant-response phrases or standalone interjections such as "Absolutely!", using at least two forms | Quoted examples, direct documentation, interjection words inside a sentence, isolated support language, and one phrase repeated sparsely through a long guide |
 | `VIBE003` | warning | medium | Six generic evaluative modifiers at a density of one per 80 words or more | Isolated technical uses such as a robust mutex; `key` is not counted because repositories use it as a noun |
 | `VIBE004` | warning | medium | Seven hedging markers at a density of one per 70 words or more | Calibrated uncertainty attached to a bounded technical claim |
 | `VIBE005` | warning | medium | Two or more paired artificial-balance templates | A single contrast that affects a decision |
