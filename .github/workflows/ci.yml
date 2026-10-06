@@ -52,8 +52,12 @@ jobs:
       - run: cargo fmt --all -- --check
       - run: cargo clippy --all-targets --all-features --locked -- -W clippy::all -W clippy::pedantic -D warnings
       - run: cargo package --locked
+      - run: cargo build --release --locked
       - name: Lint slopcop with slopcop
-        run: cargo run --release --locked -- .
+        uses: ./
+        with:
+          binary: target/release/slopcop
+          mode: all
       - name: Verify pre-commit integration
         run: |
           python -m pip install pre-commit
@@ -68,3 +72,53 @@ jobs:
         with:
           name: benchmark-output
           path: benchmark-output.txt
+
+  action:
+    name: Action (${{ matrix.os }})
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-24.04, macos-latest, windows-latest]
+    runs-on: ${{ matrix.os }}
+    steps:
+      - uses: actions/checkout@v5
+      # The fixtures are ignored by the project configuration, so scan them with an empty one.
+      - name: Write an empty configuration
+        shell: bash
+        run: printf '[slopcop]\n' > "$RUNNER_TEMP/slopcop.toml"
+      - name: Scan the clean fixtures with a released binary
+        id: clean
+        uses: ./
+        with:
+          version: v0.2.0
+          paths: tests/fixtures/clean
+          mode: all
+          config: ${{ runner.temp }}/slopcop.toml
+      - name: Scan the slop fixtures
+        id: slop
+        continue-on-error: true
+        uses: ./
+        with:
+          version: v0.2.0
+          paths: tests/fixtures/slop
+          mode: all
+          config: ${{ runner.temp }}/slopcop.toml
+      - name: Check the action outputs
+        shell: bash
+        env:
+          CLEAN_FINDINGS: ${{ steps.clean.outputs.findings }}
+          SLOP_OUTCOME: ${{ steps.slop.outcome }}
+          SLOP_FINDINGS: ${{ steps.slop.outputs.findings }}
+          SLOP_EXIT: ${{ steps.slop.outputs.exit-code }}
+        run: |
+          test "$CLEAN_FINDINGS" = 0
+          test "$SLOP_OUTCOME" = failure
+          test "$SLOP_EXIT" = 1
+          test "$SLOP_FINDINGS" -gt 0
+      - name: Scan changed lines from a shallow checkout
+        if: github.event_name == 'pull_request' && runner.os == 'Linux'
+        uses: ./
+        with:
+          version: v0.2.0
+          paths: tests/fixtures/clean
+          config: ${{ runner.temp }}/slopcop.toml

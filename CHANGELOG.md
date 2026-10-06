@@ -6,6 +6,7 @@ This project records user-visible changes in this file and follows Semantic Vers
 
 ### Added
 
+- The repository is a GitHub Action (`uses: JGalego/slopcop@<tag>`). It installs a checksum-verified release binary, reports findings on pull request changed lines as workflow annotations, scans everything on other events, and can upload SARIF to code scanning. slopcop's own CI lints itself through the action.
 - A missed-slop issue form reports quality problems that slopcop does not flag, and a Most Wanted form nominates striking findings for a gallery. The triage bot scans the snippet in both and says whether slopcop already catches it or whether the nominated rule fires.
 - The browser demo links each finding to a prefilled Most Wanted nomination (`w`), and its results summary, empty state, and footer link to the missed-slop form.
 

@@ -1,0 +1,171 @@
+name: slopcop
+description: Lint code, comments, documentation, and configuration for slop with slopcop.
+author: JGalego
+branding:
+  icon: shield
+  color: green
+
+inputs:
+  version:
+    description: >-
+      Release tag to install, such as v0.2.0. Defaults to the tag this action is pinned to, or to
+      the latest release when the action is pinned to a branch or commit.
+    required: false
+    default: ""
+  binary:
+    description: Path to an existing slopcop executable. When set, nothing is downloaded.
+    required: false
+    default: ""
+  paths:
+    description: Whitespace-separated files or directories to scan, relative to the repository root.
+    required: false
+    default: "."
+  mode:
+    description: >-
+      "auto" reports findings on changed lines for pull requests and scans everything for other
+      events. "changed" and "all" force one behavior.
+    required: false
+    default: auto
+  base:
+    description: Base revision for changed-line mode. Defaults to the pull request base commit.
+    required: false
+    default: ""
+  config:
+    description: Path to a .slopcop.toml file. Defaults to discovery from the repository root.
+    required: false
+    default: ""
+  sarif:
+    description: >-
+      Set to "true" to also upload a SARIF report to GitHub code scanning. The job needs
+      "security-events: write", and private repositories need GitHub Advanced Security.
+    required: false
+    default: "false"
+  sarif-file:
+    description: Where to write the SARIF report when sarif is enabled.
+    required: false
+    default: slopcop.sarif
+
+outputs:
+  findings:
+    description: Number of findings reported.
+    value: ${{ steps.scan.outputs.findings }}
+  exit-code:
+    description: slopcop exit status. 0 is clean, 1 has findings at or above the fail level.
+    value: ${{ steps.scan.outputs.exit-code }}
+
+runs:
+  using: composite
+  steps:
+    - name: Install slopcop
+      shell: bash
+      env:
+        INPUT_BINARY: ${{ inputs.binary }}
+        INPUT_VERSION: ${{ inputs.version }}
+        ACTION_REF: ${{ github.action_ref }}
+        ACTION_PATH: ${{ github.action_path }}
+      run: |
+        set -euo pipefail
+        if [ -n "$INPUT_BINARY" ]; then
+          [ -x "$INPUT_BINARY" ] || { echo "::error title=slopcop::binary $INPUT_BINARY is not an executable file"; exit 2; }
+          binary="$(cd "$(dirname "$INPUT_BINARY")" && pwd)/$(basename "$INPUT_BINARY")"
+        else
+          version="$INPUT_VERSION"
+          if [ -z "$version" ] && [[ "$ACTION_REF" =~ ^v[0-9]+\.[0-9]+\.[0-9]+$ ]]; then
+            version="$ACTION_REF"
+          fi
+          if [ -z "$version" ] || [ "$version" = latest ]; then
+            # The latest-release page redirects to its tag without using the rate-limited API.
+            version="$(curl -fsSLI -o /dev/null -w '%{url_effective}' https://github.com/JGalego/slopcop/releases/latest | sed 's|.*/tag/||')"
+          fi
+          prefix="$RUNNER_TEMP/slopcop-$version"
+          if [ "$RUNNER_OS" = Windows ]; then
+            SLOPCOP_VERSION="$version" SLOPCOP_PREFIX="$prefix" pwsh -NoProfile -File "$ACTION_PATH/install/install.ps1"
+            binary="$(cygpath -u "$prefix")/slopcop.exe"
+          else
+            SLOPCOP_VERSION="$version" SLOPCOP_PREFIX="$prefix" sh "$ACTION_PATH/install/install.sh"
+            binary="$prefix/slopcop"
+          fi
+        fi
+        echo "SLOPCOP_BIN=$binary" >> "$GITHUB_ENV"
+        "$binary" --version
+
+    - name: Run slopcop
+      id: scan
+      shell: bash
+      env:
+        INPUT_PATHS: ${{ inputs.paths }}
+        INPUT_MODE: ${{ inputs.mode }}
+        INPUT_BASE: ${{ inputs.base }}
+        INPUT_CONFIG: ${{ inputs.config }}
+        INPUT_SARIF: ${{ inputs.sarif }}
+        INPUT_SARIF_FILE: ${{ inputs.sarif-file }}
+        PR_BASE: ${{ github.event.pull_request.base.sha }}
+      run: |
+        set -o pipefail
+        base="${INPUT_BASE:-$PR_BASE}"
+        case "$INPUT_MODE" in
+          all) changed=false ;;
+          changed)
+            [ -n "$base" ] || { echo "::error title=slopcop::changed mode needs a base revision outside pull requests"; exit 2; }
+            changed=true
+            ;;
+          auto) if [ -n "$base" ]; then changed=true; else changed=false; fi ;;
+          *) echo "::error title=slopcop::mode must be auto, changed, or all; got $INPUT_MODE"; exit 2 ;;
+        esac
+
+        args=(check)
+        [ -z "$INPUT_CONFIG" ] || args=(--config "$INPUT_CONFIG" check)
+        if [ "$changed" = true ]; then
+          # Checkouts are shallow by default; fetch until the merge base is reachable.
+          head="$(git rev-parse HEAD)"
+          git cat-file -e "$base^{commit}" 2>/dev/null || git fetch --no-tags --quiet --depth=1 origin "$base"
+          for depth in 50 200 1000; do
+            git merge-base "$base" HEAD >/dev/null 2>&1 && break
+            git fetch --no-tags --quiet --deepen="$depth" origin "$base" "$head"
+          done
+          if ! git merge-base "$base" HEAD >/dev/null 2>&1 && [ "$(git rev-parse --is-shallow-repository)" = true ]; then
+            git fetch --no-tags --quiet --unshallow origin
+          fi
+          args+=(--changed --base "$base")
+          echo "Reporting findings on lines changed since ${base:0:12}"
+        fi
+        read -ra paths <<< "$INPUT_PATHS"
+        [ "${#paths[@]}" -gt 0 ] || paths=(.)
+
+        annotations="$RUNNER_TEMP/slopcop-annotations.txt"
+        "$SLOPCOP_BIN" "${args[@]}" --format github -- "${paths[@]}" > "$annotations"
+        status=$?
+        cat "$annotations"
+        findings="$(grep -cE '^::(error|warning|notice) ' "$annotations" || true)"
+
+        if [ "$INPUT_SARIF" = true ] && [ "$status" -le 1 ]; then
+          "$SLOPCOP_BIN" "${args[@]}" --format sarif -- "${paths[@]}" > "$INPUT_SARIF_FILE"
+          sarif_status=$?
+          [ "$sarif_status" -le 1 ] || status="$sarif_status"
+        fi
+
+        {
+          echo "findings=$findings"
+          echo "exit-code=$status"
+        } >> "$GITHUB_OUTPUT"
+        if [ "$status" -le 1 ]; then
+          echo "**slopcop:** $findings finding(s)" >> "$GITHUB_STEP_SUMMARY"
+        fi
+
+    - name: Upload SARIF
+      if: inputs.sarif == 'true' && steps.scan.outputs.exit-code <= 1
+      uses: github/codeql-action/upload-sarif@v4
+      with:
+        sarif_file: ${{ inputs.sarif-file }}
+        category: slopcop
+
+    - name: Check result
+      shell: bash
+      env:
+        STATUS: ${{ steps.scan.outputs.exit-code }}
+      run: |
+        case "$STATUS" in
+          0) ;;
+          1) echo "::error title=slopcop::findings at or above the configured fail level"; exit 1 ;;
+          *) echo "::error title=slopcop::slopcop exited with status $STATUS"; exit "$STATUS" ;;
+        esac

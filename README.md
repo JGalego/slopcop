@@ -153,6 +153,15 @@ repos:
 
 ## CI and machine output
 
+On GitHub, use the bundled action. On pull requests it reports findings on changed lines as annotations; on other events it scans everything:
+
+```yaml
+- uses: actions/checkout@v5
+- uses: JGalego/slopcop@main
+```
+
+Inputs select paths, the release, changed-line mode, and SARIF upload to code scanning. They are documented with the other [integrations](docs/integrations.md).
+
 JSON, SARIF 2.1.0, GitHub workflow annotations, and HTML reports are built in:
 
 ```sh
