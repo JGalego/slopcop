@@ -2,10 +2,11 @@
 
 This project records user-visible changes in this file and follows Semantic Versioning.
 
-## Unreleased
+## 0.2.0 - 2026-10-06
 
 ### Added
 
+- Install scripts for macOS and Linux (`install/install.sh`) and Windows (`install/install.ps1`) download a release binary, verify its SHA-256 checksum, and install it without root or administrator rights. The browser demo's landing page and the README list them next to `cargo install`.
 - `--format html` writes a self-contained HTML report with scan totals, findings grouped by file, a severity filter, and a reference entry for each rule that fired. The browser demo offers the same report as a download, with links to the scanned commit on GitHub.
 - The browser demo links each finding to a prefilled false-positive issue, and its footer links to the bug, false-positive, feature, and security report forms. Unexpected scan errors offer a prefilled bug report.
 - The browser demo's landing page shows a sample finding, how a scan works, the rule modules with live rule counts, and the CLI install commands. Navigation, actions, and feedback links have icons.
