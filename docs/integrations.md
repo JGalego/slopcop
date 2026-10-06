@@ -72,6 +72,18 @@ Saving `.slopcop.toml` in the editor lints every open file again. Configuration 
 
 The language server is a default Cargo feature. Build without it with `cargo install slopcop --no-default-features`.
 
+### Visual Studio Code
+
+The extension in [`editors/vscode`](../editors/vscode) starts `slopcop lsp` for files with an extension slopcop classifies. Each release attaches a platform-specific VSIX with the matching binary inside, plus a universal VSIX that runs `slopcop` from `PATH`. Install one with **Extensions: Install from VSIX...**, or with `code --install-extension` and the file for your platform, such as `slopcop-<tag>-linux-x64.vsix`. The `slopcop.path` user setting selects another executable.
+
+To build it from source:
+
+```sh
+cd editors/vscode
+npm ci
+npx vsce package
+```
+
 ### Neovim
 
 Neovim 0.11 and later:

@@ -110,3 +110,72 @@ jobs:
           archive: $bin-$tag-$target
           checksum: sha256
           token: ${{ secrets.GITHUB_TOKEN }}
+
+  vscode:
+    name: VS Code extension (${{ matrix.vscode }})
+    needs: [binaries]
+    runs-on: ubuntu-24.04
+    permissions:
+      contents: write
+    env:
+      VSCE_PAT: ${{ secrets.VSCE_PAT }}
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - vscode: linux-x64
+            target: x86_64-unknown-linux-gnu
+          - vscode: linux-arm64
+            target: aarch64-unknown-linux-gnu
+          - vscode: darwin-x64
+            target: x86_64-apple-darwin
+          - vscode: darwin-arm64
+            target: aarch64-apple-darwin
+          - vscode: win32-x64
+            target: x86_64-pc-windows-msvc
+          # Other platforms get the extension without a binary and use slopcop from PATH.
+          - vscode: universal
+            target: ""
+    steps:
+      - uses: actions/checkout@v5
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: editors/vscode/package-lock.json
+      - name: Bundle the release binary
+        if: matrix.target != ''
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          TARGET: ${{ matrix.target }}
+        run: |
+          stem="slopcop-${GITHUB_REF_NAME}-${TARGET}"
+          gh release download "${GITHUB_REF_NAME}" --repo "${GITHUB_REPOSITORY}" --pattern "${stem}.*" --dir dist
+          archive="$(ls dist/"${stem}".tar.gz dist/"${stem}".zip 2>/dev/null)"
+          test "$(cut -d' ' -f1 "dist/${stem}.sha256")" = "$(sha256sum "$archive" | cut -d' ' -f1)"
+          mkdir -p editors/vscode/bin
+          case "$archive" in
+            *.zip) unzip -j "$archive" slopcop.exe -d editors/vscode/bin ;;
+            *) tar -xzf "$archive" -C editors/vscode/bin slopcop ;;
+          esac
+      - name: Package the extension
+        working-directory: editors/vscode
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          PLATFORM: ${{ matrix.vscode }}
+        run: |
+          npm ci
+          npm version --no-git-tag-version --allow-same-version "${GITHUB_REF_NAME#v}"
+          vsix="slopcop-${GITHUB_REF_NAME}-${PLATFORM}.vsix"
+          if [ "$PLATFORM" = universal ]; then
+            npx vsce package --out "$vsix"
+          else
+            npx vsce package --target "$PLATFORM" --out "$vsix"
+          fi
+          gh release upload "${GITHUB_REF_NAME}" "$vsix" --repo "${GITHUB_REPOSITORY}" --clobber
+      - name: Publish to the Visual Studio Marketplace
+        if: env.VSCE_PAT != ''
+        working-directory: editors/vscode
+        env:
+          PLATFORM: ${{ matrix.vscode }}
+        run: npx vsce publish --packagePath "slopcop-${GITHUB_REF_NAME}-${PLATFORM}.vsix"

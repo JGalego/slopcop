@@ -1,0 +1,80 @@
+{
+  "name": "slopcop",
+  "displayName": "slopcop",
+  "description": "Deterministic linting for slop in code, comments, and documentation.",
+  "version": "0.2.0",
+  "publisher": "JGalego",
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/JGalego/slopcop",
+    "directory": "editors/vscode"
+  },
+  "homepage": "https://slopcop.me",
+  "bugs": "https://github.com/JGalego/slopcop/issues",
+  "engines": {
+    "vscode": "^1.91.0"
+  },
+  "categories": [
+    "Linters"
+  ],
+  "keywords": [
+    "linter",
+    "documentation",
+    "code quality"
+  ],
+  "activationEvents": [
+    "onStartupFinished"
+  ],
+  "main": "./out/extension.js",
+  "capabilities": {
+    "untrustedWorkspaces": {
+      "supported": true
+    }
+  },
+  "contributes": {
+    "commands": [
+      {
+        "command": "slopcop.restart",
+        "title": "Restart Language Server",
+        "category": "slopcop"
+      }
+    ],
+    "configuration": {
+      "title": "slopcop",
+      "properties": {
+        "slopcop.path": {
+          "type": "string",
+          "default": "",
+          "scope": "machine",
+          "markdownDescription": "Path to the `slopcop` executable. When empty, the extension uses the binary bundled with it, or `slopcop` on `PATH`."
+        },
+        "slopcop.trace.server": {
+          "type": "string",
+          "enum": [
+            "off",
+            "messages",
+            "verbose"
+          ],
+          "default": "off",
+          "description": "Log the messages exchanged with the language server in the slopcop output channel."
+        }
+      }
+    }
+  },
+  "scripts": {
+    "vscode:prepublish": "node -e \"require('fs').copyFileSync('../../LICENSE', 'LICENSE')\" && npm run compile",
+    "compile": "tsc -p .",
+    "watch": "tsc -watch -p .",
+    "package": "vsce package"
+  },
+  "dependencies": {
+    "vscode-languageclient": "^10.1.2"
+  },
+  "devDependencies": {
+    "@types/node": "^22.19.0",
+    "@types/vscode": "~1.91.0",
+    "@vscode/vsce": "^4.0.0",
+    "typescript": "^5.9.3"
+  }
+}

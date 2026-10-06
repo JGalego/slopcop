@@ -124,3 +124,20 @@ jobs:
           version: v0.2.0
           paths: tests/fixtures/clean
           config: ${{ runner.temp }}/slopcop.toml
+
+  vscode:
+    name: VS Code extension
+    runs-on: ubuntu-24.04
+    defaults:
+      run:
+        working-directory: editors/vscode
+    steps:
+      - uses: actions/checkout@v5
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: editors/vscode/package-lock.json
+      - run: npm ci
+      - name: Compile and package
+        run: npx vsce package --out slopcop.vsix
