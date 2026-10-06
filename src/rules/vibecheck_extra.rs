@@ -1235,25 +1235,46 @@ fn check_distinct_cluster(
     }
 }
 
+/// Finds whole-phrase occurrences in lowercase prose. A phrase written with `'` also matches a
+/// typographic apostrophe, and a phrase nested inside a longer match, such as `may` inside
+/// `it may be helpful to`, is not counted again.
 fn phrase_hits<'a>(haystack: &str, phrases: &'a [&str]) -> Vec<(usize, &'a str)> {
     let mut hits = Vec::new();
     for phrase in phrases {
-        let mut search_start = 0;
-        while let Some(relative) = haystack[search_start..].find(phrase) {
-            let offset = search_start + relative;
-            let before = haystack[..offset].chars().next_back();
-            let after = haystack[offset + phrase.len()..].chars().next();
-            let boundary = |character: Option<char>| {
-                character.is_none_or(|value| !value.is_alphanumeric() && value != '_')
-            };
-            if boundary(before) && boundary(after) {
-                hits.push((offset, *phrase));
+        let typographic = phrase.replace('\'', "\u{2019}");
+        let spellings = if typographic == *phrase {
+            vec![*phrase]
+        } else {
+            vec![*phrase, typographic.as_str()]
+        };
+        for spelling in spellings {
+            let mut search_start = 0;
+            while let Some(relative) = haystack[search_start..].find(spelling) {
+                let offset = search_start + relative;
+                let end = offset + spelling.len();
+                let before = haystack[..offset].chars().next_back();
+                let after = haystack[end..].chars().next();
+                let boundary = |character: Option<char>| {
+                    character.is_none_or(|value| !value.is_alphanumeric() && value != '_')
+                };
+                if boundary(before) && boundary(after) {
+                    hits.push((offset, end, *phrase));
+                }
+                search_start = end;
             }
-            search_start = offset + phrase.len();
         }
     }
-    hits.sort_by_key(|(offset, _)| *offset);
-    hits
+    hits.sort_by_key(|(offset, end, _)| (*offset, std::cmp::Reverse(*end)));
+    let mut covered = 0;
+    hits.into_iter()
+        .filter_map(|(offset, end, phrase)| {
+            if end <= covered {
+                return None;
+            }
+            covered = covered.max(end);
+            Some((offset, phrase))
+        })
+        .collect()
 }
 
 fn context_phrase_hits<'a>(
@@ -1634,5 +1655,18 @@ mod tests {
             0
         );
         assert_eq!(findings_at("VIBE020", "CHANGELOG.md", cluster), 0);
+    }
+
+    #[test]
+    fn phrase_hits_accept_typographic_apostrophes_and_skip_nested_phrases() {
+        let phrases = ["it's worth noting", "may", "it may be helpful to"];
+        assert_eq!(
+            phrase_hits(
+                "it\u{2019}s worth noting. it may be helpful to wait.",
+                &phrases
+            ),
+            vec![(0, "it's worth noting"), (21, "it may be helpful to")]
+        );
+        assert_eq!(phrase_hits("it may help.", &phrases), vec![(3, "may")]);
     }
 }
