@@ -28,6 +28,12 @@ fn parse(source: &str) -> Vec<Suppression> {
             let start = line.find(marker)? + marker.len();
             let directive = &line[start..];
             let (rule_list, reason) = directive.split_once("--")?;
+            // A block comment's terminator is not a reason.
+            let reason = reason.trim();
+            let reason = reason
+                .strip_suffix("-->")
+                .or_else(|| reason.strip_suffix("*/"))
+                .unwrap_or(reason);
             if reason.trim().is_empty() {
                 return None;
             }
@@ -94,5 +100,19 @@ mod tests {
             &mut wildcard,
         );
         assert_eq!(wildcard.len(), 1);
+
+        let mut empty_block = vec![finding(2)];
+        apply(
+            "<!-- slopcop: ignore DEAD004 -- -->\nreturn None\n/* slopcop: ignore DEAD004 -- */\n",
+            &mut empty_block,
+        );
+        assert_eq!(empty_block.len(), 1);
+
+        let mut block = vec![finding(2)];
+        apply(
+            "<!-- slopcop: ignore DEAD004 -- generated table -->\nreturn None\n",
+            &mut block,
+        );
+        assert_eq!(block, [] as [crate::model::Finding; 0]);
     }
 }
