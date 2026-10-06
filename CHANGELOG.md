@@ -2,6 +2,12 @@
 
 This project records user-visible changes in this file and follows Semantic Versioning.
 
+## Unreleased
+
+### Changed
+
+- The GitHub Action is named "slopcop linter", because GitHub Marketplace rejects a name that matches an existing GitHub account. Workflows keep using `uses: JGalego/slopcop@<tag>`.
+
 ## 0.3.0 - 2026-10-06
 
 ### Added

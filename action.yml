@@ -1,4 +1,4 @@
-name: slopcop
+name: slopcop linter
 description: Lint code, comments, documentation, and configuration for slop with slopcop.
 author: JGalego
 branding:
