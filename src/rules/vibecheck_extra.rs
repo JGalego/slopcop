@@ -189,10 +189,10 @@ static VIBE014: RuleMetadata = RuleMetadata {
     default_severity: Severity::Warning,
     default_confidence: Confidence::Medium,
     message: "Corporate positivity language is unusually dense.",
-    suggestion: "Replace aspirational verbs with the observable outcome, owner, and constraint.",
-    rationale: "Repeated empower, elevate, leverage, and drive-success claims can pad technical prose with untestable value language.",
+    suggestion: "Replace promotional characterizations with the observable outcome, owner, and constraint.",
+    rationale: "Repeated exciting-opportunity, strong-foundation, and drive-success claims make neutral information sound promotional and pad technical prose with untestable value language.",
     examples: &[
-        "Empower teams to leverage best-in-class workflows and unlock transformative success.",
+        "This exciting opportunity builds a strong foundation, delivers valuable insights, and leaves us well-positioned to drive success.",
     ],
     false_positives: "Marketing pages are expected to use more benefit-oriented language than engineering references.",
 };
@@ -1103,17 +1103,26 @@ fn check_corporate_positivity(
 ) {
     const PHRASES: &[&str] = &[
         "drive success",
-        "empower",
         "elevate",
-        "foster",
-        "leverage",
         "unlock potential",
         "best-in-class",
-        "streamline",
-        "enhance",
+        "world-class",
+        "cutting-edge",
         "maximize value",
         "accelerate innovation",
         "deliver value",
+        "exciting opportunity",
+        "exciting possibilities",
+        "great opportunity to",
+        "promising development",
+        "powerful tool",
+        "transformative potential",
+        "meaningful impact",
+        "positive momentum",
+        "strong foundation",
+        "valuable insights",
+        "well-positioned to",
+        "poised to",
     ];
     check_distinct_cluster(
         context,
@@ -1121,9 +1130,9 @@ fn check_corporate_positivity(
         findings,
         PHRASES,
         DistinctThresholds {
-            minimum: 6,
-            distinct_minimum: 4,
-            words_per_hit: 100,
+            minimum: 4,
+            distinct_minimum: 3,
+            words_per_hit: 150,
         },
         "corporate positivity markers",
     );
@@ -1713,8 +1722,8 @@ mod tests {
             ),
             (
                 "VIBE014",
-                "Empower teams to leverage and streamline work. Elevate results, enhance delivery, foster trust, and drive success.",
-                "Use the index to streamline this query.",
+                "This exciting opportunity builds a strong foundation, delivers valuable insights, and helps us drive success.",
+                "Profiling is a powerful tool for finding hot loops.",
             ),
             (
                 "VIBE015",
@@ -2162,5 +2171,18 @@ mod tests {
     fn metaphors_include_stock_idioms() {
         let idioms = "Caching is a double-edged sword and a moving target. Latency is the tip of the iceberg, a game changer, and the north star that helps us connect the dots.";
         assert_eq!(findings("VIBE013", idioms), 1);
+    }
+
+    #[test]
+    fn corporate_positivity_reports_promotional_characterizations() {
+        let promo = "This exciting opportunity builds a strong foundation. It delivers valuable insights and leaves us well-positioned to grow.";
+        assert_eq!(findings("VIBE014", promo), 1);
+        assert_eq!(
+            findings(
+                "VIBE014",
+                "Run the installer to elevate privileges. Profiling is a powerful tool for finding hot loops."
+            ),
+            0
+        );
     }
 }

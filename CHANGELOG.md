@@ -23,6 +23,7 @@ This project records user-visible changes in this file and follows Semantic Vers
 - `VIBE011` reports repeated inline triads of abstract qualities such as "clear, concise, and compelling" and "speed, reliability, and flexibility".
 - `VIBE012` counts more vague demonstratives, including "this dynamic", "this shift", "this reality", and "that perspective".
 - `VIBE013` recognizes stock idioms such as "double-edged sword", "tip of the iceberg", "moving target", and "north star".
+- `VIBE014` focuses on promotional characterizations such as "exciting opportunity", "strong foundation", "valuable insights", and "well-positioned to", and fires at four markers in three forms. Workplace productivity verbs move to `VIBE022`.
 
 ## 0.1.1 - 2026-10-06
 

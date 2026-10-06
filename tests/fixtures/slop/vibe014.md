@@ -1,1 +1,1 @@
-Empower teams to leverage and streamline work. Elevate results, enhance delivery, foster trust, and drive success.
+This exciting opportunity builds a strong foundation, delivers valuable insights, and leaves the team well-positioned to drive success.
