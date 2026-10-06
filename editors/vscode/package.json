@@ -12,6 +12,7 @@
   },
   "homepage": "https://slopcop.me",
   "bugs": "https://github.com/JGalego/slopcop/issues",
+  "icon": "images/icon.png",
   "engines": {
     "vscode": "^1.91.0"
   },
