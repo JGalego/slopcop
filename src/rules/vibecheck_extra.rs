@@ -144,11 +144,14 @@ static VIBE011: RuleMetadata = RuleMetadata {
     description: "Repeated three-item list structure",
     default_severity: Severity::Info,
     default_confidence: Confidence::Medium,
-    message: "The document is dominated by repeated three-item lists.",
-    suggestion: "Group items by the actual shape of the material instead of forcing each section into a triad.",
-    rationale: "One three-item list is normal; repeated exact triads across most of a document are a structural fingerprint worth reviewing.",
-    examples: &["Three separate list groups, each containing exactly three items."],
-    false_positives: "Reference material organized around a real three-part model can legitimately repeat triads; release notes are excluded.",
+    message: "The document is dominated by repeated three-item structures.",
+    suggestion: "Group items by the actual shape of the material instead of forcing each section or sentence into a triad.",
+    rationale: "One three-item list is normal; repeated exact triads across most of a document, or a run of abstract inline triads such as \"clear, concise, and compelling\", are a structural fingerprint worth reviewing.",
+    examples: &[
+        "Three separate list groups, each containing exactly three items.",
+        "The tool is simple, practical, and effective. It brings speed, reliability, and flexibility. Docs stay clear, concise, and compelling.",
+    ],
+    false_positives: "Reference material organized around a real three-part model can legitimately repeat triads; inline triads of concrete names or actions are not counted, and release notes are excluded.",
 };
 
 static VIBE012: RuleMetadata = RuleMetadata {
@@ -881,6 +884,20 @@ fn check_triads(
     if context.source_type != SourceType::Documentation || is_release_notes(context) {
         return;
     }
+    let inline = abstract_inline_triads(context);
+    if inline.len() >= 3 && inline.len() * 150 >= context.prose_word_count() {
+        emit(
+            context,
+            metadata,
+            findings,
+            inline[0],
+            Some(format!(
+                "observed {} inline triads of abstract qualities",
+                inline.len()
+            )),
+        );
+        return;
+    }
     let mut groups = Vec::new();
     let mut current = Vec::new();
     let mut offset = 0;
@@ -914,6 +931,68 @@ fn check_triads(
             )),
         );
     }
+}
+
+/// Offsets of "X, Y, and Z" series whose three members are all single abstract quality words,
+/// such as "clear, concise, and compelling" or "speed, reliability, and flexibility". Concrete
+/// names and actions, such as "Linux, macOS, and Windows", do not qualify.
+fn abstract_inline_triads(context: &ScanContext<'_>) -> Vec<usize> {
+    static MATCHER: OnceLock<Regex> = OnceLock::new();
+    let matcher = MATCHER.get_or_init(|| {
+        Regex::new(r"\b([a-z]+), ([a-z]+),? (?:and|or) ([a-z]+)\b")
+            .expect("VIBE011 triad regex must compile")
+    });
+    let prose = context.prose();
+    matcher
+        .captures_iter(prose)
+        .filter(|captures| {
+            (1..=3).all(|group| {
+                captures
+                    .get(group)
+                    .is_some_and(|word| is_abstract_quality(word.as_str()))
+            })
+        })
+        .filter_map(|captures| captures.get(0).map(|found| found.start()))
+        .filter(|offset| !inside_double_quotes(prose, *offset))
+        .collect()
+}
+
+fn is_abstract_quality(word: &str) -> bool {
+    const QUALITIES: &[&str] = &[
+        "clear",
+        "concise",
+        "simple",
+        "fast",
+        "safe",
+        "clean",
+        "easy",
+        "lean",
+        "smart",
+        "strong",
+        "people",
+        "process",
+        "technology",
+        "speed",
+        "scale",
+        "trust",
+        "growth",
+        "quality",
+        "innovation",
+        "impact",
+        "insight",
+        "purpose",
+        "clarity",
+        "focus",
+        "value",
+        "compelling",
+        "engaging",
+    ];
+    const SUFFIXES: &[&str] = &[
+        "ity", "ness", "ive", "ful", "able", "ible", "ent", "ant", "ous", "ic", "ical", "ance",
+        "ence",
+    ];
+    QUALITIES.contains(&word)
+        || (word.len() > 5 && SUFFIXES.iter().any(|suffix| word.ends_with(suffix)))
 }
 
 fn is_list_item(line: &str) -> bool {
@@ -2040,5 +2119,14 @@ mod tests {
         let labels = "Problem: the build fails. Fix: pin the compiler. Why does it fail? The lockfile is stale.\n\n## What changed?\n\nThe index moved to memory.";
         assert_eq!(findings("VIBE008", labels), 0);
         assert_eq!(findings_at("VIBE008", "CHANGELOG.md", reveals), 0);
+    }
+
+    #[test]
+    fn triads_report_abstract_inline_series() {
+        let inline = "The tool is simple, practical, and effective. It brings speed, reliability, and flexibility. Docs stay clear, concise, and compelling.";
+        assert_eq!(findings("VIBE011", inline), 1);
+        let concrete = "It runs on Linux, macOS, and Windows. Parse, validate, and store each record. Reads use the client, server, and agent tokens. Output is JSON, YAML, or TOML.";
+        assert_eq!(findings("VIBE011", concrete), 0);
+        assert_eq!(findings_at("VIBE011", "CHANGELOG.md", inline), 0);
     }
 }
