@@ -12,6 +12,10 @@ const ready = init();
 self.onmessage = async ({ data }) => {
   try {
     await ready;
+    if (data.type === "rules") {
+      self.postMessage({ type: "rules", rules: JSON.parse(rules()) });
+      return;
+    }
     self.postMessage({ type: "done", ...(await scanRepository(data.repo, data.ref, data.token)) });
   } catch (error) {
     self.postMessage({ type: "error", message: error.message, code: error.code });

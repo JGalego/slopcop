@@ -10,6 +10,30 @@
   <script type="module" src="app.js"></script>
 </head>
 <body>
+  <svg class="sprite" aria-hidden="true" focusable="false">
+    <symbol id="i-book" viewBox="0 0 24 24"><path d="M2 3h6a4 4 0 0 1 4 4v14a3 3 0 0 0-3-3H2z"/><path d="M22 3h-6a4 4 0 0 0-4 4v14a3 3 0 0 1 3-3h7z"/></symbol>
+    <symbol id="i-message" viewBox="0 0 24 24"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></symbol>
+    <symbol id="i-github" viewBox="0 0 24 24"><path d="M9 19c-5 1.5-5-2.5-7-3m14 6v-3.87a3.37 3.37 0 0 0-.94-2.61c3.14-.35 6.44-1.54 6.44-7A5.44 5.44 0 0 0 20 4.77 5.07 5.07 0 0 0 19.91 1S18.73.65 16 2.48a13.38 13.38 0 0 0-7 0C6.27.65 5.09 1 5.09 1A5.07 5.07 0 0 0 5 4.77a5.44 5.44 0 0 0-1.5 3.78c0 5.42 3.3 6.61 6.44 7A3.37 3.37 0 0 0 9 18.13V22"/></symbol>
+    <symbol id="i-search" viewBox="0 0 24 24"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.3-4.3"/></symbol>
+    <symbol id="i-key" viewBox="0 0 24 24"><circle cx="7.5" cy="15.5" r="5.5"/><path d="m21 2-9.6 9.6"/><path d="m15.5 7.5 3 3L22 7l-3-3"/></symbol>
+    <symbol id="i-bug" viewBox="0 0 24 24"><path d="m8 2 1.88 1.88"/><path d="M14.12 3.88 16 2"/><path d="M9 7.13v-1a3 3 0 1 1 6 0v1"/><path d="M12 20c-3.3 0-6-2.7-6-6v-3a4 4 0 0 1 4-4h4a4 4 0 0 1 4 4v3c0 3.3-2.7 6-6 6"/><path d="M12 20v-9"/><path d="M6.53 9C4.6 8.8 3 7.1 3 5"/><path d="M6 13H2"/><path d="M3 21c0-2.1 1.7-3.9 3.8-4"/><path d="M20.97 5c0 2.1-1.6 3.8-3.5 4"/><path d="M22 13h-4"/><path d="M17.2 17c2.1.1 3.8 1.9 3.8 4"/></symbol>
+    <symbol id="i-flag" viewBox="0 0 24 24"><path d="M4 15s1-1 4-1 5 2 8 2 4-1 4-1V3s-1 1-4 1-5-2-8-2-4 1-4 1z"/><path d="M4 22v-7"/></symbol>
+    <symbol id="i-bulb" viewBox="0 0 24 24"><path d="M15 14c.2-1 .7-1.7 1.5-2.5 1-.9 1.5-2.2 1.5-3.5A6 6 0 0 0 6 8c0 1 .2 2.2 1.5 3.5.7.7 1.3 1.5 1.5 2.5"/><path d="M9 18h6"/><path d="M10 22h4"/></symbol>
+    <symbol id="i-shield" viewBox="0 0 24 24"><path d="M20 13c0 5-3.5 7.5-7.66 8.95a1 1 0 0 1-.67-.01C7.5 20.5 4 18 4 13V6a1 1 0 0 1 1-1c2 0 4.5-1.2 6.24-2.72a1.17 1.17 0 0 1 1.52 0C14.51 3.81 17 5 19 5a1 1 0 0 1 1 1z"/></symbol>
+    <symbol id="i-download" viewBox="0 0 24 24"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><path d="m7 10 5 5 5-5"/><path d="M12 15V3"/></symbol>
+    <symbol id="i-external" viewBox="0 0 24 24"><path d="M15 3h6v6"/><path d="M10 14 21 3"/><path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"/></symbol>
+    <symbol id="i-copy" viewBox="0 0 24 24"><rect width="14" height="14" x="8" y="8" rx="2"/><path d="M4 16c-1.1 0-2-.9-2-2V4c0-1.1.9-2 2-2h10c1.1 0 2 .9 2 2"/></symbol>
+    <symbol id="i-check" viewBox="0 0 24 24"><path d="M20 6 9 17l-5-5"/></symbol>
+    <symbol id="i-arrow" viewBox="0 0 24 24"><path d="M5 12h14"/><path d="m12 5 7 7-7 7"/></symbol>
+    <symbol id="i-fetch" viewBox="0 0 24 24"><path d="M12 13v8l-4-4"/><path d="m12 21 4-4"/><path d="M4.39 15.27A7 7 0 1 1 15.71 8h1.79a4.5 4.5 0 0 1 2.44 8.28"/></symbol>
+    <symbol id="i-cpu" viewBox="0 0 24 24"><rect width="16" height="16" x="4" y="4" rx="2"/><rect width="6" height="6" x="9" y="9" rx="1"/><path d="M15 2v2M15 20v2M2 15h2M2 9h2M20 15h2M20 9h2M9 2v2M9 20v2"/></symbol>
+    <symbol id="i-review" viewBox="0 0 24 24"><path d="m3 17 2 2 4-4"/><path d="m3 7 2 2 4-4"/><path d="M13 6h8"/><path d="M13 12h8"/><path d="M13 18h8"/></symbol>
+    <symbol id="i-deadweight" viewBox="0 0 24 24"><circle cx="6" cy="6" r="3"/><path d="M8.12 8.12 12 12"/><path d="M20 4 8.12 15.88"/><circle cx="6" cy="18" r="3"/><path d="M14.8 14.8 20 20"/></symbol>
+    <symbol id="i-vibecheck" viewBox="0 0 24 24"><path d="M22 12h-4l-3 9L9 3l-3 9H2"/></symbol>
+    <symbol id="i-papertrail" viewBox="0 0 24 24"><circle cx="12" cy="12" r="3"/><path d="M3 12h6"/><path d="M15 12h6"/></symbol>
+    <symbol id="i-terminal" viewBox="0 0 24 24"><path d="m4 17 6-6-6-6"/><path d="M12 19h8"/></symbol>
+  </svg>
+
   <header class="masthead">
     <div class="masthead-inner">
       <a class="brand" href="./" aria-label="slopcop home">
@@ -21,15 +45,18 @@
         <span>slopcop</span>
       </a>
       <nav class="masthead-links">
-        <a href="https://github.com/JGalego/slopcop/blob/main/docs/rules/README.md">Rules</a>
-        <a href="#feedback">Feedback</a>
-        <a href="https://github.com/JGalego/slopcop">GitHub</a>
+        <a href="https://github.com/JGalego/slopcop/blob/main/docs/rules/README.md"><svg class="icon"><use href="#i-book"/></svg><span class="nav-label">Rules</span></a>
+        <a href="#feedback"><svg class="icon"><use href="#i-message"/></svg><span class="nav-label">Feedback</span></a>
+        <a href="https://github.com/JGalego/slopcop"><svg class="icon"><use href="#i-github"/></svg><span class="nav-label">GitHub</span></a>
       </nav>
     </div>
   </header>
 
   <main>
     <section class="intro" id="intro">
+      <div class="hero">
+      <div class="hero-copy">
+      <p class="eyebrow">Deterministic. No model. No server.</p>
       <h1>Slop stops here.</h1>
       <p class="lede">Point slopcop at a public GitHub repository. Files are fetched straight from GitHub and scanned by the real linter compiled to WebAssembly. Nothing leaves your browser.</p>
 
@@ -38,7 +65,7 @@
         <input id="repo" name="repo" type="text" placeholder="owner/repo or GitHub URL" spellcheck="false" required>
         <label class="visually-hidden" for="ref">Branch, tag, or commit</label>
         <input id="ref" name="ref" type="text" placeholder="ref (optional)" spellcheck="false">
-        <button id="scan-button" type="submit">Scan</button>
+        <button id="scan-button" type="submit"><svg class="icon"><use href="#i-search"/></svg>Scan</button>
       </form>
       <p class="examples" id="examples">Try
         <button type="button" data-repo="JGalego/slopcop">JGalego/slopcop</button>
@@ -48,7 +75,7 @@
       </p>
 
       <details id="token-panel" class="token-panel">
-        <summary>GitHub token <span id="token-state">(optional)</span></summary>
+        <summary><svg class="icon"><use href="#i-key"/></svg>GitHub token <span id="token-state">(optional)</span></summary>
         <p>Without a token, every scan from your network shares GitHub's anonymous limit of 60 API requests per hour, and each scan uses two. A token raises the limit to 5,000 per hour. Create a <a href="https://github.com/settings/personal-access-tokens/new" target="_blank" rel="noopener">fine-grained token</a> with public repository access and no permissions. It stays in this tab and is only sent to api.github.com.</p>
         <div class="token-row">
           <label class="visually-hidden" for="token">GitHub token</label>
@@ -56,6 +83,28 @@
           <button type="button" id="forget-token" class="secondary">Forget</button>
         </div>
       </details>
+      </div>
+
+      <figure class="specimen" aria-label="Example finding">
+        <figcaption><span class="specimen-dots" aria-hidden="true"></span>sync.py</figcaption>
+        <div class="code" aria-hidden="true">
+          <div class="code-line"><span class="gutter">1</span><span class="text">def sync_users(client, users):</span></div>
+          <div class="code-line"><span class="gutter">2</span><span class="text">    for user in users:</span></div>
+          <div class="code-line"><span class="gutter">3</span><span class="text">        try:</span></div>
+          <div class="code-line"><span class="gutter">4</span><span class="text">            client.push(user)</span></div>
+          <div class="code-line hit"><span class="gutter">5</span><span class="text">        except Exception:</span></div>
+          <div class="code-line"><span class="gutter">6</span><span class="text">            pass</span></div>
+        </div>
+        <div class="finding sev-error">
+          <div class="finding-head">
+            <span class="badge sev-error">error</span>
+            <span class="rule-id">DEAD001</span>
+            <span class="finding-message">Exception is swallowed without logging, rethrowing, or handling.</span>
+          </div>
+          <p class="suggestion"><span>Fix:</span> Handle the failure, rethrow it, or document a narrow and intentional exception.</p>
+        </div>
+      </figure>
+      </div>
 
       <div id="status" class="status" hidden>
         <div class="status-row">
@@ -66,6 +115,68 @@
       </div>
       <p id="error" class="error" role="alert" hidden></p>
     </section>
+
+    <div id="landing" class="landing">
+      <section class="steps" aria-label="How it works">
+        <div class="step">
+          <svg class="icon step-icon"><use href="#i-fetch"/></svg>
+          <h2>Fetch</h2>
+          <p>Files come straight from GitHub at the exact commit you pick. Dependency folders and oversized files are skipped before download.</p>
+        </div>
+        <div class="step">
+          <svg class="icon step-icon"><use href="#i-cpu"/></svg>
+          <h2>Scan</h2>
+          <p>The same Rust linter as the CLI, compiled to WebAssembly, runs in a background worker. No account, no model, no upload.</p>
+        </div>
+        <div class="step">
+          <svg class="icon step-icon"><use href="#i-review"/></svg>
+          <h2>Review</h2>
+          <p>Filter findings, read the evidence, jump to the line on GitHub, and export the report as HTML or JSON.</p>
+        </div>
+      </section>
+
+      <section class="catalog" aria-labelledby="catalog-title">
+        <div class="section-head">
+          <h2 id="catalog-title">What it catches</h2>
+          <p>Observable problems, not authorship. <span id="rule-total"></span></p>
+        </div>
+        <div class="modules">
+          <article class="module" data-module="deadweight">
+            <header><svg class="icon"><use href="#i-deadweight"/></svg><h3>deadweight</h3><span class="module-count"></span></header>
+            <p>Code and prose that exist without doing useful work: swallowed exceptions, placeholder markers, empty functions, trivial assertions, and comments that restate the code.</p>
+            <ul class="module-rules"></ul>
+          </article>
+          <article class="module" data-module="vibecheck">
+            <header><svg class="icon"><use href="#i-vibecheck"/></svg><h3>vibecheck</h3><span class="module-count"></span></header>
+            <p>Patterns in prose and comments: stock transitions, assistant framing, hedging, forced symmetry, and uniform rhythm. One “robust” is fine. Density and repetition are not.</p>
+            <ul class="module-rules"></ul>
+          </article>
+          <article class="module" data-module="papertrail">
+            <header><svg class="icon"><use href="#i-papertrail"/></svg><h3>papertrail</h3><span class="module-count"></span></header>
+            <p>Commit messages and branch history: placeholder subjects and autosquash commits that should never reach an integration branch. Needs a local clone.</p>
+            <ul class="module-rules"></ul>
+          </article>
+        </div>
+      </section>
+
+      <section class="cli" aria-labelledby="cli-title">
+        <div class="cli-copy">
+          <h2 id="cli-title"><svg class="icon"><use href="#i-terminal"/></svg>Take it to your terminal</h2>
+          <p>The CLI scans private code, staged changes, diffs against a base branch, and commit history. Run it from pre-commit, or gate CI with SARIF and GitHub annotations.</p>
+          <p class="cli-links">
+            <a href="https://github.com/JGalego/slopcop#getting-started">Getting started<svg class="icon"><use href="#i-arrow"/></svg></a>
+            <a href="https://github.com/JGalego/slopcop#git-and-pre-commit">pre-commit<svg class="icon"><use href="#i-arrow"/></svg></a>
+            <a href="https://github.com/JGalego/slopcop#ci-and-machine-output">CI output<svg class="icon"><use href="#i-arrow"/></svg></a>
+          </p>
+        </div>
+        <div class="terminal">
+          <button type="button" id="copy-install" class="copy" aria-label="Copy commands"><svg class="icon"><use href="#i-copy"/></svg></button>
+<pre><code><span class="prompt">$</span> cargo install slopcop
+<span class="prompt">$</span> slopcop init
+<span class="prompt">$</span> slopcop .</code></pre>
+        </div>
+      </section>
+    </div>
 
     <section id="results" class="results" hidden>
       <div class="summary" id="summary"></div>
@@ -105,10 +216,10 @@
 
   <footer class="footer">
     <nav id="feedback" class="feedback" aria-label="Feedback">
-      <a id="report-bug" class="secondary" href="https://github.com/JGalego/slopcop/issues/new?template=bug_report.yml" target="_blank" rel="noopener">Report a bug</a>
-      <a class="secondary" href="https://github.com/JGalego/slopcop/issues/new?template=false_positive.yml" target="_blank" rel="noopener">Report a false positive</a>
-      <a class="secondary" href="https://github.com/JGalego/slopcop/issues/new?template=feature_request.yml" target="_blank" rel="noopener">Propose a rule or feature</a>
-      <a class="secondary" href="https://github.com/JGalego/slopcop/security/advisories/new" target="_blank" rel="noopener">Report a vulnerability</a>
+      <a id="report-bug" class="secondary" href="https://github.com/JGalego/slopcop/issues/new?template=bug_report.yml" target="_blank" rel="noopener"><svg class="icon"><use href="#i-bug"/></svg>Report a bug</a>
+      <a class="secondary" href="https://github.com/JGalego/slopcop/issues/new?template=false_positive.yml" target="_blank" rel="noopener"><svg class="icon"><use href="#i-flag"/></svg>Report a false positive</a>
+      <a class="secondary" href="https://github.com/JGalego/slopcop/issues/new?template=feature_request.yml" target="_blank" rel="noopener"><svg class="icon"><use href="#i-bulb"/></svg>Propose a rule or feature</a>
+      <a class="secondary" href="https://github.com/JGalego/slopcop/security/advisories/new" target="_blank" rel="noopener"><svg class="icon"><use href="#i-shield"/></svg>Report a vulnerability</a>
     </nav>
     <p>Scans skip dependency directories, unsupported file types, and files over the size limit before downloading. Commit-history checks need a local clone: run <code>slopcop history</code>.</p>
   </footer>

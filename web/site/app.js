@@ -5,6 +5,8 @@ const CONTEXT_LINES = 2;
 const TOKEN_KEY = "slopcop.github-token";
 const REPO_URL = "https://github.com/JGalego/slopcop";
 const MAX_FIELD = 1500;
+const RULES_DOC = `${REPO_URL}/blob/main/docs/rules/README.md`;
+const SAMPLE_RULES = 6;
 
 const $ = (id) => document.getElementById(id);
 const worker = new Worker(new URL("worker.js", import.meta.url), { type: "module" });
@@ -32,6 +34,16 @@ function h(tag, props, ...children) {
   }
   node.append(...children.flat().filter((child) => child !== null && child !== undefined && child !== false));
   return node;
+}
+
+function icon(name) {
+  const svg = document.createElementNS("http://www.w3.org/2000/svg", "svg");
+  svg.setAttribute("class", "icon");
+  svg.setAttribute("aria-hidden", "true");
+  const use = document.createElementNS("http://www.w3.org/2000/svg", "use");
+  use.setAttribute("href", "#i-" + name);
+  svg.append(use);
+  return svg;
 }
 
 function parseTarget(input, explicitRef) {
@@ -117,6 +129,10 @@ function showError(message, reportable = false) {
 }
 
 worker.onmessage = ({ data }) => {
+  if (data.type === "rules") {
+    renderCatalog(data.rules);
+    return;
+  }
   if (data.type === "progress") {
     setProgress(data.stage, data.done, data.total);
     return;
@@ -133,6 +149,20 @@ worker.onmessage = ({ data }) => {
   }
   showResults(data);
 };
+
+function renderCatalog(rules) {
+  $("rule-total").textContent = `${rules.length} rules across ${MODULES.length} modules.`;
+  for (const card of document.querySelectorAll(".module")) {
+    const module = card.dataset.module;
+    const members = rules.filter((rule) => rule.module === module);
+    card.querySelector(".module-count").textContent = `${members.length} ${members.length === 1 ? "rule" : "rules"}`;
+    const extra = members.length - SAMPLE_RULES;
+    card.querySelector(".module-rules").replaceChildren(
+      ...members.slice(0, SAMPLE_RULES).map((rule) => h("li", { title: rule.message }, h("code", {}, rule.id), " ", rule.description)),
+      ...(extra > 0 ? [h("li", { class: "module-more" }, h("a", { href: `${RULES_DOC}#${module}`, target: "_blank", rel: "noopener" }, `${extra} more`, icon("arrow")))] : []),
+    );
+  }
+}
 
 worker.onerror = (event) => {
   $("status").hidden = true;
@@ -184,8 +214,8 @@ function renderSummary() {
       stat(formatMillis(stats.totalMillis), `total, ${formatMillis(stats.scanMillis)} scanning`),
     ),
     h("div", { class: "summary-actions" },
-      h("button", { type: "button", class: "secondary", onclick: download(state.data.html, "text/html", "html") }, "Download HTML"),
-      h("button", { type: "button", class: "secondary", onclick: download(JSON.stringify(result, null, 2), "application/json", "json") }, "Download JSON")),
+      h("button", { type: "button", class: "secondary", onclick: download(state.data.html, "text/html", "html") }, icon("download"), "Download HTML"),
+      h("button", { type: "button", class: "secondary", onclick: download(JSON.stringify(result, null, 2), "application/json", "json") }, icon("download"), "Download JSON")),
   );
 }
 
@@ -308,7 +338,7 @@ function renderGroup(group) {
     h("header", { class: "file-header" },
       h("button", { type: "button", class: "file-path", title: "Show only this file", onclick: () => { state.file = group.path; refresh(); } }, group.path),
       h("span", { class: "count" }, String(group.findings.length)),
-      h("a", { href: blobUrl(group.path), target: "_blank", rel: "noopener" }, "GitHub ↗")),
+      h("a", { href: blobUrl(group.path), target: "_blank", rel: "noopener" }, "GitHub", icon("external"))),
     ...group.findings.map(renderFinding));
 }
 
@@ -333,7 +363,7 @@ function renderFinding(finding) {
     renderSnippet(finding),
     h("div", { class: "finding-foot" },
       finding.suggestion ? h("p", { class: "suggestion" }, h("span", {}, "Fix: "), finding.suggestion) : null,
-      h("a", { class: "report-false-positive", href: falsePositiveUrl(finding), target: "_blank", rel: "noopener", title: "Open a prefilled false-positive issue on GitHub (f)" }, "Report false positive")),
+      h("a", { class: "report-false-positive", href: falsePositiveUrl(finding), target: "_blank", rel: "noopener", title: "Open a prefilled false-positive issue on GitHub (f)" }, icon("flag"), "Report false positive")),
     explanation);
 }
 
@@ -463,6 +493,17 @@ $("report-bug").addEventListener("click", (event) => {
   event.currentTarget.href = bugReportUrl();
 });
 
+$("copy-install").addEventListener("click", async (event) => {
+  const button = event.currentTarget;
+  try {
+    await navigator.clipboard.writeText(button.nextElementSibling.textContent.replace(/^\$ /gm, ""));
+  } catch {
+    return;
+  }
+  button.replaceChildren(icon("check"));
+  setTimeout(() => button.replaceChildren(icon("copy")), 1500);
+});
+
 $("examples").addEventListener("click", (event) => {
   const repo = event.target.closest("button")?.dataset.repo;
   if (repo) startScan({ repo, ref: "" });
@@ -476,6 +517,8 @@ window.addEventListener("hashchange", () => {
 if (matchMedia("(max-width: 860px)").matches) {
   for (const facet of document.querySelectorAll(".collapsible")) facet.open = false;
 }
+
+worker.postMessage({ type: "rules" });
 
 const initial = targetFromHash();
 if (initial) startScan(initial);
