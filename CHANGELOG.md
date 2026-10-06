@@ -6,6 +6,7 @@ This project records user-visible changes in this file and follows Semantic Vers
 
 ### Added
 
+- `DEAD004` reports a `catch` block that only returns `null`, `nil`, `nullptr`, `false`, or an empty collection in Java, Kotlin, C#, C++, PHP, and Swift. The exemptions for explanatory comments and for the `false` answer of a predicate that also returns `true` apply there too.
 - `DEAD001` reports empty `catch` blocks in Java, Kotlin, C#, C++, PHP, and Swift, as it does in Python, JavaScript, and TypeScript. A Swift clause such as `} catch let error as IOError {}` counts. A guarded block whose last statement fails the test, such as `XCTFail(...)`, `Issue.record(...)`, or `fail(...)`, is excluded, and so is a Kotlin `catch` that yields a value.
 - The repository is a GitHub Action (`uses: JGalego/slopcop@<tag>`). It installs a checksum-verified release binary, reports findings on pull request changed lines as workflow annotations, scans everything on other events, and can upload SARIF to code scanning. `fail-on-findings: false` reports without failing the step. slopcop's own CI lints itself through the action.
 - `--stdin --stdin-filename PATH` lints one file read from standard input, such as an unsaved editor buffer. The filename selects the language and path filters, and configuration discovery starts in its directory.

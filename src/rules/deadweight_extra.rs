@@ -501,7 +501,16 @@ fn check_exception_fallback(
 ) {
     let matcher = match context.source_type {
         SourceType::Code(Language::Python) => python_fallback_matcher(),
-        SourceType::Code(Language::JavaScript | Language::TypeScript) => brace_fallback_matcher(),
+        SourceType::Code(
+            Language::JavaScript
+            | Language::TypeScript
+            | Language::Java
+            | Language::Kotlin
+            | Language::CSharp
+            | Language::Cpp
+            | Language::Php,
+        ) => brace_fallback_matcher(),
+        SourceType::Code(Language::Swift) => swift_fallback_matcher(),
         _ => return,
     };
     for found in matcher.find_iter(context.code()) {
@@ -600,8 +609,17 @@ fn python_fallback_matcher() -> &'static Regex {
 fn brace_fallback_matcher() -> &'static Regex {
     static MATCHER: OnceLock<Regex> = OnceLock::new();
     MATCHER.get_or_init(|| {
-        Regex::new(r"(?s)catch\s*(?:\([^)]*\))?\s*\{\s*return\s+(?:null|false|\[\]|\{\})\s*;?\s*\}")
+        Regex::new(r"(?s)catch\s*(?:\([^)]*\))?\s*\{\s*return\s+(?:null|nullptr|false|\[\]|\{\})\s*;?\s*\}")
             .expect("DEAD004 brace regex must compile")
+    })
+}
+
+/// Swift clauses take a pattern without parentheses, and the empty values are `nil`, `[]`, and `[:]`.
+fn swift_fallback_matcher() -> &'static Regex {
+    static MATCHER: OnceLock<Regex> = OnceLock::new();
+    MATCHER.get_or_init(|| {
+        Regex::new(r"\bcatch\b[^{};\r\n]*\{\s*return\s+(?:nil|false|\[\]|\[:\])\s*\}")
+            .expect("DEAD004 Swift regex must compile")
     })
 }
 
@@ -1610,6 +1628,50 @@ mod tests {
             ),
             1
         );
+    }
+
+    #[test]
+    fn constant_fallbacks_count_in_other_catch_languages() {
+        for (path, source) in [
+            (
+                "Store.java",
+                "Item load() {\n  try { return read(); } catch (IOException e) { return null; }\n}\n",
+            ),
+            (
+                "Store.kt",
+                "fun load(): Item? {\n  try { return read() } catch (e: IOException) { return null }\n}\n",
+            ),
+            (
+                "Store.cs",
+                "Item Load() { try { return Read(); } catch (IOException) { return null; } }\n",
+            ),
+            (
+                "store.cpp",
+                "Item* load() { try { return read(); } catch (...) { return nullptr; } }\n",
+            ),
+            (
+                "Store.swift",
+                "func load() -> Item? {\n    do {\n        return try read()\n    } catch {\n        return nil\n    }\n}\n",
+            ),
+            (
+                "Store.swift",
+                "func tags() -> [String: Int] {\n    do { return try read() } catch let error as IOError { return [:] }\n}\n",
+            ),
+        ] {
+            assert_eq!(findings("DEAD004", path, source), 1, "{source}");
+        }
+        for (path, source) in [
+            (
+                "Store.swift",
+                "func isValid(_ text: String) -> Bool {\n    do {\n        try parse(text)\n        return true\n    } catch {\n        return false\n    }\n}\n",
+            ),
+            (
+                "Store.swift",
+                "func load() -> Item? {\n    do { return try read() } catch {\n        // A missing cache file means a first launch.\n        return nil\n    }\n}\n",
+            ),
+        ] {
+            assert_eq!(findings("DEAD004", path, source), 0, "{source}");
+        }
     }
 
     #[test]
