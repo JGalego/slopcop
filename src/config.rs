@@ -263,7 +263,23 @@ impl Config {
     /// Returns an error for unreadable or invalid TOML, unknown rules, invalid globs, invalid
     /// severities, or a configuration that disables every rule.
     pub fn load(explicit: Option<&Path>) -> Result<Self, ConfigError> {
-        let Some(path) = explicit.map(Path::to_path_buf).or_else(discover_config) else {
+        let start = std::env::current_dir().ok();
+        Self::load_from(explicit, start.as_deref())
+    }
+
+    /// Loads an explicit configuration or discovers the nearest one by walking from `start`
+    /// toward the filesystem root. Editors use this to find the configuration that governs a
+    /// file rather than the one above their own working directory.
+    ///
+    /// # Errors
+    ///
+    /// Returns an error for unreadable or invalid TOML, unknown rules, invalid globs, invalid
+    /// severities, or a configuration that disables every rule.
+    pub fn load_from(explicit: Option<&Path>, start: Option<&Path>) -> Result<Self, ConfigError> {
+        let Some(path) = explicit
+            .map(Path::to_path_buf)
+            .or_else(|| start.and_then(discover_config))
+        else {
             return Ok(Self::default());
         };
         let path = fs::canonicalize(&path).map_err(|source| ConfigError::Read { path, source })?;
@@ -377,8 +393,9 @@ impl Config {
     }
 }
 
-fn discover_config() -> Option<PathBuf> {
-    let mut directory = std::env::current_dir().ok()?;
+fn discover_config(start: &Path) -> Option<PathBuf> {
+    let cwd = std::env::current_dir().unwrap_or_else(|_| PathBuf::from("."));
+    let mut directory = absolute_path(start, &cwd);
     loop {
         let candidate = directory.join(CONFIG_FILE_NAME);
         if candidate.is_file() {

@@ -1,7 +1,7 @@
 #![forbid(unsafe_code)]
 
-use std::io::{self, IsTerminal};
-use std::path::PathBuf;
+use std::io::{self, IsTerminal, Read};
+use std::path::{Path, PathBuf};
 use std::process::ExitCode;
 
 use clap::{Args, Parser, Subcommand, ValueEnum};
@@ -13,7 +13,7 @@ use slopcop::reporting::{
     HtmlContext, write_github, write_html, write_json, write_sarif, write_text,
 };
 use slopcop::rules::metadata_registry;
-use slopcop::{ScanOptions, ScanResult, Severity, scan_paths, scan_sources};
+use slopcop::{ScanOptions, ScanResult, Severity, SourceFile, scan_paths, scan_sources};
 
 #[derive(Debug, Parser)]
 #[command(name = "slopcop", version, about = "Slop stops here.")]
@@ -76,6 +76,19 @@ struct CheckArgs {
 
     #[arg(long)]
     quiet: bool,
+
+    /// Read one file from standard input instead of scanning paths.
+    #[arg(
+        long,
+        requires = "stdin_filename",
+        conflicts_with_all = ["paths", "staged", "diff", "changed"]
+    )]
+    stdin: bool,
+
+    /// Path that standard input is linted as. It selects the language, the configuration, and
+    /// the path filters; the file does not need to exist.
+    #[arg(long, value_name = "PATH", requires = "stdin")]
+    stdin_filename: Option<PathBuf>,
 
     #[command(flatten)]
     git: GitArgs,
@@ -161,17 +174,24 @@ fn initialize() -> ExitCode {
     }
 }
 
-fn load_and_check(args: &CheckArgs, config_path: Option<&std::path::Path>) -> ExitCode {
-    let Ok(config) = load_config(config_path) else {
+fn load_and_check(args: &CheckArgs, config_path: Option<&Path>) -> ExitCode {
+    let config = if let Some(filename) = &args.stdin_filename {
+        // Editors pipe buffers from arbitrary working directories, so start beside the file.
+        let start = filename
+            .parent()
+            .filter(|parent| !parent.as_os_str().is_empty())
+            .unwrap_or_else(|| Path::new("."));
+        Config::load_from(config_path, Some(start)).map_err(|error| eprintln!("slopcop: {error}"))
+    } else {
+        load_config(config_path)
+    };
+    let Ok(config) = config else {
         return ExitCode::from(2);
     };
     run_check(args, config)
 }
 
-fn load_and_check_commit_message(
-    args: &CommitMessageArgs,
-    config_path: Option<&std::path::Path>,
-) -> ExitCode {
+fn load_and_check_commit_message(args: &CommitMessageArgs, config_path: Option<&Path>) -> ExitCode {
     let Ok(config) = load_config(config_path) else {
         return ExitCode::from(2);
     };
@@ -182,7 +202,7 @@ fn load_and_check_commit_message(
     write_result(&result, args.format, args.quiet, config.fail_level)
 }
 
-fn load_and_check_history(args: &HistoryArgs, config_path: Option<&std::path::Path>) -> ExitCode {
+fn load_and_check_history(args: &HistoryArgs, config_path: Option<&Path>) -> ExitCode {
     if args.max_count == 0 {
         eprintln!("slopcop: --max-count must be greater than zero");
         return ExitCode::from(2);
@@ -197,7 +217,7 @@ fn load_and_check_history(args: &HistoryArgs, config_path: Option<&std::path::Pa
     write_result(&result, args.format, args.quiet, config.fail_level)
 }
 
-fn load_config(path: Option<&std::path::Path>) -> Result<Config, ()> {
+fn load_config(path: Option<&Path>) -> Result<Config, ()> {
     Config::load(path).map_err(|error| {
         eprintln!("slopcop: {error}");
     })
@@ -209,7 +229,17 @@ fn run_check(args: &CheckArgs, config: Config) -> ExitCode {
         max_file_size: config.max_file_size,
         config,
     };
-    let (mut result, changed_lines) = if args.git.staged {
+    let (mut result, changed_lines) = if let Some(path) = args.stdin_filename.clone() {
+        let mut bytes = Vec::new();
+        if let Err(error) = io::stdin().lock().read_to_end(&mut bytes) {
+            eprintln!("slopcop: could not read standard input: {error}");
+            return ExitCode::from(3);
+        }
+        (
+            scan_sources(vec![SourceFile { path, bytes }], &options),
+            None,
+        )
+    } else if args.git.staged {
         match git::staged(&args.paths) {
             Ok(selection) => {
                 let git::Selection {

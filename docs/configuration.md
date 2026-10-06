@@ -1,6 +1,6 @@
 # Configuration
 
-Configuration discovery starts in the current working directory and checks each parent in order until it reaches the filesystem root. Pass `--config FILE` to use a specific file. Relative path patterns are evaluated from the configuration file's directory.
+Configuration discovery starts in the current working directory and checks each parent in order until it reaches the filesystem root. With `--stdin`, discovery starts in the directory of `--stdin-filename` instead, so an editor gets the configuration that governs the file whatever its own working directory is. Pass `--config FILE` to use a specific file. Relative path patterns are evaluated from the configuration file's directory.
 
 ## Complete example
 

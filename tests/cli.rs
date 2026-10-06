@@ -1,5 +1,6 @@
 use std::fs;
-use std::process::{Command, Output};
+use std::io::Write;
+use std::process::{Command, Output, Stdio};
 
 fn slopcop(directory: &std::path::Path, args: &[&str]) -> Output {
     Command::new(env!("CARGO_BIN_EXE_slopcop"))
@@ -99,6 +100,98 @@ fn path_filters_work_from_nested_directories_and_relative_configs() {
     let report: serde_json::Value = serde_json::from_slice(&duplicate.stdout).expect("JSON report");
     assert_eq!(report["summary"]["scanned_files"], 1);
     assert_eq!(report["summary"]["findings"], 1);
+}
+
+fn slopcop_stdin(directory: &std::path::Path, args: &[&str], input: &str) -> Output {
+    let mut child = Command::new(env!("CARGO_BIN_EXE_slopcop"))
+        .current_dir(directory)
+        .args(args)
+        .stdin(Stdio::piped())
+        .stdout(Stdio::piped())
+        .stderr(Stdio::piped())
+        .spawn()
+        .expect("run slopcop");
+    child
+        .stdin
+        .take()
+        .expect("stdin pipe")
+        .write_all(input.as_bytes())
+        .expect("write stdin");
+    child.wait_with_output().expect("wait for slopcop")
+}
+
+#[test]
+fn stdin_uses_the_filename_for_language_configuration_and_filters() {
+    let directory = tempfile::tempdir().expect("temporary directory");
+    fs::create_dir_all(directory.path().join("app/vendor")).expect("create tree");
+    fs::write(
+        directory.path().join("app/.slopcop.toml"),
+        "[slopcop.rules]\nDEAD002 = \"info\"\n\n[slopcop.ignore]\npaths = [\"vendor/**\"]\n",
+    )
+    .expect("write config");
+    let source = "# TODO: implement retries\nrun()\n";
+
+    let unconfigured = slopcop_stdin(
+        directory.path(),
+        &[
+            "--stdin",
+            "--stdin-filename",
+            "unsaved.py",
+            "--format",
+            "json",
+        ],
+        source,
+    );
+    assert_eq!(unconfigured.status.code(), Some(1));
+    let report: serde_json::Value =
+        serde_json::from_slice(&unconfigured.stdout).expect("JSON report");
+    assert_eq!(report["findings"][0]["rule_id"], "DEAD002");
+    assert_eq!(report["findings"][0]["path"], "unsaved.py");
+
+    let configured = slopcop_stdin(
+        directory.path(),
+        &[
+            "check",
+            "--stdin",
+            "--stdin-filename",
+            "app/unsaved.py",
+            "--format",
+            "json",
+        ],
+        source,
+    );
+    assert_eq!(configured.status.code(), Some(0));
+    let report: serde_json::Value =
+        serde_json::from_slice(&configured.stdout).expect("JSON report");
+    assert_eq!(report["findings"][0]["severity"], "info");
+
+    let ignored = slopcop_stdin(
+        directory.path(),
+        &[
+            "--stdin",
+            "--stdin-filename",
+            "app/vendor/lib.py",
+            "--format",
+            "json",
+        ],
+        source,
+    );
+    let report: serde_json::Value = serde_json::from_slice(&ignored.stdout).expect("JSON report");
+    assert_eq!(report["summary"]["scanned_files"], 0);
+
+    let markdown = slopcop_stdin(
+        directory.path(),
+        &["--stdin", "--stdin-filename", "notes.md", "--quiet"],
+        "Notes for the release.\n",
+    );
+    assert_eq!(markdown.status.code(), Some(0));
+
+    let conflicting = slopcop_stdin(
+        directory.path(),
+        &["--stdin", "--stdin-filename", "a.py", "b.py"],
+        "",
+    );
+    assert_eq!(conflicting.status.code(), Some(2));
 }
 
 #[test]

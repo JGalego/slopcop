@@ -78,6 +78,7 @@ slopcop src/ README.md
 slopcop --staged
 slopcop --diff
 slopcop --changed --base origin/main
+slopcop --stdin --stdin-filename src/app.py < src/app.py
 slopcop commit-message .git/COMMIT_EDITMSG
 slopcop history --base origin/main
 slopcop explain VIBE001
