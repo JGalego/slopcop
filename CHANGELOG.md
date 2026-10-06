@@ -13,6 +13,7 @@ This project records user-visible changes in this file and follows Semantic Vers
 - Phrase-based `vibecheck` rules match typographic apostrophes and no longer count a phrase nested inside a longer listed phrase.
 - `VIBE001` recognizes more stock pivot phrases and transitions, including "the real question is", "put differently", "the bottom line is", "more broadly", and "notably,", with either apostrophe. It no longer counts double-quoted examples or a literal "the key is" followed by an ordinary predicate.
 - `VIBE002` recognizes more assistant-response phrases, such as "here's a breakdown", "you're absolutely right", and "let me know if you'd like", and counts standalone interjections such as "Absolutely!".
+- `VIBE003` counts the importance labels "essential", "critical", "pivotal", "paramount", and "noteworthy".
 
 ## 0.1.1 - 2026-10-06
 

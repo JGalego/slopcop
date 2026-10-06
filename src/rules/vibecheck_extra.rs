@@ -32,7 +32,7 @@ static VIBE003: RuleMetadata = RuleMetadata {
     default_confidence: Confidence::Medium,
     message: "Generic evaluative modifiers are unusually dense.",
     suggestion: "Replace generic praise or emphasis with the property, measurement, or tradeoff that matters.",
-    rationale: "Repeated words such as robust or crucial can simulate evaluation without supplying evidence; isolated technical uses do not trigger this rule.",
+    rationale: "Repeated words such as robust, crucial, or essential label information as important instead of showing why it matters; isolated technical uses do not trigger this rule.",
     examples: &["A robust, powerful, comprehensive, crucial, seamless, and effective solution."],
     false_positives: "Product copy intentionally uses evaluative language more often than technical documentation.",
 };
@@ -448,6 +448,11 @@ fn check_modifiers(
         "important",
         "significant",
         "valuable",
+        "essential",
+        "critical",
+        "pivotal",
+        "paramount",
+        "noteworthy",
     ];
     check_word_density(
         context,
@@ -1755,5 +1760,13 @@ mod tests {
             ),
             0
         );
+    }
+
+    #[test]
+    fn importance_labels_count_as_generic_modifiers() {
+        let labels = "This essential, critical, pivotal step is paramount. The noteworthy and crucial result follows.";
+        assert_eq!(findings("VIBE003", labels), 1);
+        let technical = "Hold the lock in a critical section. Measure the critical path before changing the scheduler, then compare throughput, latency, and memory under the same workload.";
+        assert_eq!(findings("VIBE003", technical), 0);
     }
 }
