@@ -2,7 +2,7 @@
 
 This project records user-visible changes in this file and follows Semantic Versioning.
 
-## Unreleased
+## 0.3.0 - 2026-10-06
 
 ### Added
 
@@ -15,6 +15,9 @@ This project records user-visible changes in this file and follows Semantic Vers
 - A Visual Studio Code extension in `editors/vscode` runs the language server. Releases attach a VSIX for each binary platform with slopcop bundled, and a universal VSIX that uses `slopcop` from `PATH`. A Findings view in the Activity Bar lists every finding in the workspace, grouped by file or by rule. Buttons on each finding and editor context menu items open prefilled false-positive, Most Wanted, and missed-slop issue forms.
 - `--format gitlab` writes a GitLab Code Quality report. Fingerprints come from the rule, path, and line text, so findings keep their identity when edits move them.
 - `docs/integrations.md` covers the GitHub Action, GitLab CI, reviewdog, Azure Pipelines, and editor setup for VS Code, Neovim, Helix, Emacs, and JetBrains IDEs.
+- A missed-slop issue form reports quality problems that slopcop does not flag, and a Most Wanted form nominates striking findings for a gallery. The triage bot scans the snippet in both and says whether slopcop already catches it or whether the nominated rule fires.
+- The browser demo caches recent reports in the browser. Reloading a scan link shows the last report for that repository and ref without downloading files again. A note says when the branch has moved since the scan and offers a rescan. A new site build discards cached reports.
+- The browser demo links each finding to a prefilled Most Wanted nomination (`w`), and its results summary, empty state, and footer link to the missed-slop form.
 
 ### Changed
 
@@ -34,9 +37,6 @@ This project records user-visible changes in this file and follows Semantic Vers
 - `DEAD002` no longer reports "Todo" used as a noun, as in "an in-memory Todo REST API", or names such as `todo-null`. Uppercase `TODO` and `FIXME` still count anywhere in a comment; other spellings count when they open the comment. A line with several markers is reported once.
 - `VIBE008` counts a colon only when a space and more text follow it on the same line. Bold Markdown labels such as `**Task:**`, lead-ins such as `**Using pandas:**` or a colon before a list, and joined tokens such as `<file>:<line>` no longer count toward colon density. A sentence that contains a URL is no longer skipped when it also has a colon in its text.
 - A suppression in a block comment, such as `<!-- slopcop: ignore VIBE001 -- -->`, no longer counts the comment terminator as its reason.
-- A missed-slop issue form reports quality problems that slopcop does not flag, and a Most Wanted form nominates striking findings for a gallery. The triage bot scans the snippet in both and says whether slopcop already catches it or whether the nominated rule fires.
-- The browser demo caches recent reports in the browser. Reloading a scan link shows the last report for that repository and ref without downloading files again. A note says when the branch has moved since the scan and offers a rescan. A new site build discards cached reports.
-- The browser demo links each finding to a prefilled Most Wanted nomination (`w`), and its results summary, empty state, and footer link to the missed-slop form.
 
 ## 0.2.0 - 2026-10-06
 
