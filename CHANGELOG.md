@@ -16,6 +16,7 @@ This project records user-visible changes in this file and follows Semantic Vers
 
 ### Fixed
 
+- `DEAD002` treats a marker in straight or curly quotes as a reference, as it already did for backticks. Comments such as `// 'todo' - show a11y violations` or `# reject literal "TODO" text on a slide` are no longer reported. A triple-quoted docstring that holds only a marker still is.
 - `VIBE017` and `VIBE010` skip Markdown table rows as they skip list entries. Neighboring rows repeat their column vocabulary by design, so adjacent cells no longer read as restated sentences or a uniform rhythm.
 - Release notes kept as one file per release count as release notes, so `VIBE008`, `VIBE010`, `VIBE011`, `VIBE017`, `VIBE018`, `VIBE020`, and `VIBE021` skip them as they skip `CHANGELOG.md`. A file qualifies when it sits under a `changelog`, `changelogs`, `releases`, or `release-notes` directory and the file or a directory below that one is named for a version or `Unreleased`, as in `CHANGELOG/2026.3.24.md` or `docs/CHANGELOG/v0.14.1/en.md`.
 - `DEAD003` no longer reports a thrown error or panic whose message merely contains the letters "todo", such as `"Mastodon login failed"`, `"expected set_todos tool"`, or a task-board message like `"cards must move to todo"`. A message still counts when it says "not implemented", contains an uppercase `TODO`, or opens with `todo`.

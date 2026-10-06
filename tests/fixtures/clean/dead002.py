@@ -3,3 +3,6 @@ connect()
 
 # Completions exclude `--xxx` after `--aaa`; the Sphinx `todo` extension stays disabled.
 complete()
+
+# Reject slides that show literal "lorem ipsum" or "TODO:" text to the audience.
+check_slides()

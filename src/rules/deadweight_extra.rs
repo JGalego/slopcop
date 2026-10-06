@@ -19,7 +19,7 @@ static DEAD002: RuleMetadata = RuleMetadata {
     suggestion: "Implement the missing behavior or link the marker to tracked work with a concrete reason.",
     rationale: "Unowned TODO-style scaffolding is easily mistaken for completed agent output.",
     examples: &["# TODO: implement retry handling"],
-    false_positives: "Tracked debt can be intentional; configure this rule for repositories that enforce issue-linked markers separately. Test code, code-quoted references, lowercase xxx or hack, and a lowercase or capitalized todo or fixme that does not open its comment, such as a Todo app, are excluded.",
+    false_positives: "Tracked debt can be intentional; configure this rule for repositories that enforce issue-linked markers separately. Test code, quoted references such as `todo` or \"TODO:\", lowercase xxx or hack, and a lowercase or capitalized todo or fixme that does not open its comment, such as a Todo app, are excluded.",
 };
 
 static DEAD003: RuleMetadata = RuleMetadata {
@@ -295,15 +295,14 @@ fn check_placeholder_marker(
                 .all(|byte| byte.is_ascii_uppercase())
                 || opens_comment(prose, *offset) && !joins_name(&prose[offset + length..])
         })
+        .chain(["HACK", "XXX"].iter().flat_map(|marker| {
+            find_words(prose, marker)
+                .into_iter()
+                .map(move |offset| (offset, marker.len()))
+        }))
+        .filter(|(offset, length)| *offset < production && !is_quoted(prose, *offset, *length))
         .map(|(offset, _)| offset)
-        .chain(
-            ["HACK", "XXX"]
-                .iter()
-                .flat_map(|marker| find_words(prose, marker)),
-        )
         .collect();
-    // A marker quoted as code, such as the Sphinx `todo` extension, is a reference, not a marker.
-    offsets.retain(|offset| *offset < production && !prose[..*offset].ends_with('`'));
     offsets.sort_unstable();
     let mut reported_line = None;
     for offset in offsets {
@@ -324,6 +323,29 @@ fn opens_comment(prose: &str, offset: usize) -> bool {
     prose[line_start..offset]
         .chars()
         .all(|character| character.is_whitespace() || "#/*!-;<\"'".contains(character))
+}
+
+/// Whether the marker at `offset` is quoted, as in the Sphinx `todo` extension, a `'todo'` option
+/// value, or labels such as "TODO:". A quoted marker is a reference, not a marker. A triple-quoted
+/// docstring that holds only a marker is still a placeholder.
+fn is_quoted(prose: &str, offset: usize, length: usize) -> bool {
+    let before = &prose[..offset];
+    if before.ends_with('`') {
+        return true;
+    }
+    let after = prose[offset + length..].trim_start_matches(':');
+    [
+        ('"', '"'),
+        ('\'', '\''),
+        ('\u{201c}', '\u{201d}'),
+        ('\u{2018}', '\u{2019}'),
+    ]
+    .iter()
+    .any(|&(open, close)| {
+        before.ends_with(open)
+            && !before[..before.len() - open.len_utf8()].ends_with(open)
+            && after.starts_with(close)
+    })
 }
 
 /// Whether text continues a name, as in `todo-app`, `todo.py`, or `todo/list`.
@@ -1543,6 +1565,25 @@ mod tests {
             1,
             "one line yields one finding"
         );
+        for source in [
+            "# Reject literal \"lorem ipsum\" / \"TODO\" / \"TBD\" text on a live slide.\nrun()\n",
+            "// 'todo' - show a11y violations in the test UI only\nrun();\n",
+            "// Preserve user labels such as \"TODO:\" unless they open the line.\nrun();\n",
+            "// Flag \u{201c}FIXME\u{201d} notes left in generated slides.\nrun();\n",
+        ] {
+            let path = if source.starts_with('#') {
+                "app.py"
+            } else {
+                "app.js"
+            };
+            assert_eq!(findings("DEAD002", path, source), 0, "{source}");
+        }
+        for source in [
+            "def load():\n    \"\"\"TODO\"\"\"\n    return None\n",
+            "# \"TODO: explain the daemon\" stays a marker.\nrun()\n",
+        ] {
+            assert_eq!(findings("DEAD002", "app.py", source), 1, "{source}");
+        }
         let module = "struct Sink {\n    #[cfg(test)]\n    line_term: u8,\n}\n// TODO: amortize allocation.\nfn run() {}\n#[cfg(test)]\nmod tests {\n    // TODO: cover CRLF.\n}\n";
         assert_eq!(findings("DEAD002", "src/sink.rs", module), 1);
     }
