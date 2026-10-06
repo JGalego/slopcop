@@ -485,14 +485,20 @@ fn paragraph_index(context: &ScanContext<'_>, offset: usize) -> Option<usize> {
         .map(|_| index)
 }
 
-/// Reports whether `offset` falls in a paragraph that begins with a list item or a table row.
-/// Neighboring list entries and table rows are parallel by design, as in changelogs, option
-/// references, and comparison tables.
+/// Reports whether `offset` falls on a list item or a table row, or in a paragraph that begins with
+/// one. Neighboring list entries and table rows are parallel by design, as in changelogs, option
+/// references, and comparison tables, including a list introduced by a lead-in line such as
+/// "This skill enforces only:".
 fn in_list_paragraph(context: &ScanContext<'_>, offset: usize) -> bool {
-    paragraph_index(context, offset).is_some_and(|index| {
-        let text = context.paragraphs()[index].text(context.prose());
-        is_list_item(text) || text.trim_start().starts_with('|')
-    })
+    let prose = context.prose();
+    let is_entry = |text: &str| {
+        let text = text.trim_start();
+        is_list_item(text) || text.starts_with('|')
+    };
+    let line_start = prose[..offset].rfind('\n').map_or(0, |index| index + 1);
+    is_entry(&prose[line_start..])
+        || paragraph_index(context, offset)
+            .is_some_and(|index| is_entry(context.paragraphs()[index].text(prose)))
 }
 
 fn check_assistant_framing(
@@ -2286,6 +2292,17 @@ mod tests {
             "The scanner reads every tracked source file in parallel during repository checks.";
         let second = "Every tracked source file is read in parallel by the scanner during repository checks.";
         assert_eq!(findings("VIBE017", &format!("- {first}\n- {second}\n")), 0);
+        let rhythm = "Contrast meets the minimum for body text and headings. Hierarchy that works in light must work in dark. Brand color stays recognizable across both of the modes. Pure black and pure white flatten the depth of surfaces. Borders carry the structure where the shadows fall away. Accent color marks the single action on each screen. Motion stays short and never blocks the next input. Focus rings remain visible against every surface color.";
+        assert_eq!(findings("VIBE010", rhythm), 1);
+        let led_list = format!(
+            "The brief decides. This skill enforces only:\n{}\n",
+            format!("{rhythm} Icons share one stroke weight across the whole interface.")
+                .split_inclusive(". ")
+                .map(|sentence| format!("* {}", sentence.trim()))
+                .collect::<Vec<_>>()
+                .join("\n")
+        );
+        assert_eq!(findings("VIBE010", &led_list), 0, "{led_list}");
         let table = format!(
             "| Step | Behavior |\n| --- | --- |\n| read | {first} |\n| scan | {second} |\n"
         );

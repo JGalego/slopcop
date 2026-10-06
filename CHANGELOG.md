@@ -22,6 +22,7 @@ This project records user-visible changes in this file and follows Semantic Vers
 
 ### Fixed
 
+- `VIBE010` and `VIBE017` treat a list item or table row as a parallel entry even when a lead-in line such as "This skill enforces only:" opens its paragraph. Before, list entries were skipped only when the paragraph itself began with one.
 - An explanatory comment exempts a one-line empty function from `DEAD005` in Go and Rust, as it already did in Python, JavaScript, and TypeScript. Explanatory comments were read only in those three languages, so `func onStart() { /* Hooks run before the listener opens. */ }` was reported.
 - `DEAD002` treats a marker in straight or curly quotes as a reference, as it already did for backticks. Comments such as `// 'todo' - show a11y violations` or `# reject literal "TODO" text on a slide` are no longer reported. A triple-quoted docstring that holds only a marker still is.
 - `VIBE017` and `VIBE010` skip Markdown table rows as they skip list entries. Neighboring rows repeat their column vocabulary by design, so adjacent cells no longer read as restated sentences or a uniform rhythm.
