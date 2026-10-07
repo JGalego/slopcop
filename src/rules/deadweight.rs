@@ -23,7 +23,7 @@ static METADATA: RuleMetadata = RuleMetadata {
         "catch (error) {}",
         "} catch let error as IOError {}",
     ],
-    false_positives: "A deliberately ignored exception with an explanatory body comment, an optional import, an exhausted iterator, or a guarded block that always raises or fails the test is excluded; other undocumented handlers remain findings.",
+    false_positives: "A deliberately ignored exception with an explanatory body comment or a catch parameter named `ignored`, `ignore`, or `_`, an optional import, an exhausted iterator, or a guarded block that always raises or fails the test is excluded; other undocumented handlers remain findings.",
 };
 
 impl Rule for EmptyExceptionHandler {
@@ -58,6 +58,7 @@ impl Rule for EmptyExceptionHandler {
             }
             if is_optional_import(matched.as_str())
                 || is_iteration_end(matched.as_str())
+                || names_ignored_parameter(matched.as_str())
                 || holds_string_literal(context, matched.start(), matched.end())
                 || raises_deliberately(context, matched.start())
             {
@@ -96,6 +97,20 @@ fn holds_string_literal(context: &ScanContext<'_>, start: usize, end: usize) -> 
 }
 
 /// `except ImportError: pass` is the idiom for an optional dependency: the import is the probe.
+/// Whether a catch clause names its parameter `ignored`, `ignore`, or `_`, as in Java's
+/// `catch (NameNotFoundException ignored) {}`. The name documents the intent like a body comment.
+fn names_ignored_parameter(handler: &str) -> bool {
+    handler
+        .strip_prefix("catch")
+        .and_then(|rest| rest.trim_start().strip_prefix('('))
+        .and_then(|rest| rest.split(')').next())
+        .is_some_and(|parameter| {
+            parameter
+                .split(|character: char| !character.is_alphanumeric() && character != '_')
+                .any(|word| matches!(word, "ignored" | "ignore" | "_"))
+        })
+}
+
 fn is_optional_import(handler: &str) -> bool {
     let clause = handler.lines().next().unwrap_or("");
     clause.contains("ImportError") || clause.contains("ModuleNotFoundError")
@@ -294,6 +309,36 @@ mod tests {
             ("store.go", "func catch() {}\n"),
         ] {
             assert_eq!(count(path, source), 0, "{source}");
+        }
+    }
+
+    #[test]
+    fn parameters_named_ignored_document_the_intent() {
+        for (path, source) in [
+            (
+                "Permissions.java",
+                "try { lookup(); } catch (PackageManager.NameNotFoundException ignored) {\n}\n",
+            ),
+            (
+                "Store.kt",
+                "try { load() } catch (ignore: IOException) {}\n",
+            ),
+            ("Store.java", "try { load(); } catch (IOException _) {}\n"),
+            (
+                "Store.php",
+                "try { load(); } catch (Exception $ignored) {}\n",
+            ),
+        ] {
+            assert_eq!(count(path, source), 0, "{source}");
+        }
+        for (path, source) in [
+            (
+                "Store.java",
+                "try { load(); } catch (IgnoredException e) {}\n",
+            ),
+            ("Store.java", "try { load(); } catch (IOException e) {}\n"),
+        ] {
+            assert_eq!(count(path, source), 1, "{source}");
         }
     }
 
