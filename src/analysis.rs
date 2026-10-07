@@ -113,7 +113,7 @@ fn push_trimmed_span(source: &str, start: usize, end: usize, spans: &mut Vec<Spa
 pub fn prose_view(source: &str, source_type: SourceType) -> Cow<'_, str> {
     match source_type {
         SourceType::Documentation => Cow::Owned(mask_markdown_code(source)),
-        SourceType::Text => Cow::Borrowed(source),
+        SourceType::Text => Cow::Owned(mask_text_literals(source)),
         SourceType::Code(language) => Cow::Owned(extract_code_prose(source, language)),
         SourceType::Configuration | SourceType::Unknown => Cow::Owned(blank(source)),
     }
@@ -142,6 +142,33 @@ fn blank(source: &str) -> String {
         .map(|byte| if byte == b'\n' { b'\n' } else { b' ' })
         .collect();
     String::from_utf8(bytes).expect("ASCII mask must be valid UTF-8")
+}
+
+/// Masks the literal blocks of a plain-text file: lines indented by a tab or four spaces below a
+/// lead-in that ends with a colon, as in `Convert to PNG:` followed by an indented command. The
+/// block holds commands or output, not sentences. Indented first lines of ordinary paragraphs
+/// have no such lead-in and stay prose.
+fn mask_text_literals(source: &str) -> String {
+    let mut output = source.as_bytes().to_vec();
+    let mut lead_in = false;
+    let mut literal = false;
+    let mut offset = 0;
+    for line in source.split_inclusive('\n') {
+        let content = line.trim_end();
+        if content.is_empty() {
+            offset += line.len();
+            continue;
+        }
+        let indented = content.starts_with('\t') || content.starts_with("    ");
+        literal = indented && (literal || lead_in);
+        if literal {
+            mask_range(&mut output, offset, offset + line.len());
+        } else {
+            lead_in = content.ends_with(':');
+        }
+        offset += line.len();
+    }
+    String::from_utf8(output).expect("masking preserves valid UTF-8")
 }
 
 fn mask_markdown_code(source: &str) -> String {
@@ -665,6 +692,17 @@ fn copy_range(output: &mut [u8], source: &[u8], start: usize, end: usize) {
 
 #[cfg(test)]
 mod tests {
+
+    #[test]
+    fn plain_text_masks_literal_blocks_below_a_lead_in() {
+        let source = "Conversion examples\n\nRAW -> PNG, using pnmtopng:\n\n\t$ dcraw -c photo.crw | pnmtopng > photo.png\n\tdone.\n\nThe tools ship separately.\n\tIndented paragraphs stay prose.\n";
+        let prose = prose_view(source, SourceType::Text);
+        assert_eq!(prose.len(), source.len());
+        assert!(!prose.contains("dcraw"));
+        assert!(!prose.contains("done"));
+        assert!(prose.contains("RAW -> PNG"));
+        assert!(prose.contains("Indented paragraphs stay prose."));
+    }
     use super::*;
 
     #[test]

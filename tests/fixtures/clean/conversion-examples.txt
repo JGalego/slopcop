@@ -1,0 +1,18 @@
+Conversion examples
+===================
+
+RAW -> TIFF, using 'pnmtotiff' from the 'media-libs/netpbm' package:
+
+	$ dcraw -c photo_0001.crw | pnmtotiff -truecolor > photo_0001.tiff
+
+RAW -> PNG, using 'pnmtopng' from the 'media-libs/netpbm' package:
+
+	$ dcraw -c photo_0001.crw | pnmtopng > photo_0001.png
+
+RAW -> BMP, using 'ppmtobmp' from the 'media-libs/netpbm' package:
+
+	$ dcraw -c photo_0001.crw | ppmtobmp > photo_0001.bmp
+
+RAW -> JPEG, using 'cjpeg' from the 'media-libs/jpeg' package:
+
+	$ dcraw -c photo_0001.crw | cjpeg > photo_0001.jpeg
