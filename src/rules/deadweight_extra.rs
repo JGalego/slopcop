@@ -143,7 +143,7 @@ static DEAD011: RuleMetadata = RuleMetadata {
     suggestion: "Share the behavior when it represents one policy, or make intentional duplication visibly distinct.",
     rationale: "Generated patches frequently repeat a solved block instead of finding the existing ownership boundary.",
     examples: &["Ten or more equivalent non-empty lines repeated later in one file."],
-    false_positives: "Tables, generated sources, and intentionally unrolled hot paths can contain legitimate repeated blocks. Comments, embedded text, and test code are excluded.",
+    false_positives: "Tables, generated sources, and intentionally unrolled hot paths can contain legitimate repeated blocks. Comments, embedded text, rows of numeric literals, and test code are excluded.",
 };
 
 static DEAD012: RuleMetadata = RuleMetadata {
@@ -1124,12 +1124,13 @@ fn check_duplicate_block(
         offset += line.len();
     }
     // A line that is only comment or literal text is blank in the code view and breaks a block,
-    // so repeated documentation and embedded text never count as duplicated code.
+    // so repeated documentation and embedded text never count as duplicated code. Rows of numbers,
+    // such as font bitmaps, embedded images, and Unicode range tables, are data in the same way.
     let normalized: Vec<_> = lines
         .iter()
         .zip(context.code().lines())
         .map(|(line, code)| {
-            if code.trim().is_empty() {
+            if code.trim().is_empty() || is_numeric_row(code) {
                 String::new()
             } else {
                 line.split_whitespace().collect::<Vec<_>>().join(" ")
@@ -1176,6 +1177,17 @@ fn check_duplicate_block(
             seen.insert(key, start);
         }
     }
+}
+
+/// Whether a line of code holds only numeric literals and punctuation, as in `0x3c, 0x18,` or
+/// `{ 0x38e, 0x3a1 },`.
+fn is_numeric_row(code: &str) -> bool {
+    let mut words = code
+        .split(|character: char| !character.is_alphanumeric() && character != '_')
+        .filter(|word| !word.is_empty())
+        .peekable();
+    words.peek().is_some()
+        && words.all(|word| word.starts_with(|character: char| character.is_ascii_digit()))
 }
 
 fn check_empty_doc_section(
@@ -2319,6 +2331,20 @@ mod tests {
         assert_eq!(findings("DEAD012", "CHANGELOG.md", nested), 0);
         assert_eq!(findings("DEAD012", "README.md", code_only), 0);
         assert_eq!(findings("DEAD012", "README.md", decorative), 0);
+    }
+
+    #[test]
+    fn repeated_numeric_tables_are_data_not_duplicated_code() {
+        let glyph = "    0x00, /* 00000000 */\n    0x18, /* 00011000 */\n    0x3c, /* 00111100 */\n    0x66, /* 01100110 */\n    0x7e, /* 01111110 */\n    0x66, /* 01100110 */\n    0x66, /* 01100110 */\n    0x66, /* 01100110 */\n    0x00, /* 00000000 */\n    0x00, /* 00000000 */\n    0x00, /* 00000000 */\n";
+        let source = format!("static const unsigned char font[] = {{\n{glyph}{glyph}{glyph}}};\n");
+        assert_eq!(findings("DEAD011", "ui/vgafont.c", &source), 0);
+        let ranges = "\t{ 0x38e, 0x3a1 },\n\t{ 0x3a3, 0x3f5 },\n\t{ 0x3f7, 0x481 },\n\t{ 0x48a, 0x52f },\n\t{ 0x531, 0x556 },\n\t{ 0x560, 0x588 },\n\t{ 0x5d0, 0x5ea },\n\t{ 0x5ef, 0x5f2 },\n\t{ 0x620, 0x64a },\n\t{ 0x66e, 0x66f },\n\t{ 0x671, 0x6d3 },\n";
+        let source =
+            format!("static Range a[] = {{\n{ranges}}};\nstatic Range b[] = {{\n{ranges}}};\n");
+        assert_eq!(findings("DEAD011", "core/char_range.cpp", &source), 0);
+        assert!(is_numeric_row("  135, 136, 137, 0x8cUL,"));
+        assert!(!is_numeric_row("  }"));
+        assert!(!is_numeric_row("  value = 3;"));
     }
 
     #[test]
