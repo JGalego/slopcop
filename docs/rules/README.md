@@ -25,7 +25,7 @@ Confidence describes how directly the rule observes its quality smell. It never 
 | `DEAD015` | warning | medium | A Python handler that only calls `print`, or a JS/TS handler that only calls `console.log`, `warn`, or `error` | Best-effort batch processing and interactive command loops that intentionally continue |
 | `DEAD016` | error | high | A production JSX event property whose arrow callback has an empty body | Recognized test files; implemented callbacks |
 | `DEAD017` | warning | medium | An action-named JS/TS function whose entire body returns `{ ok: true }` or `{ success: true }` | Result constructors, test factories, and functions that perform real work before returning success |
-| `DEAD018` | warning | medium | At least two standalone line comments labeled with a numbered `Step` or `Phase`, including banner forms | One isolated phase label or a standardized algorithm whose phases carry domain meaning |
+| `DEAD018` | warning | medium | At least two standalone line comments labeled with a numbered `Step` or `Phase`, including banner forms | One isolated phase label, a standardized algorithm whose phases carry domain meaning, or a file that links a WHATWG, W3C, TC39, or IETF specification whose numbered steps the comments cite |
 
 ## papertrail
 

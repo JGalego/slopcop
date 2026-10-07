@@ -240,7 +240,7 @@ static DEAD018: RuleMetadata = RuleMetadata {
     suggestion: "Remove procedural narration, or extract real phases into functions whose names preserve the intent.",
     rationale: "Step-by-step comments often restate control flow and become stale as the implementation changes.",
     examples: &["// Step 1: Load data\nload();\n// Step 2: Save data\nsave();"],
-    false_positives: "Algorithms with a standardized sequence may need numbered phases; one isolated phase label does not trigger.",
+    false_positives: "Algorithms with a standardized sequence may need numbered phases; one isolated phase label does not trigger. Files that link a web or Internet standard, such as a WHATWG, W3C, TC39, or IETF specification, are excluded, because their step comments cite the algorithm's own numbering.",
 };
 
 pub(super) fn rules() -> Vec<Box<dyn Rule>> {
@@ -1448,6 +1448,9 @@ fn check_procedural_comments(
     let SourceType::Code(language) = context.source_type else {
         return;
     };
+    if links_specification(context.source) {
+        return;
+    }
     let mut hits = Vec::new();
     let mut offset = 0;
     for line in context.source.split_inclusive('\n') {
@@ -1470,6 +1473,23 @@ fn check_procedural_comments(
             Some(format!("observed {} numbered step comments", hits.len())),
         );
     }
+}
+
+/// Whether source links a web or Internet standard. Browser engines and protocol libraries
+/// annotate an implementation with the numbered steps of the algorithm it follows, as in
+/// `// Step 5.4.1: Let requestList be a list.`, so the numbers cite the specification.
+fn links_specification(source: &str) -> bool {
+    static MATCHER: OnceLock<Regex> = OnceLock::new();
+    MATCHER
+        .get_or_init(|| {
+            // Community group drafts such as `webaudio.github.io/web-audio-api/#...` count when they
+            // link a section anchor.
+            Regex::new(
+                r##"(?i)https?://(?:[a-z0-9-]+\.)*(?:spec\.whatwg\.org|w3c\.github\.io|wicg\.github\.io|w3\.org/TR/|drafts\.[a-z-]+\.org|tc39\.es|ietf\.org/|rfc-editor\.org)|https?://[a-z0-9-]+\.github\.io/[^\s>)"#]*#"##,
+            )
+            .expect("specification link regex must compile")
+        })
+        .is_match(source)
 }
 
 fn procedural_comment_matcher() -> &'static Regex {
@@ -2560,6 +2580,18 @@ mod tests {
             ),
             0
         );
+    }
+
+    #[test]
+    fn specification_steps_are_citations_not_narration() {
+        let whatwg = "/// <https://html.spec.whatwg.org/multipage/#dom-eventsource-close>\nfn close(&self) {\n    // Step 1.\n    self.abort();\n    // Step 2. Set the readyState to CLOSED.\n    self.state.set(Closed);\n}\n";
+        assert_eq!(findings("DEAD018", "eventsource.rs", whatwg), 0);
+        let community = "// https://webaudio.github.io/web-audio-api/#dom-audiobuffersourcenode-buffer\n// Step 2.\nfail();\n// Step 3.\nset();\n";
+        assert_eq!(findings("DEAD018", "audio.rs", community), 0);
+        let rfc = "# https://datatracker.ietf.org/doc/html/rfc6455#section-4.2.2\n# Step 1: Read the key\nread()\n# Step 2: Hash it\nhash()\n";
+        assert_eq!(findings("DEAD018", "handshake.py", rfc), 0);
+        let homepage = "// See https://example.github.io/app for the user guide.\n// Step 1: Load records\nload();\n// Step 2: Save records\nsave();\n";
+        assert_eq!(findings("DEAD018", "pipeline.ts", homepage), 1);
     }
 
     #[test]
