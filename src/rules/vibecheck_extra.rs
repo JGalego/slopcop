@@ -153,7 +153,7 @@ static VIBE011: RuleMetadata = RuleMetadata {
         "Three separate list groups, each containing exactly three items.",
         "The tool is simple, practical, and effective. It brings speed, reliability, and flexibility. Docs stay clear, concise, and compelling.",
     ],
-    false_positives: "Reference material organized around a real three-part model can legitimately repeat triads; inline triads of concrete names or actions are not counted, and release notes are excluded.",
+    false_positives: "Reference material organized around a real three-part model can legitimately repeat triads; inline triads of concrete names or actions are not counted, and release notes are excluded. Nested items count with their parent entry, so an option reference that lists a description and an example under each option is not a run of triads.",
 };
 
 static VIBE012: RuleMetadata = RuleMetadata {
@@ -1078,8 +1078,12 @@ fn check_triads(
         );
         return;
     }
+    // Nested items belong to their parent entry, as in an option reference where each option
+    // lists its description and an example, so only items at the group's own depth are members.
     let mut groups = Vec::new();
     let mut current = Vec::new();
+    let mut depth = 0;
+    let mut nested = 0;
     let mut offset = 0;
     let mut nonblank = 0;
     for line in context.prose().split_inclusive('\n') {
@@ -1088,6 +1092,17 @@ fn check_triads(
             nonblank += 1;
         }
         if is_list_item(trimmed) {
+            let indent = line.len() - trimmed.len();
+            if current.is_empty() {
+                depth = indent;
+            } else if indent > depth {
+                nested += 1;
+                offset += line.len();
+                continue;
+            } else if indent < depth {
+                groups.push(std::mem::take(&mut current));
+                depth = indent;
+            }
             current.push(offset);
         } else if !current.is_empty() {
             groups.push(std::mem::take(&mut current));
@@ -1098,7 +1113,7 @@ fn check_triads(
         groups.push(current);
     }
     let triads: Vec<_> = groups.iter().filter(|group| group.len() == 3).collect();
-    let list_lines: usize = groups.iter().map(Vec::len).sum();
+    let list_lines = groups.iter().map(Vec::len).sum::<usize>() + nested;
     if triads.len() >= 3 && list_lines * 2 >= nonblank {
         emit(
             context,
@@ -2702,6 +2717,14 @@ mod tests {
         ] {
             assert_eq!(findings_at("VIBE008", path, reveals), 1, "{path}");
         }
+    }
+
+    #[test]
+    fn triads_count_nested_items_with_their_parent() {
+        let options = "* Host\n  * The address where the server can be reached.\n  * Example: mydomain.com\n\n* Port\n  * The port to use when connecting.\n  * Example: 636\n\n* Filter\n  * A filter that selects administrators.\n  * Example: (objectClass=admin)\n";
+        assert_eq!(findings("VIBE011", options), 0);
+        let flat = "- one\n- two\n- three\n\n- four\n- five\n- six\n\n- seven\n- eight\n- nine\n";
+        assert_eq!(findings("VIBE011", flat), 1);
     }
 
     #[test]
