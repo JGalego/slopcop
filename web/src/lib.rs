@@ -1,11 +1,13 @@
 #![forbid(unsafe_code)]
 
-//! Browser bindings for the slopcop demo. The page lists a repository tree, asks [`Scanner::wants`]
-//! which blobs are worth downloading, feeds them to [`Scanner::add`], and renders the JSON report
+//! Browser bindings for the slopcop demo. The page lists a repository tree, passes its
+//! `.gitattributes` files to [`Scanner::attributes`], asks [`Scanner::wants`] which blobs are worth
+//! downloading, feeds them to [`Scanner::add`], and renders the JSON report
 //! returned by [`Scanner::finish`]. [`Scanner::html`] renders the same scan as a downloadable page.
 
 use std::path::{Component, Path, PathBuf};
 
+use slopcop::attributes::LinguistExclusions;
 use slopcop::config::{CONFIG_FILE_NAME, Config};
 use slopcop::discovery::SKIPPED_DIRECTORIES;
 use slopcop::language::{SourceType, classify};
@@ -28,6 +30,7 @@ pub fn rules() -> String {
 #[wasm_bindgen]
 pub struct Scanner {
     options: ScanOptions,
+    attributes: LinguistExclusions,
     sources: Vec<SourceFile>,
     result: Option<ScanResult>,
 }
@@ -51,15 +54,24 @@ impl Scanner {
                 max_file_size: config.max_file_size,
                 config,
             },
+            attributes: LinguistExclusions::default(),
             sources: Vec::new(),
             result: None,
         })
     }
 
+    /// Reads a repository `.gitattributes` file, given its repository-relative path, so
+    /// [`Scanner::wants`] skips the files it marks `linguist-vendored` or `linguist-generated`.
+    pub fn attributes(&mut self, path: &str, contents: &str) {
+        let directory = Path::new(path).parent().unwrap_or(Path::new(""));
+        self.attributes.add(directory, contents);
+    }
+
     /// Reports whether a repository blob would be scanned, so the page can skip downloading it.
     #[must_use]
     pub fn wants(&self, path: &str, size: f64) -> bool {
-        wanted(Path::new(path), size, &self.options)
+        let path = Path::new(path);
+        wanted(path, size, &self.options) && !self.attributes.excludes(path)
     }
 
     pub fn add(&mut self, path: String, bytes: Vec<u8>) {
@@ -156,6 +168,17 @@ mod tests {
     fn honors_repository_ignore_paths() {
         let scanner = scanner(Some("[slopcop.ignore]\npaths = [\"fixtures/**\"]\n"));
         assert!(!scanner.wants("fixtures/slop.py", 10.0));
+        assert!(scanner.wants("src/app.py", 10.0));
+    }
+
+    #[test]
+    fn honors_linguist_attributes() {
+        let mut scanner = scanner(None);
+        scanner.attributes(".gitattributes", "deps/** linguist-vendored\n");
+        scanner.attributes("web/.gitattributes", "*.gen.js linguist-generated\n");
+        assert!(!scanner.wants("deps/zlib/inflate.c", 10.0));
+        assert!(!scanner.wants("web/api.gen.js", 10.0));
+        assert!(scanner.wants("api.gen.js", 10.0));
         assert!(scanner.wants("src/app.py", 10.0));
     }
 

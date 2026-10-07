@@ -50,9 +50,11 @@ Rule IDs are validated while loading configuration. A typo is a usage error rath
 
 Discovery honors `.gitignore` and the conventional global Git excludes. It also skips `.git`, dependency and third-party directories, virtual environments, caches, build output, binaries, invalid UTF-8, files above the size limit, and common generated-file headers.
 
+Files that `.gitattributes` marks `linguist-vendored` or `linguist-generated` are skipped too, so a repository that already tells GitHub which code is imported or generated does not need to repeat it in `slopcop.toml`. Attributes follow Git's rules: later lines and deeper `.gitattributes` files override earlier ones, and `-linguist-vendored` or `linguist-generated=false` restores a path. When the scan root sits inside a Git work tree, the `.gitattributes` files between the root and the top of the tree apply as well.
+
 `slopcop.ignore.paths` and `slopcop.files.exclude` are combined. `slopcop.files.include` is an allowlist when it is non-empty. Patterns use Git-style glob syntax and `/` separators. A bare filename matches at any depth; a leading `/` anchors it to the configuration directory. A trailing `/` selects a directory and its descendants. Negated patterns override earlier matches within the same list, subject to Git's parent-directory exclusion rules.
 
-Explicit files still pass through project path filters, binary detection, the size limit, and generated-file detection. Overlapping input paths are deduplicated before scanning.
+Explicit files still pass through project path filters, binary detection, the size limit, and generated-file detection, but not the directory skips or `.gitattributes`. Overlapping input paths are deduplicated before scanning.
 
 ## Suppressions
 

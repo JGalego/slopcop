@@ -104,6 +104,19 @@ async function scanRepository(repo, ref, sha, token) {
     }
   }
 
+  const attributes = blobs.filter((blob) => blob.path.split("/").pop() === ".gitattributes");
+  if (attributes.length > 0) {
+    report("Reading .gitattributes");
+    const decoder = new TextDecoder();
+    await pool(attributes, CONCURRENCY, async (blob) => {
+      try {
+        scanner.attributes(blob.path, decoder.decode(await raw(repo, sha, blob.path)));
+      } catch {
+        notices.push(`Could not read ${blob.path}, so the paths it marks vendored or generated were scanned.`);
+      }
+    });
+  }
+
   const { selected, overflow } = select(blobs.filter((blob) => scanner.wants(blob.path, blob.size)));
   if (overflow > 0) {
     notices.push(`This demo scans at most ${MAX_FILES} files and ${MAX_BYTES / 1024 / 1024} MB; ${overflow} more matching files were left out. Run the CLI for a full scan.`);

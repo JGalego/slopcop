@@ -1,6 +1,7 @@
 #![forbid(unsafe_code)]
 
 pub mod analysis;
+pub mod attributes;
 pub mod benchmark;
 pub mod config;
 pub mod discovery;

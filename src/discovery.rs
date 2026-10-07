@@ -1,10 +1,11 @@
 use std::collections::BTreeSet;
 use std::fs;
-use std::path::PathBuf;
+use std::path::{Path, PathBuf};
 
 use ignore::{DirEntry, WalkBuilder};
 use thiserror::Error;
 
+use crate::attributes::{ATTRIBUTES_FILE_NAME, LinguistExclusions};
 use crate::config::{PathFilter, absolute_path};
 
 pub const SKIPPED_DIRECTORIES: &[&str] = &[
@@ -52,6 +53,8 @@ fn should_visit(entry: &DirEntry) -> bool {
 }
 
 /// Finds unique files beneath the requested paths while applying ignore and project filters.
+/// Files found by walking a directory are dropped when `.gitattributes` marks them
+/// `linguist-vendored` or `linguist-generated`; explicitly named files are kept.
 ///
 /// # Errors
 ///
@@ -67,6 +70,8 @@ pub fn discover(
         paths.to_vec()
     };
     let mut files = BTreeSet::new();
+    let mut found = Vec::new();
+    let mut attributes = LinguistExclusions::default();
 
     for root in roots {
         let metadata = fs::metadata(&root).map_err(|source| {
@@ -90,6 +95,9 @@ pub fn discover(
             continue;
         }
 
+        for directory in enclosing_repository_directories(&root) {
+            read_attributes(&mut attributes, &directory);
+        }
         let directory_filter = path_filter.clone();
         let walker = WalkBuilder::new(&root)
             .standard_filters(true)
@@ -104,13 +112,41 @@ pub fn discover(
 
         for entry in walker {
             let entry = entry?;
-            if entry.file_type().is_some_and(|kind| kind.is_file())
-                && path_filter.includes_file(entry.path())
-            {
-                files.insert(entry.into_path());
+            if !entry.file_type().is_some_and(|kind| kind.is_file()) {
+                continue;
+            }
+            if entry.file_name() == ATTRIBUTES_FILE_NAME {
+                if let Some(directory) = entry.path().parent() {
+                    read_attributes(&mut attributes, directory);
+                }
+            }
+            if path_filter.includes_file(entry.path()) {
+                found.push(entry.into_path());
             }
         }
     }
 
+    files.extend(found.into_iter().filter(|path| !attributes.excludes(path)));
     Ok(files.into_iter().collect())
+}
+
+fn read_attributes(attributes: &mut LinguistExclusions, directory: &Path) {
+    if let Ok(contents) = fs::read_to_string(directory.join(ATTRIBUTES_FILE_NAME)) {
+        attributes.add(directory, &contents);
+    }
+}
+
+/// The parents of a scan root up to the top of its Git work tree, whose `.gitattributes` files
+/// also govern the root. Outside a work tree there are none, so unrelated files are not read.
+fn enclosing_repository_directories(root: &Path) -> Vec<PathBuf> {
+    let mut directories = Vec::new();
+    for directory in root.ancestors() {
+        if directory.join(".git").exists() {
+            return directories;
+        }
+        if let Some(parent) = directory.parent() {
+            directories.push(parent.to_path_buf());
+        }
+    }
+    Vec::new()
 }

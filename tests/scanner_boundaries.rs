@@ -46,6 +46,56 @@ fn discovery_deduplicates_and_skips_ignored_binary_large_and_generated_files() {
 }
 
 #[test]
+fn discovery_skips_third_party_directories_and_linguist_excluded_files() {
+    let directory = tempfile::tempdir().expect("temporary directory");
+    let root = directory.path();
+    fs::create_dir(root.join(".git")).expect("create Git marker");
+    fs::write(
+        root.join(".gitattributes"),
+        "src/deps/** linguist-vendored\nsrc/deps/ours.py -linguist-vendored\n",
+    )
+    .expect("write attributes");
+    for name in ["src/deps", "src/web", "src/third_party/zlib"] {
+        fs::create_dir_all(root.join(name)).expect("create directory");
+    }
+    fs::write(
+        root.join("src/web/.gitattributes"),
+        "*.gen.py linguist-generated\n",
+    )
+    .expect("write nested attributes");
+    let source = "# TODO: implement retry handling\nrun()\n";
+    for name in [
+        "src/app.py",
+        "src/deps/vendored.py",
+        "src/deps/ours.py",
+        "src/web/api.gen.py",
+        "src/third_party/zlib/inflate.py",
+    ] {
+        fs::write(root.join(name), source).expect("write source");
+    }
+
+    // Scanning a subdirectory still applies the `.gitattributes` at the top of the work tree.
+    let result = scan_paths(&[root.join("src")], &ScanOptions::default()).expect("scan succeeds");
+    let mut paths = result
+        .findings
+        .iter()
+        .map(|finding| finding.path.clone())
+        .collect::<Vec<_>>();
+    paths.sort();
+    assert_eq!(paths.len(), 2, "{paths:?}");
+    assert!(paths[0].ends_with("src/app.py"), "{paths:?}");
+    assert!(paths[1].ends_with("src/deps/ours.py"), "{paths:?}");
+
+    // A file named on the command line is scanned even when its attributes exclude it.
+    let explicit = scan_paths(
+        &[root.join("src/deps/vendored.py")],
+        &ScanOptions::default(),
+    )
+    .expect("scan succeeds");
+    assert_eq!(explicit.findings.len(), 1);
+}
+
+#[test]
 fn configuration_values_do_not_receive_prose_rules() {
     let directory = tempfile::tempdir().expect("temporary directory");
     let path = directory.path().join("settings.json");
