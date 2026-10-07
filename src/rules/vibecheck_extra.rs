@@ -109,7 +109,7 @@ static VIBE008: RuleMetadata = RuleMetadata {
         "Input: one value. Output: one value. Result: one value. Reason: one value.",
         "The reason is simple: caching. The result: faster pages. What changed? The index.",
     ],
-    false_positives: "Glossaries and field-reference documents naturally use many colons; release notes, code comments, and lead-ins that end with a colon are excluded.",
+    false_positives: "Glossaries and field-reference documents naturally use many colons; release notes, code comments, lead-ins that end with a colon, and record lines such as log or validator output where three or more consecutive lines open with the same `Label:` prefix are excluded.",
 };
 
 static VIBE009: RuleMetadata = RuleMetadata {
@@ -124,7 +124,7 @@ static VIBE009: RuleMetadata = RuleMetadata {
     examples: &[
         "This system reads files. This system checks prose. This system prints findings. This system exits.",
     ],
-    false_positives: "Procedures and intentionally parallel rhetoric may repeat openings for clarity or effect.",
+    false_positives: "Procedures and intentionally parallel rhetoric may repeat openings for clarity or effect. Record lines, such as log or validator output where three or more consecutive lines open with the same `Label:` prefix, are not counted.",
 };
 
 static VIBE010: RuleMetadata = RuleMetadata {
@@ -137,7 +137,7 @@ static VIBE010: RuleMetadata = RuleMetadata {
     suggestion: "Combine or split sentences according to the ideas rather than preserving a repeated cadence.",
     rationale: "Eight similarly sized sentences in sequence can indicate templated prose, but the observation is intentionally low confidence.",
     examples: &["Eight consecutive sentences whose word counts vary by at most three."],
-    false_positives: "Controlled-language documentation and material written for early readers often targets uniform sentence length; lists, tables, code comments, and release notes are excluded.",
+    false_positives: "Controlled-language documentation and material written for early readers often targets uniform sentence length; lists, tables, record lines such as log or validator output where three or more consecutive lines open with the same `Label:` prefix, code comments, and release notes are excluded.",
 };
 
 static VIBE011: RuleMetadata = RuleMetadata {
@@ -850,10 +850,14 @@ fn check_colons(
         );
         return;
     }
+    let lines: Vec<_> = context.source.lines().collect();
     let sentences: Vec<_> = context
         .sentences()
         .iter()
         .filter(|span| word_count(span.text(context.prose())) >= 3)
+        .filter(|span| {
+            !in_labeled_record(&lines, context.source[..span.start].matches('\n').count())
+        })
         .collect();
     if sentences.len() < 8 {
         return;
@@ -885,9 +889,13 @@ fn check_openings(
     if !is_prose(context) {
         return;
     }
+    let lines: Vec<_> = context.source.lines().collect();
     let substantial: Vec<_> = context
         .sentences()
         .iter()
+        .filter(|span| {
+            !in_labeled_record(&lines, context.source[..span.start].matches('\n').count())
+        })
         .filter_map(|span| {
             let tokens = words(span.text(context.prose()));
             (tokens.len() >= 4).then(|| {
@@ -946,6 +954,26 @@ fn check_openings(
     }
 }
 
+/// Whether a line belongs to a run of three or more consecutive lines that open with the same
+/// `Label:` prefix of at most five words, as in pasted log or validator output such as
+/// `Validate extension JSON: Error: Field ...`. Each line is a record, not a sentence of prose.
+fn in_labeled_record(lines: &[&str], index: usize) -> bool {
+    fn label(line: &str) -> Option<&str> {
+        let (label, _) = line.trim_start().split_once(": ")?;
+        (!label.is_empty()
+            && label.split_whitespace().count() <= 5
+            && !label.contains(['.', '!', '?']))
+        .then_some(label)
+    }
+    let Some(shared) = lines.get(index).and_then(|line| label(line)) else {
+        return false;
+    };
+    let same = |line: &&&str| label(line) == Some(shared);
+    let before = lines[..index].iter().rev().take_while(same).count();
+    let after = lines[index + 1..].iter().take_while(same).count();
+    before + after >= 2
+}
+
 fn check_rhythm(
     context: &ScanContext<'_>,
     metadata: &'static RuleMetadata,
@@ -980,16 +1008,18 @@ fn check_rhythm(
 /// Groups sentences or paragraphs into uninterrupted runs of prose, pairing each span that has at
 /// least `minimum_words` with its word count. A code example or a list between two spans ends the
 /// run: text on either side belongs to separate steps of a walkthrough, and list entries are
-/// parallel by design.
+/// parallel by design. Labeled record lines, such as validator output, count as list entries.
 fn prose_runs(
     context: &ScanContext<'_>,
     spans: &[Span],
     minimum_words: usize,
 ) -> Vec<Vec<(Span, usize)>> {
+    let lines: Vec<_> = context.source.lines().collect();
     let mut runs = vec![Vec::new()];
     let mut previous_end = 0;
     for span in spans {
-        let listed = in_list_paragraph(context, span.start);
+        let listed = in_list_paragraph(context, span.start)
+            || in_labeled_record(&lines, context.source[..span.start].matches('\n').count());
         let interrupted = context.source[previous_end..span.start]
             .chars()
             .any(char::is_alphanumeric);
@@ -2215,6 +2245,19 @@ mod tests {
         let triads =
             "- alpha\n- beta\n- gamma\n\n- delta\n- epsilon\n- zeta\n\n- eta\n- theta\n- iota\n";
         assert_eq!(findings("VIBE011", triads), 1);
+    }
+
+    #[test]
+    fn labeled_record_lines_are_not_prose_sentences() {
+        let output = "Validate extension JSON: Error: Field 'classes/A/methods/a': size changed value in new API, from 9 to 10.\nValidate extension JSON: Error: Field 'classes/B/methods/b': size changed value in new API, from 10 to 7.\nValidate extension JSON: Error: Field 'classes/C/methods/c': type changed value in new API, from int to float.\nValidate extension JSON: Error: Field 'classes/D/methods/d': meta changed value in new API, from float to int.\nValidate extension JSON: Error: Field 'classes/E/methods/e': default_value changed value in new API, from 1 to 0.\nValidate extension JSON: Error: Field 'classes/F/methods/f': size changed value in new API, from 3 to 4.\n";
+        assert_eq!(findings_at("VIBE009", "GH-98670.txt", output), 0);
+        let anaphora = "This system reads source files.\nThis system classifies each source.\nThis system runs every rule.\nThis system sorts every finding.\nOther reporters consume the result.\nTests verify stable output.\n";
+        assert_eq!(findings("VIBE009", anaphora), 1);
+        assert_eq!(findings_at("VIBE008", "GH-98670.txt", output), 0);
+        let uniform = "Validate extension JSON: Error: Field 'classes/A/methods/a': size changed value in new API, from 9 to 10.\n".repeat(9);
+        assert_eq!(findings_at("VIBE010", "GH-98670.txt", &uniform), 0);
+        let labels = "Note: this system reads source files.\nNote: this system classifies each source.\nThis system runs every rule.\nThis system sorts every finding.\nThis system writes every report.\nThis system exits cleanly.\n";
+        assert_eq!(findings("VIBE009", labels), 1);
     }
 
     #[test]
