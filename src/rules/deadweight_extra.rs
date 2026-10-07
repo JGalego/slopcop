@@ -65,7 +65,7 @@ static DEAD005: RuleMetadata = RuleMetadata {
     suggestion: "Implement the function, remove it, or declare the containing interface abstract.",
     rationale: "Empty concrete functions create an API surface that promises behavior but performs none.",
     examples: &["def publish(event):\n    pass", "function publish() {}"],
-    false_positives: "Framework hooks with an explanatory body comment, decorated handlers, and test doubles in test code are excluded.",
+    false_positives: "Framework hooks with an explanatory body comment, decorated handlers, and test doubles in test code are excluded. So are Rust methods in a trait definition or an `impl Trait for Type` block, where an empty body is a deliberate no-op default or implementation.",
 };
 
 static DEAD006: RuleMetadata = RuleMetadata {
@@ -747,8 +747,36 @@ fn check_empty_function(
         if is_decorated(context.code(), found.start()) || is_test_code(context.path) {
             continue;
         }
+        if context.source_type == SourceType::Code(Language::Rust)
+            && in_trait_block(context.code(), found.start())
+        {
+            continue;
+        }
         emit(context, metadata, findings, found.start(), None::<String>);
     }
+}
+
+/// Whether a Rust function sits directly inside a trait definition or `impl Trait for Type`. An
+/// empty body there is a deliberate no-op: a default for an optional callback, or a required method
+/// that a sink such as one discarding fetch events has nothing to do for.
+fn in_trait_block(code: &str, start: usize) -> bool {
+    static BLOCK: OnceLock<Regex> = OnceLock::new();
+    let block = BLOCK.get_or_init(|| {
+        Regex::new(
+            r"^(?:pub(?:\([^)]*\))?[ \t]+)?(?:unsafe[ \t]+)?(?:impl\b.*[ \t]for[ \t]|trait[ \t])",
+        )
+        .expect("trait block regex must compile")
+    });
+    let depth = indentation(&code[start..]);
+    code[..start]
+        .lines()
+        .rev()
+        .filter(|line| {
+            let line = line.trim();
+            !line.is_empty() && line != "{" && !line.starts_with("where")
+        })
+        .find(|line| indentation(line) < depth)
+        .is_some_and(|line| block.is_match(line.trim_start()))
 }
 
 fn python_empty_function_matcher() -> &'static Regex {
@@ -2199,6 +2227,24 @@ mod tests {
             ),
             1
         );
+    }
+
+    #[test]
+    fn trait_methods_are_deliberate_no_ops_not_empty_functions() {
+        for source in [
+            "impl FetchTaskTarget for DiscardFetch {\n    fn process_response(&mut self, _: &Response) {}\n}\n",
+            "unsafe impl<T> Sink<T> for Discard<T>\nwhere\n    T: Send,\n{\n    #[inline]\n    fn push(&self, _: T) {}\n}\n",
+            "pub(crate) trait WebViewDelegate {\n    /// Called when the status text changes.\n    fn notify_status_text_changed(&self, _status: Option<String>) {}\n}\n",
+        ] {
+            assert_eq!(findings("DEAD005", "src/net.rs", source), 0, "{source}");
+        }
+        for source in [
+            "impl Discard {\n    fn push(&self) {}\n}\n",
+            "mod sink {\n    fn push() {}\n}\n",
+            "fn push() {}\n",
+        ] {
+            assert_eq!(findings("DEAD005", "src/net.rs", source), 1, "{source}");
+        }
     }
 
     #[test]
