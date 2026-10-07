@@ -65,7 +65,7 @@ static DEAD005: RuleMetadata = RuleMetadata {
     suggestion: "Implement the function, remove it, or declare the containing interface abstract.",
     rationale: "Empty concrete functions create an API surface that promises behavior but performs none.",
     examples: &["def publish(event):\n    pass", "function publish() {}"],
-    false_positives: "Framework hooks with an explanatory body comment, decorated handlers, and test doubles in test code are excluded. So are Rust methods in a trait definition or an `impl Trait for Type` block, where an empty body is a deliberate no-op default or implementation.",
+    false_positives: "Framework hooks with an explanatory body comment, decorated handlers, and test doubles in test code are excluded. So are Rust methods in a trait definition or an `impl Trait for Type` block, where an empty body is a deliberate no-op default or implementation, and Closure Compiler externs that declare a `@constructor`, `@interface`, or `@record`.",
 };
 
 static DEAD006: RuleMetadata = RuleMetadata {
@@ -747,12 +747,16 @@ fn check_empty_function(
         if is_decorated(context.code(), found.start()) || is_test_code(context.path) {
             continue;
         }
-        if context.source_type == SourceType::Code(Language::Rust)
-            && in_trait_block(context.code(), found.start())
-        {
-            continue;
+        let declaration = match context.source_type {
+            SourceType::Code(Language::Rust) => in_trait_block(context.code(), found.start()),
+            SourceType::Code(Language::JavaScript | Language::TypeScript) => {
+                is_closure_extern(context.path, nearby)
+            }
+            _ => false,
+        };
+        if !declaration {
+            emit(context, metadata, findings, found.start(), None::<String>);
         }
-        emit(context, metadata, findings, found.start(), None::<String>);
     }
 }
 
@@ -777,6 +781,17 @@ fn in_trait_block(code: &str, start: usize) -> bool {
         })
         .find(|line| indentation(line) < depth)
         .is_some_and(|line| block.is_match(line.trim_start()))
+}
+
+/// Whether an empty JavaScript function is a Closure Compiler extern, which declares a browser or
+/// library type for the type checker and never runs.
+fn is_closure_extern(path: &Path, nearby: &str) -> bool {
+    path.file_name()
+        .and_then(|name| name.to_str())
+        .is_some_and(|name| name.ends_with(".externs.js") || name == "externs.js")
+        || ["@constructor", "@interface", "@record"]
+            .iter()
+            .any(|tag| nearby.contains(tag))
 }
 
 fn python_empty_function_matcher() -> &'static Regex {
@@ -2245,6 +2260,25 @@ mod tests {
         ] {
             assert_eq!(findings("DEAD005", "src/net.rs", source), 1, "{source}");
         }
+    }
+
+    #[test]
+    fn closure_externs_are_declarations_not_empty_functions() {
+        let jsdoc =
+            "/**\n * @constructor\n * @extends {XRSpace}\n */\nfunction XRReferenceSpace() {}\n";
+        assert_eq!(findings("DEAD005", "native/webxr.js", jsdoc), 0);
+        assert_eq!(
+            findings(
+                "DEAD005",
+                "native/webxr.externs.js",
+                "function XRSpace() {}\n"
+            ),
+            0
+        );
+        assert_eq!(
+            findings("DEAD005", "native/webxr.js", "function XRSpace() {}\n"),
+            1
+        );
     }
 
     #[test]
