@@ -124,7 +124,7 @@ static VIBE009: RuleMetadata = RuleMetadata {
     examples: &[
         "This system reads files. This system checks prose. This system prints findings. This system exits.",
     ],
-    false_positives: "Procedures and intentionally parallel rhetoric may repeat openings for clarity or effect. Record lines, such as log or validator output where three or more consecutive lines open with the same `Label:` prefix, are not counted, nor are the comments of source files that link a WHATWG, W3C, TC39, or IETF specification, which quote its algorithm.",
+    false_positives: "Procedures and intentionally parallel rhetoric may repeat openings for clarity or effect. Record lines, such as log or validator output where three or more consecutive lines open with the same `Label:` prefix, are not counted, nor are the comments of source files that link a WHATWG, W3C, TC39, or IETF specification, which quote its algorithm. Release notes repeat one entry template by design.",
 };
 
 static VIBE010: RuleMetadata = RuleMetadata {
@@ -898,7 +898,7 @@ fn check_openings(
     metadata: &'static RuleMetadata,
     findings: &mut Vec<crate::model::Finding>,
 ) {
-    if !is_prose(context) || quotes_specification(context) {
+    if !is_prose(context) || is_release_notes(context) || quotes_specification(context) {
         return;
     }
     let lines: Vec<_> = context.source.lines().collect();
@@ -2663,6 +2663,14 @@ mod tests {
         let labels = "Problem: the build fails. Fix: pin the compiler. Why does it fail? The lockfile is stale.\n\n## What changed?\n\nThe index moved to memory.";
         assert_eq!(findings("VIBE008", labels), 0);
         assert_eq!(findings_at("VIBE008", "CHANGELOG.md", reveals), 0);
+    }
+
+    #[test]
+    fn openings_skip_release_notes() {
+        let entries = "Accessing the repository API with a public token did not restrict access.\nAccessing the issue API with a public token exposed private dependencies.\nAccessing the timeline API with a public token showed private references.\nAccessing the search API with a public token listed private results.\nThe admin panel now shows the token scope.\nThe login form now rejects expired tokens.\n";
+        assert_eq!(findings_at("VIBE009", "notes.md", entries), 1);
+        assert_eq!(findings_at("VIBE009", "release-notes/11457.md", entries), 0);
+        assert_eq!(findings_at("VIBE009", "CHANGELOG.md", entries), 0);
     }
 
     #[test]
