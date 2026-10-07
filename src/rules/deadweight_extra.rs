@@ -5,7 +5,9 @@ use std::sync::OnceLock;
 use regex::Regex;
 
 use super::{BuiltinRule, Rule, ScanContext, emit, matched_source_has_explanatory_comment};
-use crate::analysis::{indentation, preceding_text, python_block_ends_at, word_count, words};
+use crate::analysis::{
+    indentation, links_specification, preceding_text, python_block_ends_at, word_count, words,
+};
 use crate::language::{Language, SourceType};
 use crate::model::{Confidence, Module, RuleMetadata, Severity};
 
@@ -1505,6 +1507,7 @@ fn check_procedural_comments(
     let SourceType::Code(language) = context.source_type else {
         return;
     };
+    // Step comments in an implementation of a linked specification cite its numbering.
     if links_specification(context.source) {
         return;
     }
@@ -1530,23 +1533,6 @@ fn check_procedural_comments(
             Some(format!("observed {} numbered step comments", hits.len())),
         );
     }
-}
-
-/// Whether source links a web or Internet standard. Browser engines and protocol libraries
-/// annotate an implementation with the numbered steps of the algorithm it follows, as in
-/// `// Step 5.4.1: Let requestList be a list.`, so the numbers cite the specification.
-fn links_specification(source: &str) -> bool {
-    static MATCHER: OnceLock<Regex> = OnceLock::new();
-    MATCHER
-        .get_or_init(|| {
-            // Community group drafts such as `webaudio.github.io/web-audio-api/#...` count when they
-            // link a section anchor.
-            Regex::new(
-                r##"(?i)https?://(?:[a-z0-9-]+\.)*(?:spec\.whatwg\.org|w3c\.github\.io|wicg\.github\.io|w3\.org/TR/|drafts\.[a-z-]+\.org|tc39\.es|ietf\.org/|rfc-editor\.org)|https?://[a-z0-9-]+\.github\.io/[^\s>)"#]*#"##,
-            )
-            .expect("specification link regex must compile")
-        })
-        .is_match(source)
 }
 
 fn procedural_comment_matcher() -> &'static Regex {

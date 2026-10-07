@@ -417,6 +417,24 @@ fn mask_doc_comment_examples(output: &mut [u8], source: &str) {
     }
 }
 
+/// Whether source links a web or Internet standard, such as a WHATWG, W3C, TC39, or IETF
+/// specification. Browser engines and protocol libraries annotate such an implementation with the
+/// algorithm it follows, step numbers and wording included, as in
+/// `// Step 5.4.1: Let requestList be a list.`.
+pub(crate) fn links_specification(source: &str) -> bool {
+    static MATCHER: OnceLock<Regex> = OnceLock::new();
+    MATCHER
+        .get_or_init(|| {
+            // Community group drafts such as `webaudio.github.io/web-audio-api/#...` count when they
+            // link a section anchor.
+            Regex::new(
+                r##"(?i)https?://(?:[a-z0-9-]+\.)*(?:spec\.whatwg\.org|w3c\.github\.io|wicg\.github\.io|w3\.org/TR/|drafts\.[a-z-]+\.org|tc39\.es|ietf\.org/|rfc-editor\.org)|https?://[a-z0-9-]+\.github\.io/[^\s>)"#]*#"##,
+            )
+            .expect("specification link regex must compile")
+        })
+        .is_match(source)
+}
+
 /// Returns the width of a line's leading whitespace, counting a tab as eight columns.
 pub(crate) fn indentation(line: &str) -> usize {
     line.bytes()

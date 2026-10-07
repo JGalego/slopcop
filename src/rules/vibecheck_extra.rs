@@ -6,7 +6,7 @@ use aho_corasick::AhoCorasick;
 use regex::Regex;
 
 use super::{BuiltinRule, Rule, ScanContext, emit};
-use crate::analysis::{Span, word_count, words};
+use crate::analysis::{Span, links_specification, word_count, words};
 use crate::language::SourceType;
 use crate::model::{Confidence, Module, RuleMetadata, Severity};
 
@@ -124,7 +124,7 @@ static VIBE009: RuleMetadata = RuleMetadata {
     examples: &[
         "This system reads files. This system checks prose. This system prints findings. This system exits.",
     ],
-    false_positives: "Procedures and intentionally parallel rhetoric may repeat openings for clarity or effect. Record lines, such as log or validator output where three or more consecutive lines open with the same `Label:` prefix, are not counted.",
+    false_positives: "Procedures and intentionally parallel rhetoric may repeat openings for clarity or effect. Record lines, such as log or validator output where three or more consecutive lines open with the same `Label:` prefix, are not counted, nor are the comments of source files that link a WHATWG, W3C, TC39, or IETF specification, which quote its algorithm.",
 };
 
 static VIBE010: RuleMetadata = RuleMetadata {
@@ -239,7 +239,7 @@ static VIBE017: RuleMetadata = RuleMetadata {
     examples: &[
         "The scanner reads every tracked source file in parallel. Every tracked source file is read in parallel by the scanner.",
     ],
-    false_positives: "Definitions may intentionally restate a term once in equivalent language; list entries, table rows, release notes, record lines such as validator output or `<param>` docs where three or more consecutive lines open with the same two words, and sentences in separate paragraphs or comments are not compared.",
+    false_positives: "Definitions may intentionally restate a term once in equivalent language; list entries, table rows, release notes, record lines such as validator output or `<param>` docs where three or more consecutive lines open with the same two words, comments in source files that link a WHATWG, W3C, TC39, or IETF specification, which quote its algorithm, and sentences in separate paragraphs or comments are not compared.",
 };
 
 static VIBE018: RuleMetadata = RuleMetadata {
@@ -886,7 +886,7 @@ fn check_openings(
     metadata: &'static RuleMetadata,
     findings: &mut Vec<crate::model::Finding>,
 ) {
-    if !is_prose(context) {
+    if !is_prose(context) || quotes_specification(context) {
         return;
     }
     let lines: Vec<_> = context.source.lines().collect();
@@ -952,6 +952,13 @@ fn check_openings(
             )),
         );
     }
+}
+
+/// Whether the prose is the comments of source code that links a web or Internet standard. Such
+/// comments quote the specification's algorithm, as in `// If hash is "SHA-384": Set the alg
+/// attribute of jwk to "RSA-OAEP-384".`, so its parallel wording is not the author's.
+fn quotes_specification(context: &ScanContext<'_>) -> bool {
+    matches!(context.source_type, SourceType::Code(_)) && links_specification(context.source)
 }
 
 /// Whether a line belongs to a run of three or more consecutive lines that open with the same
@@ -1555,7 +1562,7 @@ fn check_restatement(
     metadata: &'static RuleMetadata,
     findings: &mut Vec<crate::model::Finding>,
 ) {
-    if !is_prose(context) || is_release_notes(context) {
+    if !is_prose(context) || is_release_notes(context) || quotes_specification(context) {
         return;
     }
     for pair in context.sentences().windows(2) {
@@ -2245,6 +2252,20 @@ mod tests {
         let triads =
             "- alpha\n- beta\n- gamma\n\n- delta\n- epsilon\n- zeta\n\n- eta\n- theta\n- iota\n";
         assert_eq!(findings("VIBE011", triads), 1);
+    }
+
+    #[test]
+    fn comments_quoting_a_linked_specification_are_not_authored_prose() {
+        let quoted = include_str!("../../tests/fixtures/clean/spec-quotes.rs");
+        assert_eq!(findings_at("VIBE017", "sha_operation.rs", quoted), 0);
+        assert_eq!(findings_at("VIBE009", "sha_operation.rs", quoted), 0);
+        let unlinked = quoted.replacen(
+            "<https://w3c.github.io/webcrypto/#sha-operations-digest>",
+            "Computes a digest.",
+            1,
+        );
+        assert!(findings_at("VIBE017", "sha_operation.rs", &unlinked) > 0);
+        assert_eq!(findings_at("VIBE009", "sha_operation.rs", &unlinked), 1);
     }
 
     #[test]
