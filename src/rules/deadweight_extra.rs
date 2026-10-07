@@ -78,7 +78,7 @@ static DEAD006: RuleMetadata = RuleMetadata {
     suggestion: "Remove the comment or explain the non-obvious constraint behind the operation.",
     rationale: "Narrating simple syntax increases maintenance cost without preserving intent.",
     examples: &["# Increment the counter\ncounter += 1"],
-    false_positives: "Teaching material may intentionally narrate syntax; generated tutorials can demote or disable this rule. Lines inside longer comments are not candidates.",
+    false_positives: "Teaching material may intentionally narrate syntax; generated tutorials can demote or disable this rule. Lines inside longer comments and labels above a group of sibling lines are not candidates.",
 };
 
 static DEAD007: RuleMetadata = RuleMetadata {
@@ -789,10 +789,22 @@ fn check_redundant_comment(
         if !is_comment(line) || is_comment(next) || index > 0 && is_comment(lines[index - 1]) {
             continue;
         }
+        // A label above several sibling lines, such as `// Depth Fog` over a group of
+        // declarations or `// Particles, Start` over table rows, names the group rather than
+        // narrating the first line.
+        let labels_group = lines.get(index + 2).is_some_and(|after| {
+            !after.trim().is_empty()
+                && !is_comment(after)
+                && !after.trim_start().starts_with(['}', ')', ']'])
+                && indentation(after) == indentation(next)
+        });
         let comment = context.prose()[start..offset].trim();
         if let Some(content) = line_comment_content(comment, language) {
             let code = context.code()[offset..offset + next.len()].trim();
-            if !content.starts_with(['/', '!', '#']) && comment_restates(content, code) {
+            if !labels_group
+                && !content.starts_with(['/', '!', '#'])
+                && comment_restates(content, code)
+            {
                 emit(context, metadata, findings, start, None::<String>);
             }
         }
@@ -1963,6 +1975,22 @@ mod tests {
             ),
             1
         );
+    }
+
+    #[test]
+    fn group_labels_are_not_narration() {
+        let declarations = "class Environment {\n\t// Depth Fog\n\tvoid set_fog_depth_curve(float p_curve);\n\tfloat get_fog_depth_curve() const;\n};\n";
+        assert_eq!(findings("DEAD006", "environment.h", declarations), 0);
+        let paragraph = "void f() {\n\t// Main button.\n\tmain_button = memnew(Button);\n\tmain_button->set_flat(true);\n}\n";
+        assert_eq!(findings("DEAD006", "toaster.cpp", paragraph), 0);
+        let single =
+            "fn run() {\n    // Write the data.\n    file.write(data);\n\n    done();\n}\n";
+        assert_eq!(findings("DEAD006", "ar.rs", single), 1);
+        let closing =
+            "fn run() {\n    // Remove the snapshot dir\n    remove_dir_all(snapshot_dir);\n}\n";
+        assert_eq!(findings("DEAD006", "integration.rs", closing), 1);
+        let signature = "// Create Descriptor\nfn create_descriptor(\n    characteristic: &Characteristic,\n) {}\n";
+        assert_eq!(findings("DEAD006", "test.rs", signature), 1);
     }
 
     #[test]

@@ -9,3 +9,9 @@ STATUS = {
     # Server error.
     500: ("internal_server_error", "server_error"),
 }
+
+def build_toolbar(toolbar):
+    # Main button.
+    main_button = Button()
+    main_button.flat = True
+    toolbar.add(main_button)
