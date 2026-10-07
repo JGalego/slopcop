@@ -972,16 +972,28 @@ fn check_openings(
 
 /// Whether a comment sentence opens with a code expression rather than a word, as in the
 /// enumerated examples `1. preStep(Success) -> step1(Running)` or
-/// `2. /{:owner}/{:repo}/compare/{:head}`. Such lines show cases; they are not sentences.
+/// `2. /{:owner}/{:repo}/compare/{:head}`. Such lines show cases; they are not sentences. A
+/// bracketed word such as `(optional)` or `[VIA only]` is still prose.
 fn opens_with_code(text: &str) -> bool {
-    let text = text
-        .trim_start_matches(['/', '#', '*', '!', ';', '-', '%'])
-        .trim_start();
+    let text = text.trim_start_matches(|character: char| {
+        character.is_whitespace()
+            || matches!(character, '/' | '#' | '*' | '!' | ';' | '-' | '%' | '<')
+    });
     let digits = text.bytes().take_while(u8::is_ascii_digit).count();
     let text = text[digits..].trim_start_matches(['.', ')']).trim_start();
-    text.split_whitespace()
-        .next()
-        .is_some_and(|token| token.contains(['(', '{', '[', '/', '=', '<', '>']))
+    text.split_whitespace().next().is_some_and(|token| {
+        let called = token.find(['(', '[']).is_some_and(|index| {
+            token[..index]
+                .chars()
+                .next_back()
+                .is_some_and(|character| character.is_alphanumeric() || character == '_')
+        });
+        called
+            || token.starts_with('/')
+            || token.contains(['{', '}', '='])
+            || token.contains("->")
+            || token.contains("::")
+    })
 }
 
 /// Whether the prose is the comments of source code that links a web or Internet standard. Such
@@ -2707,6 +2719,10 @@ mod tests {
         assert_eq!(findings_at("VIBE009", "task_state.go", cases), 0);
         let prose = "func parse() {\n\t// This parser reads the header first.\n\t// This parser checks every field.\n\t// This parser rejects unknown keys.\n\t// This parser stores the result.\n\t// This parser logs each failure.\n\t// This parser returns the record.\n\trun()\n}\n";
         assert_eq!(findings_at("VIBE009", "parse.go", prose), 1);
+        let fields = "struct Features {\n\tbool cube = false; /**< If true, cube arrays are supported. */\n\tbool encoders = true; /**< If true, encoders are required for arguments. */\n\tbool buffers = true; /**< If true, buffers can replace slot binding. */\n\tbool spatial = false; /**< If true, spatial scaling is supported. */\n\tbool temporal = false; /**< If true, temporal scaling is supported. */\n\tbool address = false; /**< If true, shaders can read a device address. */\n};\n";
+        assert_eq!(findings_at("VIBE009", "features.h", fields), 1);
+        let optional = "/*\n * Returns:\n * 1. (optional) the full width of the image, or 0 if unknown.\n * 2. (optional) the full height of the image, or 0 if unknown.\n * 3. (optional) the type of the image when it is known.\n * 4. (optional) the number of layers in the image.\n * 5. The thumbnail itself as a small static image.\n * 6. The flags that describe how it was produced.\n */\nint thumbnail(void);\n";
+        assert_eq!(findings_at("VIBE009", "thumbnail.h", optional), 1);
     }
 
     #[test]
