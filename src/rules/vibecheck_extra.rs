@@ -153,7 +153,7 @@ static VIBE011: RuleMetadata = RuleMetadata {
         "Three separate list groups, each containing exactly three items.",
         "The tool is simple, practical, and effective. It brings speed, reliability, and flexibility. Docs stay clear, concise, and compelling.",
     ],
-    false_positives: "Reference material organized around a real three-part model can legitimately repeat triads; inline triads of concrete names or actions are not counted, and release notes are excluded. Nested items count with their parent entry, so an option reference that lists a description and an example under each option is not a run of triads.",
+    false_positives: "Reference material organized around a real three-part model can legitimately repeat triads; inline triads of concrete names or actions are not counted, and release notes are excluded. A list with nested items is an outline rather than a triad, as in an option reference that lists a description and an example under each option.",
 };
 
 static VIBE012: RuleMetadata = RuleMetadata {
@@ -1109,9 +1109,10 @@ fn check_triads(
         return;
     }
     // Nested items belong to their parent entry, as in an option reference where each option
-    // lists its description and an example, so only items at the group's own depth are members.
-    let mut groups = Vec::new();
+    // lists its description and an example. A list with nested items is an outline, not a triad.
+    let mut groups: Vec<(Vec<usize>, bool)> = Vec::new();
     let mut current = Vec::new();
+    let mut outline = false;
     let mut depth = 0;
     let mut nested = 0;
     let mut offset = 0;
@@ -1127,23 +1128,28 @@ fn check_triads(
                 depth = indent;
             } else if indent > depth {
                 nested += 1;
+                outline = true;
                 offset += line.len();
                 continue;
             } else if indent < depth {
-                groups.push(std::mem::take(&mut current));
+                groups.push((std::mem::take(&mut current), std::mem::take(&mut outline)));
                 depth = indent;
             }
             current.push(offset);
         } else if !current.is_empty() {
-            groups.push(std::mem::take(&mut current));
+            groups.push((std::mem::take(&mut current), std::mem::take(&mut outline)));
         }
         offset += line.len();
     }
     if !current.is_empty() {
-        groups.push(current);
+        groups.push((current, outline));
     }
-    let triads: Vec<_> = groups.iter().filter(|group| group.len() == 3).collect();
-    let list_lines = groups.iter().map(Vec::len).sum::<usize>() + nested;
+    let triads: Vec<_> = groups
+        .iter()
+        .filter(|(group, outline)| group.len() == 3 && !outline)
+        .map(|(group, _)| group)
+        .collect();
+    let list_lines = groups.iter().map(|(group, _)| group.len()).sum::<usize>() + nested;
     if triads.len() >= 3 && list_lines * 2 >= nonblank {
         emit(
             context,
@@ -2765,6 +2771,8 @@ mod tests {
     fn triads_count_nested_items_with_their_parent() {
         let options = "* Host\n  * The address where the server can be reached.\n  * Example: mydomain.com\n\n* Port\n  * The port to use when connecting.\n  * Example: 636\n\n* Filter\n  * A filter that selects administrators.\n  * Example: (objectClass=admin)\n";
         assert_eq!(findings("VIBE011", options), 0);
+        let outlines = "- gitea\n    - The original migrations.\n    - Numbered in order.\n- legacy\n    - The next fifty migrations.\n    - Numbered in order.\n- current\n    - The newest migrations.\n    - Named by file.\n\n- `v14a_add-comments.go`\n- `v14a_add-emojis.go`\n- `v14b_fix-index.go`\n\n- A backported change.\n- A branch switch.\n- A manual table edit.\n";
+        assert_eq!(findings("VIBE011", outlines), 0);
         let flat = "- one\n- two\n- three\n\n- four\n- five\n- six\n\n- seven\n- eight\n- nine\n";
         assert_eq!(findings("VIBE011", flat), 1);
     }
