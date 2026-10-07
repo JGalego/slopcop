@@ -124,7 +124,7 @@ static VIBE009: RuleMetadata = RuleMetadata {
     examples: &[
         "This system reads files. This system checks prose. This system prints findings. This system exits.",
     ],
-    false_positives: "Procedures and intentionally parallel rhetoric may repeat openings for clarity or effect. Record lines, such as log or validator output where three or more consecutive lines open with the same `Label:` prefix, are not counted, nor are the comments of source files that link a WHATWG, W3C, TC39, or IETF specification, which quote its algorithm. Release notes repeat one entry template by design.",
+    false_positives: "Procedures and intentionally parallel rhetoric may repeat openings for clarity or effect. Record lines, such as log or validator output where three or more consecutive lines open with the same `Label:` prefix, are not counted, nor are the comments of source files that link a WHATWG, W3C, TC39, or IETF specification, which quote its algorithm. Release notes repeat one entry template by design, and comment lines that open with a code expression, such as `1. preStep(Success) -> step1(Running)`, show cases rather than sentences.",
 };
 
 static VIBE010: RuleMetadata = RuleMetadata {
@@ -908,6 +908,10 @@ fn check_openings(
         .filter(|span| {
             !in_labeled_record(&lines, context.source[..span.start].matches('\n').count())
         })
+        .filter(|span| {
+            !(matches!(context.source_type, SourceType::Code(_))
+                && opens_with_code(span.text(context.prose())))
+        })
         .filter_map(|span| {
             let tokens = words(span.text(context.prose()));
             (tokens.len() >= 4).then(|| {
@@ -964,6 +968,20 @@ fn check_openings(
             )),
         );
     }
+}
+
+/// Whether a comment sentence opens with a code expression rather than a word, as in the
+/// enumerated examples `1. preStep(Success) -> step1(Running)` or
+/// `2. /{:owner}/{:repo}/compare/{:head}`. Such lines show cases; they are not sentences.
+fn opens_with_code(text: &str) -> bool {
+    let text = text
+        .trim_start_matches(['/', '#', '*', '!', ';', '-', '%'])
+        .trim_start();
+    let digits = text.bytes().take_while(u8::is_ascii_digit).count();
+    let text = text[digits..].trim_start_matches(['.', ')']).trim_start();
+    text.split_whitespace()
+        .next()
+        .is_some_and(|token| token.contains(['(', '{', '[', '/', '=', '<', '>']))
 }
 
 /// Whether the prose is the comments of source code that links a web or Internet standard. Such
@@ -2681,6 +2699,14 @@ mod tests {
         let labels = "Problem: the build fails. Fix: pin the compiler. Why does it fail? The lockfile is stale.\n\n## What changed?\n\nThe index moved to memory.";
         assert_eq!(findings("VIBE008", labels), 0);
         assert_eq!(findings_at("VIBE008", "CHANGELOG.md", reveals), 0);
+    }
+
+    #[test]
+    fn openings_skip_comment_lines_that_open_with_code() {
+        let cases = "func full() {\n\t// firstStep is the first step that has run.\n\t// For example,\n\t// 1. preStep(Success) -> step1(Success) -> step2(Running): firstStep is step1.\n\t// 2. preStep(Success) -> step1(Skipped) -> step2(Success): firstStep is step2.\n\t// 3. preStep(Success) -> step1(Running) -> step2(Waiting): firstStep is step1.\n\t// 4. preStep(Success) -> step1(Skipped) -> step2(Skipped): firstStep is nil.\n\t// 5. preStep(Success) -> step1(Cancelled) -> step2(Cancelled): firstStep is nil.\n\trun()\n}\n";
+        assert_eq!(findings_at("VIBE009", "task_state.go", cases), 0);
+        let prose = "func parse() {\n\t// This parser reads the header first.\n\t// This parser checks every field.\n\t// This parser rejects unknown keys.\n\t// This parser stores the result.\n\t// This parser logs each failure.\n\t// This parser returns the record.\n\trun()\n}\n";
+        assert_eq!(findings_at("VIBE009", "parse.go", prose), 1);
     }
 
     #[test]
