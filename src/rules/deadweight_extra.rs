@@ -19,7 +19,7 @@ static DEAD002: RuleMetadata = RuleMetadata {
     suggestion: "Implement the missing behavior or link the marker to tracked work with a concrete reason.",
     rationale: "Unowned TODO-style scaffolding is easily mistaken for completed agent output.",
     examples: &["# TODO: implement retry handling"],
-    false_positives: "Tracked debt can be intentional; configure this rule for repositories that enforce issue-linked markers separately. Test code, quoted references such as `todo` or \"TODO:\", lowercase xxx or hack, and a lowercase or capitalized todo or fixme that does not open its comment or that heads a noun phrase, such as a Todo app or a todo list, are excluded.",
+    false_positives: "Tracked debt can be intentional; configure this rule for repositories that enforce issue-linked markers separately. Markers with an owner or tracked work, such as TODO(alice), FIXME(#123), or an issue URL or number on the marker's line or the next, are excluded. So are test code, quoted references such as `todo` or \"TODO:\", lowercase xxx or hack, and a lowercase or capitalized todo or fixme that does not open its comment or that heads a noun phrase, such as a Todo app or a todo list.",
 };
 
 static DEAD003: RuleMetadata = RuleMetadata {
@@ -302,7 +302,11 @@ fn check_placeholder_marker(
                 .into_iter()
                 .map(move |offset| (offset, marker.len()))
         }))
-        .filter(|(offset, length)| *offset < production && !is_quoted(prose, *offset, *length))
+        .filter(|(offset, length)| {
+            *offset < production
+                && !is_quoted(prose, *offset, *length)
+                && !is_tracked(prose, *offset, *length)
+        })
         .map(|(offset, _)| offset)
         .collect();
     offsets.sort_unstable();
@@ -325,6 +329,30 @@ fn opens_comment(prose: &str, offset: usize) -> bool {
     prose[line_start..offset]
         .chars()
         .all(|character| character.is_whitespace() || "#/*!-;<\"'".contains(character))
+}
+
+/// Whether the marker names an owner or tracked work, as in `TODO(alice)`, `FIXME(#4521)`, or a
+/// marker whose line or the next carries an issue URL or number. Such debt is owned, not escaped.
+fn is_tracked(prose: &str, offset: usize, length: usize) -> bool {
+    static REFERENCE: OnceLock<Regex> = OnceLock::new();
+    let after = &prose[offset + length..];
+    if after.starts_with(['(', '['])
+        && after[1..]
+            .split([')', ']', '\n'])
+            .next()
+            .is_some_and(|inside| !inside.trim().is_empty())
+    {
+        return true;
+    }
+    let reference = REFERENCE.get_or_init(|| {
+        Regex::new(r"(?i)[a-z][a-z0-9+.-]*://\S|#\d{2,}\b|\b(?:bug|issue|ticket)\s*#?\d+\b")
+            .expect("tracked-work regex must compile")
+    });
+    let end = after
+        .match_indices('\n')
+        .nth(1)
+        .map_or(prose.len(), |(position, _)| offset + length + position);
+    reference.is_match(&prose[offset..end])
 }
 
 /// Whether the marker at `offset` is quoted, as in the Sphinx `todo` extension, a `'todo'` option
@@ -1579,6 +1607,26 @@ mod tests {
         for (rule, path, bad, clean) in cases {
             assert_eq!(findings(rule, path, bad), 1, "{rule} should trigger");
             assert_eq!(findings(rule, path, clean), 0, "{rule} should stay quiet");
+        }
+    }
+
+    #[test]
+    fn placeholder_markers_with_owners_or_tracked_work_are_not_escaped() {
+        for source in [
+            "// TODO(mitchellh): scale by the window factor\nrun();\n",
+            "// FIXME(#13767): the revoke test still fails\nrun();\n",
+            "// TODO: https://github.com/whatwg/dom/issues/1343\nrun();\n",
+            "// TODO: replace this with the cached path,\n// see issue 4521.\nrun();\n",
+            "/* throwing in strict mode (FIXME: Bug 828137) */\nrun();\n",
+        ] {
+            assert_eq!(findings("DEAD002", "src/app.rs", source), 0, "{source}");
+        }
+        for source in [
+            "// TODO (moved from the old API): do not hardcode\nrun();\n",
+            "// TODO(): fill in\nrun();\n",
+            "// TODO: handle case #2\nrun();\n",
+        ] {
+            assert_eq!(findings("DEAD002", "src/app.rs", source), 1, "{source}");
         }
     }
 

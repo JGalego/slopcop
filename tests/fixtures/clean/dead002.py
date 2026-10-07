@@ -6,3 +6,9 @@ complete()
 
 # Reject slides that show literal "lorem ipsum" or "TODO:" text to the audience.
 check_slides()
+
+# TODO(alice): batch these writes once the storage client supports it.
+flush()
+
+# FIXME: retries double-count timeouts, see https://github.com/example/app/issues/42
+retry()
