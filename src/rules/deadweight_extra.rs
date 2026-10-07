@@ -65,7 +65,7 @@ static DEAD005: RuleMetadata = RuleMetadata {
     suggestion: "Implement the function, remove it, or declare the containing interface abstract.",
     rationale: "Empty concrete functions create an API surface that promises behavior but performs none.",
     examples: &["def publish(event):\n    pass", "function publish() {}"],
-    false_positives: "Framework hooks with an explanatory body comment, decorated handlers, and test doubles in test code are excluded. So are Rust methods in a trait definition or an `impl Trait for Type` block, where an empty body is a deliberate no-op default or implementation, and Closure Compiler externs that declare a `@constructor`, `@interface`, or `@record`.",
+    false_positives: "Framework hooks with an explanatory body comment, decorated handlers, and test doubles in test code are excluded. So are Rust methods in a trait definition or an `impl Trait for Type` block, where an empty body is a deliberate no-op default or implementation, Rust functions under a `#[cfg(...)]` attribute, the no-op variant for other platforms, and Closure Compiler externs that declare a `@constructor`, `@interface`, or `@record`.",
 };
 
 static DEAD006: RuleMetadata = RuleMetadata {
@@ -748,7 +748,10 @@ fn check_empty_function(
             continue;
         }
         let declaration = match context.source_type {
-            SourceType::Code(Language::Rust) => in_trait_block(context.code(), found.start()),
+            SourceType::Code(Language::Rust) => {
+                in_trait_block(context.code(), found.start())
+                    || is_cfg_gated(context.code(), found.start())
+            }
             SourceType::Code(Language::JavaScript | Language::TypeScript) => {
                 is_closure_extern(context.path, nearby)
             }
@@ -781,6 +784,17 @@ fn in_trait_block(code: &str, start: usize) -> bool {
         })
         .find(|line| indentation(line) < depth)
         .is_some_and(|line| block.is_match(line.trim_start()))
+}
+
+/// Whether a Rust function carries a `#[cfg(...)]` attribute, as the no-op variant of a
+/// platform-specific function such as `#[cfg(not(unix))] fn raise_file_handle_limit() {}` does.
+fn is_cfg_gated(code: &str, start: usize) -> bool {
+    code[..start]
+        .lines()
+        .rev()
+        .map(str::trim)
+        .take_while(|line| line.starts_with("#["))
+        .any(|line| line.starts_with("#[cfg("))
 }
 
 /// Whether an empty JavaScript function is a Closure Compiler extern, which declares a browser or
@@ -2279,6 +2293,16 @@ mod tests {
             findings("DEAD005", "native/webxr.js", "function XRSpace() {}\n"),
             1
         );
+    }
+
+    #[test]
+    fn platform_fallbacks_are_not_empty_functions() {
+        let fallback = "#[cfg(unix)]\nfn raise_file_handle_limit() {\n    raise();\n}\n\n#[cfg(not(unix))]\nfn raise_file_handle_limit() {}\n";
+        assert_eq!(findings("DEAD005", "src/init.rs", fallback), 0);
+        let stacked = "#[expect(unsafe_code)]\n#[cfg(not(feature = \"debugmozjs\"))]\nunsafe fn set_gc_zeal_options(_: *mut Context) {}\n";
+        assert_eq!(findings("DEAD005", "src/runtime.rs", stacked), 0);
+        let separated = "#[cfg(unix)]\nfn raise() {}\n\nfn install() {}\n";
+        assert_eq!(findings("DEAD005", "src/init.rs", separated), 1);
     }
 
     #[test]
