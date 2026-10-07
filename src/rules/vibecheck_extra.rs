@@ -211,7 +211,7 @@ static VIBE015: RuleMetadata = RuleMetadata {
     examples: &[
         "It is important to note ... Keep in mind ... Results may vary ... As with any solution ...",
     ],
-    false_positives: "Safety, legal, and medical material can require multiple explicit disclaimers.",
+    false_positives: "Safety, legal, and medical material can require multiple explicit disclaimers. Release notes are skipped, since separate entries can each say a fix applies \"in some cases\".",
 };
 
 static VIBE016: RuleMetadata = RuleMetadata {
@@ -1516,6 +1516,9 @@ fn check_disclaimers(
         "every situation is different",
         "not necessarily true in every case",
     ];
+    if is_release_notes(context) {
+        return;
+    }
     check_phrase_cluster(
         context,
         metadata,
@@ -2773,6 +2776,9 @@ mod tests {
     fn disclaimers_include_one_size_fits_all_caveats() {
         let caveats = "There is no one-size-fits-all answer. Of course, it depends on the specific situation. Consider your individual circumstances, because every situation is different.";
         assert_eq!(findings("VIBE015", caveats), 1);
+        let entries = "- Webhooks sent short refs in some cases.\n- Token scopes were not enforced in some cases.\n- DNS challenges should be smoother in some cases.\n- Mirrors failed to sync in some cases.\n";
+        assert_eq!(findings_at("VIBE015", "notes.md", entries), 1);
+        assert_eq!(findings_at("VIBE015", "RELEASE-NOTES.md", entries), 0);
     }
 
     #[test]
