@@ -93,7 +93,7 @@ static DEAD007: RuleMetadata = RuleMetadata {
     suggestion: "Keep one explanation at the narrowest scope where it remains accurate.",
     rationale: "Repeated comments are common residue from generated edits and drift independently from the code.",
     examples: &["// Validate the request\n// Validate the request"],
-    false_positives: "Inline shape annotations, type directives, documentation comments, and visual separators are not standalone comment candidates.",
+    false_positives: "Inline shape annotations, type directives, documentation comments, and visual separators are not standalone comment candidates. Equal comments with a different comment between them, such as repeated values under separate keys of a swagger block, are not adjacent.",
 };
 
 static DEAD008: RuleMetadata = RuleMetadata {
@@ -952,6 +952,10 @@ fn check_duplicate_comment(
                     }
                 }
                 previous = Some((normalized, offset, line_number));
+            } else if !normalized.is_empty() {
+                // A different comment between two equal ones, such as `produces:` between two
+                // `- application/json` entries of a swagger block, makes them separate fields.
+                previous = None;
             }
         } else if !line.trim().is_empty() {
             previous = None;
@@ -2184,6 +2188,14 @@ mod tests {
         let source = "fn run() { let sample = r#\"\n// Increment the counter\ncounter += 1;\n// Validate the incoming request\n// Validate the incoming request\n\"#; execute(sample); }\n";
         assert_eq!(findings("DEAD006", "app.rs", source), 0);
         assert_eq!(findings("DEAD007", "app.rs", source), 0);
+    }
+
+    #[test]
+    fn comments_separated_by_another_comment_are_not_adjacent() {
+        let swagger = "// swagger:operation POST /repos/{owner}/{repo}/issues issue issueCreateIssue\n// ---\n// consumes:\n// - application/json\n// produces:\n// - application/json\nfunc CreateIssue() {}\n";
+        assert_eq!(findings("DEAD007", "issue.go", swagger), 0);
+        let blank = "// Validate the incoming request\n//\n// Validate the incoming request\nvalidate(request);\n";
+        assert_eq!(findings("DEAD007", "app.ts", blank), 1);
     }
 
     #[test]
