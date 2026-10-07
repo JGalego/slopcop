@@ -49,21 +49,25 @@ export function registerReports(view: FindingsView, executable: () => string): v
     await openIssue(template, fields);
   };
 
+  // The editor context menu passes the document's URI; the view title passes nothing.
+  const reportMissed = async (resource?: unknown) => {
+    const editor = vscode.window.activeTextEditor;
+    const fields: Record<string, string | undefined> = { version: await version() };
+    if (resource instanceof vscode.Uri && editor?.document.uri.toString() === resource.toString()) {
+      const selection = editor.selection;
+      const range = selection.isEmpty ? editor.document.lineAt(selection.active.line).range : selection;
+      fields.snippet = editor.document.getText(range);
+      fields.context = `${relativePath(editor.document.uri)} (${editor.document.languageId})`;
+    }
+    await openIssue("false_negative.yml", fields);
+  };
+
   return [
     vscode.commands.registerCommand("slopcop.reportFalsePositive", reportFinding("false_positive.yml")),
     vscode.commands.registerCommand("slopcop.nominate", reportFinding("most_wanted.yml")),
-    // The editor context menu passes the document's URI; the view title passes nothing.
-    vscode.commands.registerCommand("slopcop.reportMissedSlop", async (resource?: unknown) => {
-      const editor = vscode.window.activeTextEditor;
-      const fields: Record<string, string | undefined> = { version: await version() };
-      if (resource instanceof vscode.Uri && editor?.document.uri.toString() === resource.toString()) {
-        const selection = editor.selection;
-        const range = selection.isEmpty ? editor.document.lineAt(selection.active.line).range : selection;
-        fields.snippet = editor.document.getText(range);
-        fields.context = `${relativePath(editor.document.uri)} (${editor.document.languageId})`;
-      }
-      await openIssue("false_negative.yml", fields);
-    }),
+    vscode.commands.registerCommand("slopocop.reportMisfire", reportFinding("false_positive.yml")),
+    vscode.commands.registerCommand("slopcop.reportMissedSlop", reportMissed),
+    vscode.commands.registerCommand("slopocop.reportEscapedSuspect", reportMissed),
     vscode.commands.registerCommand("slopcop.reportBug", async () =>
       openIssue("bug_report.yml", { version: await version(), environment: `VS Code ${vscode.version} on ${process.platform}` })),
     vscode.commands.registerCommand("slopcop.requestFeature", () => openIssue("feature_request.yml", {})),

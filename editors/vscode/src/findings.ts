@@ -1,6 +1,7 @@
 import { execFile } from "node:child_process";
 import * as path from "node:path";
 import * as vscode from "vscode";
+import { slopocopEnabled } from "./slopocop";
 
 export type Severity = "error" | "warning" | "info";
 
@@ -44,6 +45,8 @@ const SEVERITY_ICONS: Record<Severity, vscode.ThemeIcon> = {
   info: new vscode.ThemeIcon("info", new vscode.ThemeColor("problemsInfoIcon.foreground")),
 };
 const GROUP_BY_KEY = "slopcop.groupBy";
+/** The plain view, and the same findings in slopocop's container when that persona is on. */
+const VIEW_IDS = ["slopcop.findings", "slopocop.findings"];
 const RESCAN_DELAY = 500;
 
 /**
@@ -59,22 +62,28 @@ export class FindingsView implements vscode.TreeDataProvider<Node>, vscode.Dispo
   private timer: NodeJS.Timeout | undefined;
   private readonly changed = new vscode.EventEmitter<void>();
   readonly onDidChangeTreeData = this.changed.event;
-  private readonly view: vscode.TreeView<Node>;
+  private readonly scanned = new vscode.EventEmitter<void>();
+  /** Fires after each workspace scan. */
+  readonly onDidScan = this.scanned.event;
+  private readonly views: vscode.TreeView<Node>[];
   private readonly disposables: vscode.Disposable[] = [];
   /** The version reported by the last successful scan. */
   version: string | undefined;
+  /** Whether the last scan failed in any workspace folder. */
+  failed = false;
 
   constructor(
     private readonly context: vscode.ExtensionContext,
     private readonly executable: () => string,
   ) {
     this.groupBy = context.workspaceState.get<GroupBy>(GROUP_BY_KEY, "file");
-    this.view = vscode.window.createTreeView("slopcop.findings", { treeDataProvider: this, showCollapseAll: true });
+    this.views = VIEW_IDS.map((id) => vscode.window.createTreeView(id, { treeDataProvider: this, showCollapseAll: true }));
     const watcher = vscode.workspace.createFileSystemWatcher("**/.slopcop.toml");
     const schedule = () => this.schedule();
     this.disposables.push(
-      this.view,
+      ...this.views,
       this.changed,
+      this.scanned,
       watcher,
       watcher.onDidCreate(schedule),
       watcher.onDidChange(schedule),
@@ -102,6 +111,11 @@ export class FindingsView implements vscode.TreeDataProvider<Node>, vscode.Dispo
     this.changed.fire();
   }
 
+  /** The number of findings from the last scan, or undefined before the first one. */
+  get count(): number | undefined {
+    return this.version === undefined && !this.failed ? undefined : this.findings.length;
+  }
+
   /** Findings from the last scan that cover the given position, most severe first. */
   findingsAt(uri: vscode.Uri, position: vscode.Position): Finding[] {
     return this.findings.filter((finding) => finding.uri.toString() === uri.toString() && finding.range.contains(position));
@@ -120,7 +134,7 @@ export class FindingsView implements vscode.TreeDataProvider<Node>, vscode.Dispo
     }
     this.scanning = true;
     try {
-      await vscode.window.withProgress({ location: { viewId: "slopcop.findings" } }, async () => {
+      await vscode.window.withProgress({ location: { viewId: VIEW_IDS[slopocopEnabled() ? 1 : 0] } }, async () => {
         do {
           this.pending = false;
           await this.scan();
@@ -146,12 +160,17 @@ export class FindingsView implements vscode.TreeDataProvider<Node>, vscode.Dispo
     }
     findings.sort((a, b) => compare(a.uri.fsPath, b.uri.fsPath) || a.range.start.compareTo(b.range.start));
     this.findings = findings;
+    this.failed = failures.length > 0;
 
     const count = findings.length;
-    this.view.badge = count ? { value: count, tooltip: `${count} slopcop ${count === 1 ? "finding" : "findings"}` } : undefined;
-    this.view.message = failures.length ? `slopcop could not scan the workspace: ${failures.join("; ")}` : undefined;
+    const noun = slopocopEnabled() ? (count === 1 ? "suspect" : "suspects") : `slopcop ${count === 1 ? "finding" : "findings"}`;
+    for (const view of this.views) {
+      view.badge = count ? { value: count, tooltip: `${count} ${noun}` } : undefined;
+      view.message = failures.length ? `slopcop could not scan the workspace: ${failures.join("; ")}` : undefined;
+    }
     await vscode.commands.executeCommand("setContext", "slopcop.clean", folders.length > 0 && count === 0 && failures.length === 0);
     this.changed.fire();
+    this.scanned.fire();
   }
 
   getChildren(node?: Node): Node[] {

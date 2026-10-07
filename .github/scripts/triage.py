@@ -5,6 +5,9 @@ checked deterministically: the reported snippet is scanned with slopcop built
 from the default branch. When GEMINI_API_KEY is set,
 Gemini adds a short summary, missing details, related issues, and labels drawn
 from a fixed allowlist. The bot never closes, assigns, or edits issues.
+
+TRIAGE_VOICE=slopocop gives the comment slopocop's voice: a fixed opening line
+per verdict and a different signature. The checks and their results are the same.
 """
 
 import json
@@ -24,6 +27,16 @@ MARKER = "<!-- slopcop-triage -->"
 LABELS = ["bug", "enhancement", "false positive", "documentation", "question", "accessibility", "needs info"]
 MAX_BODY = 12000
 MAX_TEXT = 600
+# Opening lines in slopocop's voice, keyed by issue kind and the reproduction's bold verdict.
+SLOPOCOP_LINES = {
+    ("false positive", "Reproduces"): "Misfire confirmed. Sending it to the armory.",
+    ("false positive", "Does not reproduce"): "No misfire on record.",
+    ("missed slop", "Confirmed miss"): "A suspect escaped. Opening a case.",
+    ("missed slop", "Partly flagged"): "Partial match on file.",
+    ("missed slop", "Already caught"): "Suspect already in custody.",
+    ("most wanted", "Confirmed"): "Added to the wanted board, pending review.",
+    ("most wanted", "Does not reproduce"): "No match for this suspect.",
+}
 SNIPPET_FIELDS = {
     "false positive": "Minimal flagged example",
     "missed slop": "Minimal missed example",
@@ -243,9 +256,15 @@ def clean(text):
 
 
 def render(kind, reproduction, notes, model, failure=None):
+    slopocop = os.environ.get("TRIAGE_VOICE", "").strip().lower() == "slopocop"
     parts = [MARKER]
     if reproduction:
-        parts.append(f"**Automated check** against the default branch ({os.environ.get('GITHUB_SHA', '')[:7]}): {reproduction}")
+        verdict = re.match(r"\*\*(.+?)\.\*\*", reproduction)
+        line = SLOPOCOP_LINES.get((kind, verdict.group(1) if verdict else ""))
+        if slopocop and line:
+            parts.append(f"**slopocop:** {line}")
+        label = "Field report" if slopocop else "Automated check"
+        parts.append(f"**{label}** against the default branch ({os.environ.get('GITHUB_SHA', '')[:7]}): {reproduction}")
     if notes:
         body = [f"**Summary.** {clean(notes['summary'])}", f"**Assessment.** {clean(notes['assessment'])}"]
         if notes["missing"]:
@@ -261,7 +280,10 @@ def render(kind, reproduction, notes, model, failure=None):
         return None
     if failure:
         parts.append(f"<sub>{clean(failure)}</sub>")
-    parts.append(f"<sub>Triage bot for {kind} reports. It comments once and never closes or assigns issues.</sub>")
+    if slopocop:
+        parts.append(f"<sub>slopocop, triage unit for {kind} reports. Comments once. Never closes or assigns issues.</sub>")
+    else:
+        parts.append(f"<sub>Triage bot for {kind} reports. It comments once and never closes or assigns issues.</sub>")
     return "\n\n".join(parts)
 
 

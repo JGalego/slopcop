@@ -47,5 +47,15 @@ On Windows, use `install.ps1` from the same directory, or run `cargo install slo
 | --- | --- |
 | `slopcop.path` | Path to the `slopcop` executable. When empty, the extension uses its bundled binary, then `slopcop` on `PATH`. It can only be set in user settings, so a workspace cannot choose which program runs. |
 | `slopcop.trace.server` | Log language server messages in the slopcop output channel. |
+| `slopcop.slopocop` | Turn on slopocop, an opt-in persona. Off by default. See below. |
 
 Run **slopcop: Restart Language Server** from the Command Palette after installing a new slopcop binary.
+
+## slopocop
+
+slopocop is an optional persona for slopcop. Set `slopcop.slopocop` to `true` to turn him on. He changes how findings are presented, never which findings are reported.
+
+- The Findings view moves to slopocop's own Activity Bar container and is called Suspects.
+- A status bar item shows the suspect count and opens the view.
+- **Report False Positive** becomes **Report Misfire**, and **Report Missed Slop** becomes **Report Escaped Suspect**. Both open the same issue forms.
+- **slopocop: Read the Directives** opens a walkthrough of the extension.

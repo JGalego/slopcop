@@ -37,3 +37,5 @@ jobs:
           SLOPCOP: ${{ github.workspace }}/target/release/slopcop
           GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
           GEMINI_MODEL: ${{ vars.GEMINI_MODEL }}
+          # Set the repository variable to slopocop to give the comment slopocop's voice.
+          TRIAGE_VOICE: ${{ vars.TRIAGE_VOICE }}

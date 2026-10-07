@@ -1,4 +1,5 @@
 import { forgeOf, parseRepository } from "./forges.js";
+import { slopocop } from "./slopocop.js";
 
 const SEVERITIES = ["error", "warning", "info"];
 const MODULES = ["deadweight", "vibecheck", "papertrail"];
@@ -76,7 +77,7 @@ function startScan(target, fresh = false) {
 }
 
 function setProgress(stage, done, total) {
-  $("status-text").textContent = stage + "…";
+  $("status-text").textContent = slopocop.stage(stage) + "…";
   $("status-count").textContent = total ? `${done} / ${total}` : "";
   const bar = $("progress-bar");
   bar.classList.toggle("indeterminate", !total);
@@ -238,6 +239,7 @@ function renderSummary() {
       h("span", { class: "summary-ref" }, (ref ? ref + " · " : "") + sha.slice(0, 7)),
       state.data.cachedAt && h("span", { class: "summary-ref", title: new Date(state.data.cachedAt).toLocaleString() }, `cached ${formatAge(state.data.cachedAt)}`),
     ),
+    slopocop.enabled && h("p", { class: "slopocop-verdict" }, slopocop.verdict(result.summary.findings)),
     h("dl", { class: "summary-stats" },
       stat(result.summary.findings, result.summary.findings === 1 ? "finding" : "findings", "total"),
       ...SEVERITIES.map((severity) => stat(counts.get(severity) || 0, severity, severity)),
@@ -344,7 +346,7 @@ function renderFindings() {
   const container = $("findings");
   if (all.length === 0) {
     container.replaceChildren(h("div", { class: "empty" },
-      h("strong", {}, "No findings."),
+      h("strong", {}, slopocop.enabled ? "Area secure." : "No findings."),
       ` slopcop scanned ${state.data.result.summary.scanned_files} files and found nothing to report. Missed something? `,
       h("a", { href: missedSlopUrl(), target: "_blank", rel: "noopener" }, "Report missed slop"), "."));
     return;
@@ -654,6 +656,13 @@ window.addEventListener("hashchange", () => {
 if (matchMedia("(max-width: 860px)").matches) {
   for (const facet of document.querySelectorAll(".collapsible")) facet.open = false;
 }
+
+slopocop.onChange(() => {
+  if (state.data) {
+    renderSummary();
+    renderFindings();
+  }
+});
 
 worker.postMessage({ type: "rules" });
 
