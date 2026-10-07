@@ -1,10 +1,7 @@
 import init, { Scanner, rules } from "./pkg/slopcop_web.js";
+import { forgeOf, onThrottle } from "./forges.js";
 
-const API = "https://api.github.com";
-const RAW = "https://raw.githubusercontent.com";
 const CONFIG_FILE = ".slopcop.toml";
-const CONCURRENCY = 24;
-const MAX_FILES = 3000;
 const MAX_BYTES = 60 * 1024 * 1024;
 const DATABASE = "slopcop";
 const REPORTS = "reports";
@@ -24,6 +21,10 @@ const ready = (async () => {
     return null;
   }
 })();
+
+onThrottle((forge, millis) => {
+  report(`${forge.name} is rate-limiting this scan; waiting ${Math.ceil(millis / 1000)} s`);
+});
 
 self.onmessage = async ({ data }) => {
   try {
@@ -78,24 +79,27 @@ function report(stage, done = 0, total = 0) {
   self.postMessage({ type: "progress", stage, done, total });
 }
 
-async function resolve(repo, ref, token) {
-  return (await github(`/repos/${repo}/commits/${encodeURIComponent(ref || "HEAD")}`, token, "application/vnd.github.sha")).trim();
+// The token is a GitHub token, so it is never sent to another forge.
+function resolve(repo, ref, token) {
+  const { forge, path } = forgeOf(repo);
+  return forge.resolve(path, ref, token);
 }
 
 async function scanRepository(repo, ref, sha, token) {
   const started = performance.now();
   const notices = [];
+  const { forge, path } = forgeOf(repo);
+  const raw = (file) => forge.raw(path, sha, file);
 
   report("Listing files");
-  const tree = await github(`/repos/${repo}/git/trees/${sha}?recursive=1`, token);
-  if (tree.truncated) {
-    notices.push("GitHub truncated the file listing for this repository, so some files were not scanned.");
+  const { blobs, truncated } = await forge.list(path, sha, token);
+  if (truncated) {
+    notices.push(`${forge.name} truncated the file listing for this repository, so some files were not scanned.`);
   }
-  const blobs = tree.tree.filter((entry) => entry.type === "blob");
 
   let scanner = new Scanner(undefined);
   if (blobs.some((blob) => blob.path === CONFIG_FILE)) {
-    const config = new TextDecoder().decode(await raw(repo, sha, CONFIG_FILE));
+    const config = new TextDecoder().decode(await raw(CONFIG_FILE));
     try {
       scanner = new Scanner(config);
       notices.push(`Applied the repository's ${CONFIG_FILE}.`);
@@ -108,33 +112,44 @@ async function scanRepository(repo, ref, sha, token) {
   if (attributes.length > 0) {
     report("Reading .gitattributes");
     const decoder = new TextDecoder();
-    await pool(attributes, CONCURRENCY, async (blob) => {
+    await pool(attributes, forge.concurrency, async (blob) => {
       try {
-        scanner.attributes(blob.path, decoder.decode(await raw(repo, sha, blob.path)));
+        scanner.attributes(blob.path, decoder.decode(await raw(blob.path)));
       } catch {
         notices.push(`Could not read ${blob.path}, so the paths it marks vendored or generated were scanned.`);
       }
     });
   }
 
-  const { selected, overflow } = select(blobs.filter((blob) => scanner.wants(blob.path, blob.size)));
-  if (overflow > 0) {
-    notices.push(`This demo scans at most ${MAX_FILES} files and ${MAX_BYTES / 1024 / 1024} MB; ${overflow} more matching files were left out. Run the CLI for a full scan.`);
-  }
+  // GitLab lists no blob sizes, so its files are checked against the size limits after download.
+  const { selected, overflow } = select(blobs.filter((blob) => scanner.wants(blob.path, blob.size ?? 0)), forge.maxFiles);
+  let left = overflow;
 
   const contents = new Map();
   const failed = [];
   let done = 0;
+  let bytes = 0;
   report("Downloading files", 0, selected.length);
-  await pool(selected, CONCURRENCY, async (blob) => {
+  await pool(selected, forge.concurrency, async (blob) => {
     try {
-      contents.set(blob.path, await raw(repo, sha, blob.path));
+      if (bytes < MAX_BYTES) {
+        const data = await raw(blob.path);
+        if (scanner.wants(blob.path, data.length)) {
+          contents.set(blob.path, data);
+          bytes += data.length;
+        }
+      } else {
+        left += 1;
+      }
     } catch {
       failed.push(blob.path);
     }
     done += 1;
     report("Downloading files", done, selected.length);
   });
+  if (left > 0) {
+    notices.push(`This demo scans at most ${forge.maxFiles} files and ${MAX_BYTES / 1024 / 1024} MB from ${forge.name}; ${left} more matching files were left out. Run the CLI for a full scan.`);
+  }
   if (failed.length > 0) {
     notices.push(`${failed.length} file(s) could not be downloaded and were not scanned: ${failed.slice(0, 5).join(", ")}${failed.length > 5 ? ", …" : ""}`);
   }
@@ -147,7 +162,7 @@ async function scanRepository(repo, ref, sha, token) {
   const result = JSON.parse(scanner.finish());
   const scanMillis = performance.now() - scanStarted;
   const title = `${repo} · ${ref ? ref + " · " : ""}${sha.slice(0, 7)}`;
-  const html = scanner.html(title, `https://github.com/${repo}/blob/${sha}/`, notices);
+  const html = scanner.html(title, forge.blobBase(path, sha), notices);
   scanner.free();
 
   const decoder = new TextDecoder();
@@ -211,15 +226,15 @@ function prune(store, build) {
   };
 }
 
-function select(candidates) {
+function select(candidates, maxFiles) {
   const selected = [];
   let bytes = 0;
   for (const blob of candidates) {
-    if (selected.length >= MAX_FILES || bytes + blob.size > MAX_BYTES) {
+    if (selected.length >= maxFiles || bytes + (blob.size ?? 0) > MAX_BYTES) {
       break;
     }
     selected.push(blob);
-    bytes += blob.size;
+    bytes += blob.size ?? 0;
   }
   return { selected, overflow: candidates.length - selected.length };
 }
@@ -232,41 +247,4 @@ async function pool(items, limit, task) {
     }
   });
   await Promise.all(lanes);
-}
-
-async function github(path, token, accept = "application/vnd.github+json") {
-  const headers = { Accept: accept };
-  if (token) {
-    headers.Authorization = `Bearer ${token}`;
-  }
-  const response = await fetch(API + path, { headers });
-  if (response.ok) {
-    return accept.endsWith("sha") ? response.text() : response.json();
-  }
-  if (response.status === 401 && token) {
-    throw Object.assign(new Error("GitHub rejected the token. It may have expired or been revoked; replace it or select Forget to scan anonymously."), { code: "bad-token" });
-  }
-  if ((response.status === 403 || response.status === 429) && response.headers.get("x-ratelimit-remaining") === "0") {
-    const reset = new Date(Number(response.headers.get("x-ratelimit-reset")) * 1000).toLocaleTimeString();
-    const message = token
-      ? `Your token's GitHub API limit is used up. It resets at ${reset}.`
-      : `GitHub's anonymous API limit (60 requests per hour) is used up for your network. It resets at ${reset}. Add a GitHub token to raise the limit to 5,000 requests per hour.`;
-    throw Object.assign(new Error(message), { code: "rate-limit" });
-  }
-  if (response.status === 404 || response.status === 422) {
-    throw Object.assign(new Error("Repository or ref not found. Only public repositories can be scanned."), { code: "not-found" });
-  }
-  throw new Error(`GitHub responded with ${response.status} ${response.statusText}.`);
-}
-
-async function raw(repo, sha, path, attempts = 2) {
-  const url = `${RAW}/${repo}/${sha}/${path.split("/").map(encodeURIComponent).join("/")}`;
-  const response = await fetch(url);
-  if (response.ok) {
-    return new Uint8Array(await response.arrayBuffer());
-  }
-  if (attempts > 1 && response.status >= 500) {
-    return raw(repo, sha, path, attempts - 1);
-  }
-  throw new Error(`${response.status} for ${path}`);
 }

@@ -1,3 +1,5 @@
+import { forgeOf, parseRepository } from "./forges.js";
+
 const SEVERITIES = ["error", "warning", "info"];
 const MODULES = ["deadweight", "vibecheck", "papertrail"];
 const PAGE_SIZE = 250;
@@ -47,11 +49,8 @@ function icon(name) {
 }
 
 function parseTarget(input, explicitRef) {
-  const text = input.trim().replace(/\.git$/, "").replace(/\/+$/, "");
-  const match = text.match(/^(?:https?:\/\/)?(?:www\.)?(?:github\.com\/)?([\w.-]+)\/([\w.-]+)(?:\/(?:tree|blob|commit)\/(.+))?(?:@(.+))?$/);
-  if (!match) return null;
-  const [, owner, name, pathRef, atRef] = match;
-  return { repo: `${owner}/${name}`, ref: explicitRef.trim() || atRef || pathRef || "" };
+  const target = parseRepository(input);
+  return target && { repo: target.repo, ref: explicitRef.trim() || target.ref };
 }
 
 function targetFromHash() {
@@ -224,10 +223,11 @@ function showStale({ repo, ref, sha }) {
 function renderSummary() {
   const { repo, ref, sha, result, stats } = state.data;
   const counts = countBy(result.findings, (finding) => finding.severity);
-  const treeUrl = `https://github.com/${repo}/tree/${sha}`;
+  const { forge, path } = forgeOf(repo);
+  const treeUrl = forge.treeUrl(path, sha);
   const download = (content, type, extension) => () => {
     const blob = new Blob([content], { type });
-    const link = h("a", { href: URL.createObjectURL(blob), download: `slopcop-${repo.replace("/", "-")}.${extension}` });
+    const link = h("a", { href: URL.createObjectURL(blob), download: `slopcop-${repo.replaceAll("/", "-")}.${extension}` });
     link.click();
     URL.revokeObjectURL(link.href);
   };
@@ -369,9 +369,13 @@ function renderFindings() {
   if (state.selected >= 0) select(state.selected, false);
 }
 
-function blobUrl(path, line) {
-  const { repo, sha } = state.data;
-  return `https://github.com/${repo}/blob/${sha}/${path.split("/").map(encodeURIComponent).join("/")}` + (line ? `#L${line}` : "");
+function blobUrl(file, line) {
+  const { forge, path } = forgeOf(state.data.repo);
+  return forge.blobBase(path, state.data.sha) + file.split("/").map(encodeURIComponent).join("/") + (line ? `#L${line}` : "");
+}
+
+function forgeName() {
+  return forgeOf(state.data.repo).forge.name;
 }
 
 function renderGroup(group) {
@@ -379,7 +383,7 @@ function renderGroup(group) {
     h("header", { class: "file-header" },
       h("button", { type: "button", class: "file-path", title: "Show only this file", onclick: () => { state.file = group.path; refresh(); } }, group.path),
       h("span", { class: "count" }, String(group.findings.length)),
-      h("a", { href: blobUrl(group.path), target: "_blank", rel: "noopener" }, "GitHub", icon("external"))),
+      h("a", { href: blobUrl(group.path), target: "_blank", rel: "noopener" }, forgeName(), icon("external"))),
     ...group.findings.map(renderFinding));
 }
 
@@ -399,7 +403,7 @@ function renderFinding(finding) {
       h("span", { class: `badge sev-${finding.severity}` }, finding.severity),
       h("button", { type: "button", class: "rule-id", title: "Explain this rule (e)", onclick: toggleExplanation }, finding.rule_id),
       h("span", { class: "finding-message" }, finding.message),
-      h("a", { class: "location", href: blobUrl(finding.path, line), target: "_blank", rel: "noopener", title: "Open on GitHub (o)" }, `${line}:${column}`)),
+      h("a", { class: "location", href: blobUrl(finding.path, line), target: "_blank", rel: "noopener", title: `Open on ${forgeName()} (o)` }, `${line}:${column}`)),
     finding.observation ? h("p", { class: "observation" }, finding.observation) : null,
     renderSnippet(finding),
     h("div", { class: "finding-foot" },
@@ -502,7 +506,7 @@ $("scan-form").addEventListener("submit", (event) => {
   event.preventDefault();
   const target = parseTarget($("repo").value, $("ref").value);
   if (!target) {
-    showError("Enter a repository as owner/name or a github.com URL.");
+    showError("Enter a repository as owner/name, or a GitHub, GitLab, or Codeberg URL.");
     return;
   }
   startScan(target, true);
