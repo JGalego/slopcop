@@ -224,6 +224,8 @@ Humans write slop too, so the harder test was code from projects that ban or res
 
 We reviewed the findings by hand. Each false positive or bug became its own fix with a regression test, so it stays fixed, and the real slop stayed flagged.
 
+Every project above is pinned to a commit in [benchmarks/field/projects.toml](benchmarks/field/projects.toml), so the input never changes and any difference in detections comes from slopcop. The [Field test](.github/workflows/field.yml) workflow scans all of them and compares the per-rule counts and a digest of every finding with [baseline.json](benchmarks/field/baseline.json). A rule change that moves the numbers fails the job until `make field-baseline` records the new ones, so the effect on real code shows up in the pull request diff.
+
 ## Philosophy
 
 `slopcop` does not estimate an “AI probability.” It reports concrete artifacts and calibrated rule confidence. The defaults favor high signal over high recall; suspicious style is normally a warning, while clearly useless constructs can be errors.

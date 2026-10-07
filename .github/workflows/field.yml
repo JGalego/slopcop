@@ -1,0 +1,47 @@
+name: Field test
+
+on:
+  pull_request:
+    paths:
+      - "src/**"
+      - "benchmarks/field/**"
+      - "Cargo.toml"
+      - "Cargo.lock"
+      - ".github/workflows/field.yml"
+  schedule:
+    - cron: "17 4 * * 1"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: field-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+env:
+  CARGO_TERM_COLOR: always
+
+jobs:
+  compare:
+    name: Compare detections with the baseline
+    runs-on: ubuntu-24.04
+    timeout-minutes: 45
+    steps:
+      - uses: actions/checkout@v5
+      - uses: dtolnay/rust-toolchain@stable
+      - uses: Swatinem/rust-cache@v2
+      - run: cargo build --release --locked
+      - uses: actions/cache@v4
+        with:
+          path: target/field/checkouts
+          key: field-checkouts-${{ hashFiles('benchmarks/field/projects.toml') }}
+          restore-keys: field-checkouts-
+      - name: Scan pinned projects
+        run: python3 -I benchmarks/field/run.py check | tee "$GITHUB_STEP_SUMMARY"
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: field-findings
+          path: target/field/findings
+          if-no-files-found: ignore

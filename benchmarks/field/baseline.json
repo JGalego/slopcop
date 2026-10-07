@@ -1,0 +1,400 @@
+{
+  "Cloud Hypervisor": {
+    "scanned_files": 476,
+    "findings": 211,
+    "rules": {
+      "DEAD002": 46,
+      "DEAD003": 51,
+      "DEAD005": 3,
+      "DEAD006": 38,
+      "DEAD007": 1,
+      "DEAD011": 69,
+      "VIBE008": 1,
+      "VIBE009": 1,
+      "VIBE017": 1
+    },
+    "digest": "f9a6869f6e39e2d7",
+    "commit": "a2d0af33923baa9547bccb649a56fdd350d725df"
+  },
+  "CodexBar": {
+    "scanned_files": 3697,
+    "findings": 236,
+    "rules": {
+      "DEAD001": 14,
+      "DEAD002": 32,
+      "DEAD004": 41,
+      "DEAD011": 96,
+      "DEAD013": 1,
+      "DEAD015": 3,
+      "DEAD018": 5,
+      "VIBE005": 1,
+      "VIBE007": 15,
+      "VIBE008": 5,
+      "VIBE010": 1,
+      "VIBE011": 20,
+      "VIBE018": 2
+    },
+    "digest": "e0337a732f4409f6",
+    "commit": "412de0700930997fb868a4cb4e3800c4743e13c2"
+  },
+  "Forgejo": {
+    "scanned_files": 6041,
+    "findings": 439,
+    "rules": {
+      "DEAD001": 4,
+      "DEAD002": 281,
+      "DEAD004": 2,
+      "DEAD005": 2,
+      "DEAD006": 29,
+      "DEAD011": 85,
+      "DEAD012": 1,
+      "DEAD015": 24,
+      "DEAD018": 7,
+      "VIBE004": 1,
+      "VIBE017": 3
+    },
+    "digest": "b9a431a0bf29d5ca",
+    "commit": "35d2a6245eef8206879a3aa8d54447a780fcb6ef"
+  },
+  "GIMP": {
+    "scanned_files": 4839,
+    "findings": 828,
+    "rules": {
+      "DEAD001": 10,
+      "DEAD002": 613,
+      "DEAD004": 3,
+      "DEAD005": 2,
+      "DEAD006": 8,
+      "DEAD008": 3,
+      "DEAD011": 181,
+      "VIBE004": 2,
+      "VIBE008": 1,
+      "VIBE009": 2,
+      "VIBE017": 2,
+      "VIBE021": 1
+    },
+    "digest": "d53b48e4b3509c42",
+    "commit": "1b80b358d72924569e649e84563a6914f46dd6b5"
+  },
+  "Gentoo": {
+    "scanned_files": 93795,
+    "findings": 8,
+    "rules": {
+      "DEAD001": 1,
+      "DEAD002": 5,
+      "DEAD006": 1,
+      "DEAD011": 1
+    },
+    "digest": "4515da4ad691e94a",
+    "commit": "789d172caede0c1f996ccbff00e315ed49255589"
+  },
+  "Ghostty": {
+    "scanned_files": 1529,
+    "findings": 25,
+    "rules": {
+      "DEAD002": 13,
+      "DEAD006": 5,
+      "DEAD011": 6,
+      "VIBE010": 1
+    },
+    "digest": "56257b39e0fb56b2",
+    "commit": "b699ea79f4b881421b4b3055abc16a0957d76beb"
+  },
+  "Godot": {
+    "scanned_files": 9254,
+    "findings": 1585,
+    "rules": {
+      "DEAD001": 15,
+      "DEAD002": 723,
+      "DEAD003": 2,
+      "DEAD004": 9,
+      "DEAD005": 58,
+      "DEAD006": 193,
+      "DEAD011": 509,
+      "DEAD015": 2,
+      "DEAD018": 4,
+      "VIBE004": 2,
+      "VIBE009": 12,
+      "VIBE011": 1,
+      "VIBE017": 54,
+      "VIBE018": 1
+    },
+    "digest": "731e690c1d165268",
+    "commit": "3ea0cf3e72699c5e3b35f7956670ac93b9d1d4a0"
+  },
+  "Jellyfin": {
+    "scanned_files": 2649,
+    "findings": 282,
+    "rules": {
+      "DEAD001": 32,
+      "DEAD002": 107,
+      "DEAD003": 24,
+      "DEAD004": 17,
+      "DEAD011": 82,
+      "DEAD018": 4,
+      "VIBE007": 1,
+      "VIBE009": 2,
+      "VIBE017": 13
+    },
+    "digest": "fac5ea1e2710d6a4",
+    "commit": "32efb47601d3ce4174f61a66181d9e4665288c92"
+  },
+  "Onlook": {
+    "scanned_files": 1611,
+    "findings": 355,
+    "rules": {
+      "DEAD001": 7,
+      "DEAD002": 37,
+      "DEAD003": 3,
+      "DEAD004": 3,
+      "DEAD005": 1,
+      "DEAD006": 2,
+      "DEAD011": 160,
+      "DEAD012": 3,
+      "DEAD015": 129,
+      "DEAD016": 1,
+      "DEAD018": 3,
+      "VIBE011": 5,
+      "VIBE018": 1
+    },
+    "digest": "f61250d18a55f82f",
+    "commit": "423e2e924366419e418ee049093872d535eea41a"
+  },
+  "Open CoDesign": {
+    "scanned_files": 922,
+    "findings": 156,
+    "rules": {
+      "DEAD001": 19,
+      "DEAD002": 6,
+      "DEAD004": 30,
+      "DEAD011": 24,
+      "DEAD015": 4,
+      "VIBE007": 69,
+      "VIBE008": 2,
+      "VIBE009": 2
+    },
+    "digest": "a92bf8b70c5d0737",
+    "commit": "6799d55339d5425ca03a10d4ce20ed7c19e53d0d"
+  },
+  "Open Design": {
+    "scanned_files": 12387,
+    "findings": 4274,
+    "rules": {
+      "DEAD001": 248,
+      "DEAD002": 6,
+      "DEAD003": 1,
+      "DEAD004": 610,
+      "DEAD005": 1,
+      "DEAD006": 10,
+      "DEAD010": 1,
+      "DEAD011": 253,
+      "DEAD012": 117,
+      "DEAD013": 1,
+      "DEAD015": 84,
+      "DEAD016": 3,
+      "DEAD018": 22,
+      "VIBE003": 1,
+      "VIBE007": 1914,
+      "VIBE008": 374,
+      "VIBE009": 2,
+      "VIBE010": 1,
+      "VIBE011": 590,
+      "VIBE017": 7,
+      "VIBE018": 26,
+      "VIBE021": 2
+    },
+    "digest": "3a37ce6b2d83d6dd",
+    "commit": "53231d40b778d88eba23f35547bf99485d3ae9fc"
+  },
+  "OpenClaw": {
+    "scanned_files": 52054,
+    "findings": 2154,
+    "rules": {
+      "DEAD001": 262,
+      "DEAD002": 269,
+      "DEAD003": 3,
+      "DEAD004": 1050,
+      "DEAD005": 10,
+      "DEAD006": 1,
+      "DEAD011": 369,
+      "DEAD012": 2,
+      "DEAD015": 62,
+      "DEAD018": 5,
+      "VIBE003": 1,
+      "VIBE004": 2,
+      "VIBE007": 38,
+      "VIBE008": 13,
+      "VIBE009": 2,
+      "VIBE010": 11,
+      "VIBE011": 27,
+      "VIBE017": 13,
+      "VIBE018": 14
+    },
+    "digest": "40a26506b0357ed3",
+    "commit": "8177060846209e40a506e442785a7736f31db674"
+  },
+  "Portage": {
+    "scanned_files": 1041,
+    "findings": 539,
+    "rules": {
+      "DEAD001": 353,
+      "DEAD002": 85,
+      "DEAD003": 1,
+      "DEAD004": 29,
+      "DEAD005": 22,
+      "DEAD006": 9,
+      "DEAD008": 3,
+      "DEAD009": 1,
+      "DEAD011": 30,
+      "DEAD014": 2,
+      "VIBE004": 2,
+      "VIBE008": 1,
+      "VIBE015": 1
+    },
+    "digest": "16974bb6036c1b93",
+    "commit": "54c7ac99ed54dbae13520ea00083e214c7fc11c8"
+  },
+  "QEMU": {
+    "scanned_files": 10072,
+    "findings": 1785,
+    "rules": {
+      "DEAD001": 32,
+      "DEAD002": 1507,
+      "DEAD003": 1,
+      "DEAD004": 5,
+      "DEAD006": 12,
+      "DEAD009": 1,
+      "DEAD011": 195,
+      "DEAD012": 1,
+      "DEAD015": 1,
+      "VIBE003": 2,
+      "VIBE004": 2,
+      "VIBE007": 1,
+      "VIBE008": 2,
+      "VIBE009": 10,
+      "VIBE016": 1,
+      "VIBE017": 12
+    },
+    "digest": "825e88bc354355b1",
+    "commit": "f9587d4045c67cd0d8d8bdcd5d0bb5b6b395b63c"
+  },
+  "Servo": {
+    "scanned_files": 3094,
+    "findings": 1667,
+    "rules": {
+      "DEAD001": 12,
+      "DEAD002": 1340,
+      "DEAD003": 52,
+      "DEAD004": 6,
+      "DEAD005": 5,
+      "DEAD006": 89,
+      "DEAD007": 1,
+      "DEAD011": 140,
+      "DEAD015": 14,
+      "DEAD018": 5,
+      "VIBE017": 3
+    },
+    "digest": "cb025e64f43feb56",
+    "commit": "64c4855e7dd2972b216ec622e804f0e1fdf42f7e"
+  },
+  "Understand Anything": {
+    "scanned_files": 497,
+    "findings": 149,
+    "rules": {
+      "DEAD001": 2,
+      "DEAD002": 2,
+      "DEAD004": 18,
+      "DEAD011": 4,
+      "DEAD015": 2,
+      "DEAD018": 1,
+      "VIBE003": 1,
+      "VIBE007": 96,
+      "VIBE008": 18,
+      "VIBE011": 5
+    },
+    "digest": "23044704ca50e0e0",
+    "commit": "790b157028637b626c8666fa7fa28248944b900c"
+  },
+  "Zig": {
+    "scanned_files": 3098,
+    "findings": 19,
+    "rules": {
+      "DEAD001": 1,
+      "DEAD002": 12,
+      "DEAD006": 1,
+      "DEAD011": 4,
+      "VIBE018": 1
+    },
+    "digest": "f455016d66caa267",
+    "commit": "26fd35ff902cb0f68ada18706e7f670b4aac3d4a"
+  },
+  "ccpm": {
+    "scanned_files": 25,
+    "findings": 7,
+    "rules": {
+      "VIBE007": 5,
+      "VIBE008": 2
+    },
+    "digest": "aef71f92536d5246",
+    "commit": "7d7e4623bc6d4c0c9ba66ca6bfecd7e5261dc697"
+  },
+  "curl": {
+    "scanned_files": 4553,
+    "findings": 81,
+    "rules": {
+      "DEAD002": 3,
+      "DEAD006": 4,
+      "DEAD011": 23,
+      "DEAD012": 18,
+      "VIBE004": 6,
+      "VIBE008": 4,
+      "VIBE009": 7,
+      "VIBE010": 5,
+      "VIBE011": 2,
+      "VIBE015": 1,
+      "VIBE017": 2,
+      "VIBE018": 6
+    },
+    "digest": "cb88d2695ffe1d73",
+    "commit": "11d0b202136debd81c9cc8dae49f3396670d0b85"
+  },
+  "free-claude-code": {
+    "scanned_files": 977,
+    "findings": 64,
+    "rules": {
+      "DEAD001": 18,
+      "DEAD004": 25,
+      "DEAD006": 4,
+      "DEAD011": 14,
+      "DEAD015": 2,
+      "VIBE008": 1
+    },
+    "digest": "24b0b83037927330",
+    "commit": "9194f157af6beb663cf3e6035f9cdadb09e8917b"
+  },
+  "frontend-slides": {
+    "scanned_files": 163,
+    "findings": 122,
+    "rules": {
+      "DEAD001": 4,
+      "VIBE007": 101,
+      "VIBE010": 2,
+      "VIBE011": 4,
+      "VIBE018": 11
+    },
+    "digest": "9c6c2c383fa8cb9d",
+    "commit": "9906a34d640d2111f724544cbc50f7f130569ae1"
+  },
+  "taste-skill": {
+    "scanned_files": 48,
+    "findings": 15,
+    "rules": {
+      "VIBE007": 4,
+      "VIBE008": 1,
+      "VIBE011": 7,
+      "VIBE018": 3
+    },
+    "digest": "cb75434a7e52b23c",
+    "commit": "ce26fc25c0e5e8cab638f883de62d9a86ee5e45b"
+  }
+}

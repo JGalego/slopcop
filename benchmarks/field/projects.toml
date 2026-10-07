@@ -1,0 +1,134 @@
+# Projects the field test scans, each pinned to the commit the README lists.
+# Run `make field-baseline` after changing this file.
+
+[[project]]
+name = "ccpm"
+url = "https://github.com/automazeio/ccpm"
+commit = "7d7e4623bc6d4c0c9ba66ca6bfecd7e5261dc697"
+group = "agent-built"
+
+[[project]]
+name = "CodexBar"
+url = "https://github.com/steipete/CodexBar"
+commit = "412de0700930997fb868a4cb4e3800c4743e13c2"
+group = "agent-built"
+
+[[project]]
+name = "free-claude-code"
+url = "https://github.com/Alishahryar1/free-claude-code"
+commit = "9194f157af6beb663cf3e6035f9cdadb09e8917b"
+group = "agent-built"
+
+[[project]]
+name = "frontend-slides"
+url = "https://github.com/zarazhangrui/frontend-slides"
+commit = "9906a34d640d2111f724544cbc50f7f130569ae1"
+group = "agent-built"
+
+[[project]]
+name = "Onlook"
+url = "https://github.com/onlook-dev/onlook"
+commit = "423e2e924366419e418ee049093872d535eea41a"
+group = "agent-built"
+
+[[project]]
+name = "Open CoDesign"
+url = "https://github.com/OpenCoworkAI/open-codesign"
+commit = "6799d55339d5425ca03a10d4ce20ed7c19e53d0d"
+group = "agent-built"
+
+[[project]]
+name = "Open Design"
+url = "https://github.com/nexu-io/open-design"
+commit = "53231d40b778d88eba23f35547bf99485d3ae9fc"
+group = "agent-built"
+
+[[project]]
+name = "OpenClaw"
+url = "https://github.com/openclaw/openclaw"
+commit = "8177060846209e40a506e442785a7736f31db674"
+group = "agent-built"
+
+[[project]]
+name = "taste-skill"
+url = "https://github.com/Leonxlnx/taste-skill"
+commit = "ce26fc25c0e5e8cab638f883de62d9a86ee5e45b"
+group = "agent-built"
+
+[[project]]
+name = "Understand Anything"
+url = "https://github.com/Egonex-AI/Understand-Anything"
+commit = "790b157028637b626c8666fa7fa28248944b900c"
+group = "agent-built"
+
+[[project]]
+name = "Cloud Hypervisor"
+url = "https://github.com/cloud-hypervisor/cloud-hypervisor"
+commit = "a2d0af33923baa9547bccb649a56fdd350d725df"
+group = "ai-restricting"
+
+[[project]]
+name = "curl"
+url = "https://github.com/curl/curl"
+commit = "11d0b202136debd81c9cc8dae49f3396670d0b85"
+group = "ai-restricting"
+
+[[project]]
+name = "Forgejo"
+url = "https://codeberg.org/forgejo/forgejo"
+commit = "35d2a6245eef8206879a3aa8d54447a780fcb6ef"
+group = "ai-restricting"
+
+[[project]]
+name = "Gentoo"
+url = "https://codeberg.org/gentoo/gentoo"
+commit = "789d172caede0c1f996ccbff00e315ed49255589"
+group = "ai-restricting"
+
+[[project]]
+name = "Ghostty"
+url = "https://github.com/ghostty-org/ghostty"
+commit = "b699ea79f4b881421b4b3055abc16a0957d76beb"
+group = "ai-restricting"
+
+[[project]]
+name = "GIMP"
+url = "https://github.com/GNOME/gimp"
+commit = "1b80b358d72924569e649e84563a6914f46dd6b5"
+group = "ai-restricting"
+
+[[project]]
+name = "Godot"
+url = "https://github.com/godotengine/godot"
+commit = "3ea0cf3e72699c5e3b35f7956670ac93b9d1d4a0"
+group = "ai-restricting"
+
+[[project]]
+name = "Jellyfin"
+url = "https://github.com/jellyfin/jellyfin"
+commit = "32efb47601d3ce4174f61a66181d9e4665288c92"
+group = "ai-restricting"
+
+[[project]]
+name = "Portage"
+url = "https://github.com/gentoo/portage"
+commit = "54c7ac99ed54dbae13520ea00083e214c7fc11c8"
+group = "ai-restricting"
+
+[[project]]
+name = "QEMU"
+url = "https://github.com/qemu/qemu"
+commit = "f9587d4045c67cd0d8d8bdcd5d0bb5b6b395b63c"
+group = "ai-restricting"
+
+[[project]]
+name = "Servo"
+url = "https://github.com/servo/servo"
+commit = "64c4855e7dd2972b216ec622e804f0e1fdf42f7e"
+group = "ai-restricting"
+
+[[project]]
+name = "Zig"
+url = "https://codeberg.org/ziglang/zig"
+commit = "26fd35ff902cb0f68ada18706e7f670b4aac3d4a"
+group = "ai-restricting"

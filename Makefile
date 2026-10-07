@@ -1,4 +1,4 @@
-.PHONY: benchmark bootstrap check self-lint web web-serve
+.PHONY: benchmark bootstrap check field field-baseline self-lint web web-serve
 
 bootstrap:
 	cargo build --locked
@@ -22,6 +22,14 @@ self-lint:
 
 benchmark:
 	cargo run --release -- benchmark
+
+field:
+	cargo build --release --locked
+	python3 -I benchmarks/field/run.py check
+
+field-baseline:
+	cargo build --release --locked
+	python3 -I benchmarks/field/run.py update
 
 web:
 	cd web && wasm-pack build --target web --out-dir site/pkg --no-pack --no-typescript --release
