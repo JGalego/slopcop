@@ -156,7 +156,7 @@ static DEAD012: RuleMetadata = RuleMetadata {
     suggestion: "Add concrete information, merge the section into a useful neighbor, or remove it.",
     rationale: "A polished heading with no additional information makes documentation look complete while leaving the reader unaided.",
     examples: &["## Configuration\nThis section describes configuration."],
-    false_positives: "Outline documents may intentionally contain empty headings while actively being drafted. Stacked headings that share one body are excluded.",
+    false_positives: "Outline documents may intentionally contain empty headings while actively being drafted. Stacked headings that share one body, a leading level-one document title, and template headings such as `# %PROTOCOLS%` that a documentation build fills in are excluded.",
 };
 
 static DEAD013: RuleMetadata = RuleMetadata {
@@ -1151,9 +1151,15 @@ fn check_empty_doc_section(
             .is_some_and(|(next_offset, next_level, _)| {
                 *next_offset == content_start && next_level == level
             });
+        // A leading title such as `# Frequently Asked Questions` names the whole document.
+        let document_title = index == 0 && *level == 1 && headings.len() > 1;
         let source_body = context.source[content_start..content_end].trim();
         let prose_body = context.prose()[content_start..content_end].trim();
-        if !stacked && (source_body.is_empty() || restates_heading(title, prose_body)) {
+        if !stacked
+            && !document_title
+            && !is_template_placeholder(title)
+            && (source_body.is_empty() || restates_heading(title, prose_body))
+        {
             emit(context, metadata, findings, *heading_offset, None::<String>);
         }
     }
@@ -1401,6 +1407,24 @@ fn markdown_heading(line: &str) -> Option<(usize, &str)> {
         .chars()
         .any(char::is_alphanumeric)
         .then_some((hashes, title))
+}
+
+/// Whether a heading is a template token, such as curl's `# %PROTOCOLS%` or a `{{ section }}`
+/// include, that a documentation build replaces with generated content.
+fn is_template_placeholder(title: &str) -> bool {
+    let inner = |open: &str, close: &str| {
+        title
+            .strip_prefix(open)
+            .and_then(|rest| rest.strip_suffix(close))
+            .is_some_and(|name| {
+                !name.trim().is_empty()
+                    && name
+                        .trim()
+                        .chars()
+                        .all(|character| character.is_alphanumeric() || "_-. ".contains(character))
+            })
+    };
+    inner("%", "%") || inner("{{", "}}") || inner("${", "}") || inner("@", "@")
 }
 
 fn restates_heading(title: &str, body: &str) -> bool {
@@ -2196,6 +2220,19 @@ mod tests {
         assert_eq!(findings("DEAD012", "CHANGELOG.md", nested), 0);
         assert_eq!(findings("DEAD012", "README.md", code_only), 0);
         assert_eq!(findings("DEAD012", "README.md", decorative), 0);
+    }
+
+    #[test]
+    fn template_headings_and_document_titles_are_not_empty_sections() {
+        let template = "# DESCRIPTION\n\nFrees the handle.\n\n# %PROTOCOLS%\n\n# EXAMPLE\n\n~~~c\nrun();\n~~~\n\n# %AVAILABILITY%\n";
+        assert_eq!(findings("DEAD012", "docs/libcurl/cleanup.md", template), 0);
+        let include = "## Usage\n\nRun it.\n\n## {{ options }}\n";
+        assert_eq!(findings("DEAD012", "README.md", include), 0);
+        let titled =
+            "# Frequently Asked Questions\n\n# Philosophy\n\n## What is curl?\n\nA tool.\n";
+        assert_eq!(findings("DEAD012", "docs/FAQ.md", titled), 0);
+        let empty_default = "# Notes\n\nText.\n\n# DEFAULT\n\n# %PROTOCOLS%\n";
+        assert_eq!(findings("DEAD012", "docs/opt.md", empty_default), 1);
     }
 
     #[test]

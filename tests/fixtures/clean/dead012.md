@@ -1,3 +1,9 @@
+# Client guide
+
+# Setup
+
+Install the client before configuring it.
+
 ## Configuration
 
 Set `timeout_ms` to the request deadline. The default is 5000.
@@ -23,3 +29,5 @@ Sends a request with the named method and returns the response.
 
     # Indented code is not a heading.
     client.get("/health")
+
+# %PROTOCOLS%
