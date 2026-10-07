@@ -239,7 +239,7 @@ static VIBE017: RuleMetadata = RuleMetadata {
     examples: &[
         "The scanner reads every tracked source file in parallel. Every tracked source file is read in parallel by the scanner.",
     ],
-    false_positives: "Definitions may intentionally restate a term once in equivalent language; list entries, table rows, release notes, and sentences in separate paragraphs or comments are not compared.",
+    false_positives: "Definitions may intentionally restate a term once in equivalent language; list entries, table rows, release notes, record lines such as validator output or `<param>` docs where three or more consecutive lines open with the same two words, and sentences in separate paragraphs or comments are not compared.",
 };
 
 static VIBE018: RuleMetadata = RuleMetadata {
@@ -1533,6 +1533,7 @@ fn check_restatement(
         if paragraph.is_none()
             || paragraph != paragraph_index(context, pair[1].start)
             || in_list_paragraph(context, pair[0].start)
+            || on_record_lines(context.source, pair[0].start, pair[1].start)
         {
             continue;
         }
@@ -1555,6 +1556,34 @@ fn check_restatement(
             );
         }
     }
+}
+
+/// Whether two sentences sit on separate lines of a record listing, such as pasted validator
+/// output or a run of `/// <param name=...>` docs, where three or more consecutive lines open with
+/// the same two words. Each line describes a different item in the same template.
+fn on_record_lines(source: &str, first: usize, second: usize) -> bool {
+    fn opening(line: &str) -> Option<(&str, &str)> {
+        let mut words = line.split_whitespace();
+        Some((words.next()?, words.next()?))
+    }
+    let line_of = |offset: usize| source[..offset].matches('\n').count();
+    let (first_line, second_line) = (line_of(first), line_of(second));
+    if first_line == second_line {
+        return false;
+    }
+    let lines: Vec<_> = source.lines().collect();
+    let Some(shared) = lines.get(first_line).and_then(|line| opening(line)) else {
+        return false;
+    };
+    let same = |index: usize| {
+        lines
+            .get(index)
+            .is_some_and(|line| opening(line) == Some(shared))
+    };
+    (first_line..=second_line).all(same)
+        && (second_line - first_line >= 2
+            || first_line.checked_sub(1).is_some_and(same)
+            || same(second_line + 1))
 }
 
 fn content_word_set(source: &str) -> HashSet<String> {
@@ -2186,6 +2215,16 @@ mod tests {
         let triads =
             "- alpha\n- beta\n- gamma\n\n- delta\n- epsilon\n- zeta\n\n- eta\n- theta\n- iota\n";
         assert_eq!(findings("VIBE011", triads), 1);
+    }
+
+    #[test]
+    fn record_lines_are_entries_not_restatements() {
+        let output = "Validate extension JSON: Error: Field 'classes/Control/methods/get_theme_font/arguments/1': default_value changed value in new API, from none to empty.\nValidate extension JSON: Error: Field 'classes/Control/methods/get_theme_icon/arguments/1': default_value changed value in new API, from none to empty.\nValidate extension JSON: Error: Field 'classes/Control/methods/get_theme_color/arguments/1': default_value changed value in new API, from none to empty.\n";
+        assert_eq!(findings_at("VIBE017", "GH-84906.txt", output), 0);
+        let params = "/// <param name=\"albumArtistIds\">Optional. If specified, results will be filtered to include only those containing the specified album artist id.</param>\n/// <param name=\"contributingArtistIds\">Optional. If specified, results will be filtered to include only those containing the specified contributing artist id.</param>\n/// <param name=\"albums\">Optional. If specified, results will be filtered based on album.</param>\npublic void Get() {}\n";
+        assert_eq!(findings_at("VIBE017", "ItemsController.cs", params), 0);
+        let two_lines = "The scanner reads every tracked source file in parallel during repository checks.\nThe scanner reads every tracked source file in parallel during each repository check.\n";
+        assert_eq!(findings("VIBE017", two_lines), 1);
     }
 
     #[test]
