@@ -1,6 +1,14 @@
 name: Field test
 
 on:
+  push:
+    branches: [main]
+    paths:
+      - "src/**"
+      - "benchmarks/field/**"
+      - "Cargo.toml"
+      - "Cargo.lock"
+      - ".github/workflows/field.yml"
   pull_request:
     paths:
       - "src/**"
