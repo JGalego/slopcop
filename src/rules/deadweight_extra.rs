@@ -19,7 +19,7 @@ static DEAD002: RuleMetadata = RuleMetadata {
     suggestion: "Implement the missing behavior or link the marker to tracked work with a concrete reason.",
     rationale: "Unowned TODO-style scaffolding is easily mistaken for completed agent output.",
     examples: &["# TODO: implement retry handling"],
-    false_positives: "Tracked debt can be intentional; configure this rule for repositories that enforce issue-linked markers separately. Markers with an owner or tracked work, such as TODO(alice), FIXME(#123), or an issue URL or number on the marker's line or the next, are excluded. So are test code, quoted references such as `todo` or \"TODO:\", lowercase xxx or hack, and a lowercase or capitalized todo or fixme that does not open its comment or that heads a noun phrase, such as a Todo app or a todo list.",
+    false_positives: "Tracked debt can be intentional; configure this rule for repositories that enforce issue-linked markers separately. Markers with an owner or tracked work, such as TODO(alice), FIXME(#123), or an issue URL or number on the marker's line or the next, are excluded. So are test code, quoted references such as `todo` or \"TODO:\", lowercase xxx or hack, an XXX that stands for a value, as in \"replace the XXX\", and a lowercase or capitalized todo or fixme that does not open its comment or that heads a noun phrase, such as a Todo app or a todo list.",
 };
 
 static DEAD003: RuleMetadata = RuleMetadata {
@@ -306,6 +306,7 @@ fn check_placeholder_marker(
             *offset < production
                 && !is_quoted(prose, *offset, *length)
                 && !is_tracked(prose, *offset, *length)
+                && !names_value(prose, *offset, *length)
         })
         .map(|(offset, _)| offset)
         .collect();
@@ -353,6 +354,37 @@ fn is_tracked(prose: &str, offset: usize, length: usize) -> bool {
         .nth(1)
         .map_or(prose.len(), |(position, _)| offset + length + position);
     reference.is_match(&prose[offset..end])
+}
+
+/// Whether a mid-sentence `XXX` stands for a value rather than marking work, as in "replace the
+/// XXX with the certificate", "what AUTH XXX to try", or a quoted `'HTTP/1.? XXX'` status line.
+fn names_value(prose: &str, offset: usize, length: usize) -> bool {
+    if &prose[offset..offset + length] != "XXX" {
+        return false;
+    }
+    let line_start = prose[..offset]
+        .rfind('\n')
+        .map_or(0, |position| position + 1);
+    let before = &prose[line_start..offset];
+    if ['\'', '"', '`']
+        .iter()
+        .any(|quote| before.matches(*quote).count() % 2 == 1)
+    {
+        return true;
+    }
+    // The determiner may end the previous line of a wrapped comment.
+    let previous_start = prose[..line_start.saturating_sub(1)]
+        .rfind('\n')
+        .map_or(0, |position| position + 1);
+    prose[previous_start..offset]
+        .split(|character: char| !character.is_alphanumeric())
+        .filter(|word| !word.is_empty())
+        .rev()
+        .take(2)
+        .any(|word| {
+            ["the", "a", "an", "what", "which", "each", "every"]
+                .contains(&word.to_ascii_lowercase().as_str())
+        })
 }
 
 /// Whether the marker at `offset` is quoted, as in the Sphinx `todo` extension, a `'todo'` option
@@ -1627,6 +1659,25 @@ mod tests {
             "// TODO: handle case #2\nrun();\n",
         ] {
             assert_eq!(findings("DEAD002", "src/app.rs", source), 1, "{source}");
+        }
+    }
+
+    #[test]
+    fn xxx_that_stands_for_a_value_is_not_a_marker() {
+        for source in [
+            "/* replace the XXX with the actual CA certificates */\nrun();\n",
+            "int auth; /* what AUTH XXX to try: curl_ftpauth */\n",
+            "int code; /* error code from the 'HTTP/1.? XXX' or\n   'RTSP/1.? XXX' line */\n",
+            "/* Before use, replace the\n * XXX with the actual private key */\nrun();\n",
+            "// \"what AUTH XXX\", or a quoted `'HTTP/1.? XXX'` line\nrun();\n",
+        ] {
+            assert_eq!(findings("DEAD002", "lib/urldata.h", source), 0, "{source}");
+        }
+        for source in [
+            "/* XXX: also check size of a char[] array? */\nrun();\n",
+            "env = 0; /* Machine description XXX */\n",
+        ] {
+            assert_eq!(findings("DEAD002", "lib/urldata.c", source), 1, "{source}");
         }
     }
 

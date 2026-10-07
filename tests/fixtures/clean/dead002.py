@@ -12,3 +12,6 @@ flush()
 
 # FIXME: retries double-count timeouts, see https://github.com/example/app/issues/42
 retry()
+
+# Mail merge replaces each XXX in the template with the recipient's name.
+send(template)
