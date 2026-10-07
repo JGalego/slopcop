@@ -80,7 +80,7 @@ static DEAD006: RuleMetadata = RuleMetadata {
     suggestion: "Remove the comment or explain the non-obvious constraint behind the operation.",
     rationale: "Narrating simple syntax increases maintenance cost without preserving intent.",
     examples: &["# Increment the counter\ncounter += 1"],
-    false_positives: "Teaching material may intentionally narrate syntax; generated tutorials can demote or disable this rule. Lines inside longer comments, labels above a group of sibling lines, and quoted specification steps such as `Assert: stream.[[state]] is \"errored\"` are not candidates.",
+    false_positives: "Teaching material may intentionally narrate syntax; generated tutorials can demote or disable this rule. Lines inside longer comments, labels above a group of sibling lines, quoted specification steps such as `Assert: stream.[[state]] is \"errored\"`, and commented-out variants of the call below, such as `#run(fast=True)` above `run(fast=False)`, are not candidates.",
 };
 
 static DEAD007: RuleMetadata = RuleMetadata {
@@ -863,6 +863,7 @@ fn check_redundant_comment(
             if !labels_group
                 && !content.starts_with(['/', '!', '#'])
                 && !quotes_algorithm_step(content)
+                && !is_commented_out_call(content, code)
                 && comment_restates(content, code)
             {
                 emit(context, metadata, findings, start, None::<String>);
@@ -882,6 +883,25 @@ fn quotes_algorithm_step(comment: &str) -> bool {
                 .expect("algorithm step regex must compile")
         })
         .is_match(comment)
+}
+
+/// Whether a comment is a disabled variant of the call below it, such as
+/// `#test_repouri git@github.com:gentoo/identity.git` above `test_repouri https://github.com/...`
+/// or `# run(fast=True)` above `run(fast=False)`: both open with the same name, and the comment
+/// carries code punctuation that narration such as `// return the font face` does not.
+fn is_commented_out_call(comment: &str, code: &str) -> bool {
+    fn name(text: &str) -> &str {
+        let end = text
+            .find(|character: char| {
+                !(character.is_alphanumeric() || matches!(character, '_' | '.'))
+            })
+            .unwrap_or(text.len());
+        &text[..end]
+    }
+    let callee = name(code);
+    !callee.is_empty()
+        && name(comment) == callee
+        && comment.contains(['(', ')', '=', '@', ':', '/', '{', '}', '[', ']', ';'])
 }
 
 fn comment_restates(comment: &str, code: &str) -> bool {
@@ -2074,6 +2094,11 @@ mod tests {
         let single =
             "fn run() {\n    // Write the data.\n    file.write(data);\n\n    done();\n}\n";
         assert_eq!(findings("DEAD006", "ar.rs", single), 1);
+        let disabled = "test_repouri https://git.kernel.org/git.git git.git\n\n#test_repouri git@github.com:gentoo/identity.git gentoo_identity.git\ntest_repouri https://github.com/gentoo/identity.git gentoo_identity.git\n\ntexit\n";
+        assert_eq!(findings("DEAD006", "git-r3.sh", disabled), 0);
+        let lowercase =
+            "fn face() -> Face {\n    // return the font face\n    return font_face;\n}\n";
+        assert_eq!(findings("DEAD006", "font.rs", lowercase), 1);
         let closing =
             "fn run() {\n    // Remove the snapshot dir\n    remove_dir_all(snapshot_dir);\n}\n";
         assert_eq!(findings("DEAD006", "integration.rs", closing), 1);

@@ -22,3 +22,9 @@ def start(controller):
     controller.started = True
 
     pull(controller)
+
+
+def fetch(client, url):
+    #response = client.get(url, timeout=5)
+    response = client.get(url, timeout=30)
+    return response.json()
