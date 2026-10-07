@@ -423,7 +423,9 @@ fn is_running_text(context: &ScanContext<'_>) -> bool {
 
 /// Release notes repeat one entry template by design, so structural rhythm rules skip them. A
 /// project may keep one file per release, as in `CHANGELOG/2026.3.24.md` or
-/// `docs/releases/v1.2.0/en.md`: a release directory with a version below it.
+/// `docs/releases/v1.2.0/en.md`, or one fragment per change, as in `changelog.d/1234.bugfix.md`
+/// or `release-notes/11457.md`: a release directory, such as `release-notes-published`, with a
+/// version or change number below it.
 fn is_release_notes(context: &ScanContext<'_>) -> bool {
     let normalize = |name: &str| name.to_ascii_lowercase().replace(['-', '_'], "");
     let stem = context
@@ -455,13 +457,15 @@ fn is_release_notes(context: &ScanContext<'_>) -> bool {
     directories
         .iter()
         .position(|name| {
-            ["changelog", "changelogs", "releases", "releasenotes"].contains(&name.as_str())
+            ["changelog", "releases", "releasenotes"]
+                .iter()
+                .any(|known| name.starts_with(known))
         })
         .is_some_and(|index| {
             directories[index + 1..]
                 .iter()
                 .chain(stem.as_ref())
-                .any(|name| name == "unreleased" || is_version(name))
+                .any(|name| name == "unreleased" || is_version(name) || is_change_number(name))
         })
 }
 
@@ -474,6 +478,14 @@ fn is_version(name: &str) -> bool {
         && name
             .chars()
             .all(|character| character.is_ascii_alphanumeric() || matches!(character, '.' | '+'))
+}
+
+/// Whether a lowercase path component names a change fragment by its issue or pull request
+/// number, such as `11457` or `1234.bugfix`.
+fn is_change_number(name: &str) -> bool {
+    name.split('.').next().is_some_and(|number| {
+        !number.is_empty() && number.bytes().all(|byte| byte.is_ascii_digit())
+    })
 }
 
 fn paragraph_index(context: &ScanContext<'_>, offset: usize) -> Option<usize> {
@@ -2663,6 +2675,9 @@ mod tests {
             "docs/CHANGELOG/v0.14.1/en.md",
             "docs/release-notes/2.0/README.md",
             ".github/releases/Unreleased.md",
+            "release-notes-published/9.0.0.md",
+            "release-notes/11457.md",
+            "changelog.d/1234.bugfix.md",
         ] {
             assert_eq!(findings_at("VIBE008", path, reveals), 0, "{path}");
         }
@@ -2671,6 +2686,8 @@ mod tests {
             "docs/releases/process.md",
             "docs/history/2026.3.24.md",
             "v1.2/guide.md",
+            "release-notes/template.md",
+            "docs/2026/report.md",
         ] {
             assert_eq!(findings_at("VIBE008", path, reveals), 1, "{path}");
         }
