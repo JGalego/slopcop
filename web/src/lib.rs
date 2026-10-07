@@ -27,6 +27,13 @@ pub fn rules() -> String {
     serde_json::to_string(&metadata_registry()).expect("rule metadata serializes")
 }
 
+/// Returns the slopcop version these bindings were built from, as reported by `slopcop --version`.
+#[wasm_bindgen]
+#[must_use]
+pub fn version() -> String {
+    env!("CARGO_PKG_VERSION").to_owned()
+}
+
 #[wasm_bindgen]
 pub struct Scanner {
     options: ScanOptions,
@@ -151,6 +158,13 @@ mod tests {
 
     fn scanner(config: Option<&str>) -> Scanner {
         Scanner::new(config.map(str::to_owned)).expect("valid config")
+    }
+
+    #[test]
+    fn version_matches_the_linter() {
+        let report: serde_json::Value =
+            serde_json::from_str(&scanner(None).finish()).expect("valid JSON");
+        assert_eq!(report["version"], version());
     }
 
     #[test]

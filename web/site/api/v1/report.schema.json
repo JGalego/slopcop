@@ -1,0 +1,55 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://slopcop.me/api/v1/report.schema.json",
+  "title": "slopcop report",
+  "description": "The document printed by `slopcop --format json` and returned by scanFiles and scanRepository.",
+  "type": "object",
+  "required": ["version", "findings", "summary"],
+  "additionalProperties": false,
+  "properties": {
+    "version": { "type": "string", "description": "The slopcop version that produced the report." },
+    "findings": { "type": "array", "items": { "$ref": "#/$defs/finding" } },
+    "summary": {
+      "type": "object",
+      "required": ["scanned_files", "scanned_commits", "skipped_files", "findings"],
+      "additionalProperties": false,
+      "properties": {
+        "scanned_files": { "type": "integer", "minimum": 0 },
+        "scanned_commits": { "type": "integer", "minimum": 0, "description": "Always 0 outside `slopcop history`." },
+        "skipped_files": { "type": "integer", "minimum": 0, "description": "Files that were binary, unsupported, too large, or excluded." },
+        "findings": { "type": "integer", "minimum": 0 }
+      }
+    }
+  },
+  "$defs": {
+    "finding": {
+      "type": "object",
+      "required": ["path", "location", "rule_id", "module", "severity", "confidence", "message", "evidence", "observation", "suggestion"],
+      "additionalProperties": false,
+      "properties": {
+        "path": { "type": "string", "description": "Repository-relative path of the file." },
+        "location": { "$ref": "#/$defs/location" },
+        "rule_id": { "type": "string", "pattern": "^(DEAD|VIBE|TRAIL)[0-9]{3}$" },
+        "module": { "enum": ["deadweight", "vibecheck", "papertrail"] },
+        "severity": { "enum": ["error", "warning", "info"] },
+        "confidence": { "enum": ["high", "medium", "low"] },
+        "message": { "type": "string" },
+        "evidence": { "type": ["string", "null"], "description": "The matched source text." },
+        "observation": { "type": ["string", "null"], "description": "Detail specific to this finding, such as the phrases a prose rule counted." },
+        "suggestion": { "type": "string" }
+      }
+    },
+    "location": {
+      "type": "object",
+      "description": "A one-based range. Columns count Unicode scalar values, and end_column is just past the last character.",
+      "required": ["line", "column", "end_line", "end_column"],
+      "additionalProperties": false,
+      "properties": {
+        "line": { "type": "integer", "minimum": 1 },
+        "column": { "type": "integer", "minimum": 1 },
+        "end_line": { "type": "integer", "minimum": 1 },
+        "end_column": { "type": "integer", "minimum": 1 }
+      }
+    }
+  }
+}

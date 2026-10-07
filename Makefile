@@ -25,6 +25,7 @@ benchmark:
 
 web:
 	cd web && wasm-pack build --target web --out-dir site/pkg --no-pack --no-typescript --release
+	node web/build-api.mjs
 
 web-serve: web
 	python3 -m http.server --directory web/site 8000

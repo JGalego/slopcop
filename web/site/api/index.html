@@ -1,0 +1,359 @@
+<!doctype html>
+<html lang="en" class="api-page">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>slopcop · API</title>
+  <meta name="description" content="Static JSON endpoints for slopcop's rules and report format, and a JavaScript module that scans files or public repositories in your browser or Deno.">
+  <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 160 160'%3E%3Ccircle cx='80' cy='80' r='68' fill='%23fff'/%3E%3Ctext x='80' y='105' text-anchor='middle' font-size='88'%3E💩%3C/text%3E%3Cg fill='none' stroke='%23e53935' stroke-width='11'%3E%3Ccircle cx='80' cy='80' r='68'/%3E%3Cpath d='M32 32 L128 128'/%3E%3C/g%3E%3C/svg%3E">
+  <link rel="stylesheet" href="../style.css">
+  <script type="module" src="docs.js"></script>
+</head>
+<body>
+  <svg class="sprite" aria-hidden="true" focusable="false">
+    <symbol id="i-book" viewBox="0 0 24 24"><path d="M2 3h6a4 4 0 0 1 4 4v14a3 3 0 0 0-3-3H2z"/><path d="M22 3h-6a4 4 0 0 0-4 4v14a3 3 0 0 1 3-3h7z"/></symbol>
+    <symbol id="i-braces" viewBox="0 0 24 24"><path d="M8 3H7a2 2 0 0 0-2 2v5a2 2 0 0 1-2 2 2 2 0 0 1 2 2v5c0 1.1.9 2 2 2h1"/><path d="M16 21h1a2 2 0 0 0 2-2v-5c0-1.1.9-2 2-2a2 2 0 0 1-2-2V5a2 2 0 0 0-2-2h-1"/></symbol>
+    <symbol id="i-message" viewBox="0 0 24 24"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></symbol>
+    <symbol id="i-github" viewBox="0 0 24 24"><path d="M9 19c-5 1.5-5-2.5-7-3m14 6v-3.87a3.37 3.37 0 0 0-.94-2.61c3.14-.35 6.44-1.54 6.44-7A5.44 5.44 0 0 0 20 4.77 5.07 5.07 0 0 0 19.91 1S18.73.65 16 2.48a13.38 13.38 0 0 0-7 0C6.27.65 5.09 1 5.09 1A5.07 5.07 0 0 0 5 4.77a5.44 5.44 0 0 0-1.5 3.78c0 5.42 3.3 6.61 6.44 7A3.37 3.37 0 0 0 9 18.13V22"/></symbol>
+    <symbol id="i-copy" viewBox="0 0 24 24"><rect width="14" height="14" x="8" y="8" rx="2"/><path d="M4 16c-1.1 0-2-.9-2-2V4c0-1.1.9-2 2-2h10c1.1 0 2 .9 2 2"/></symbol>
+    <symbol id="i-check" viewBox="0 0 24 24"><path d="M20 6 9 17l-5-5"/></symbol>
+    <symbol id="i-play" viewBox="0 0 24 24"><path d="M6 3v18l14-9z"/></symbol>
+  </svg>
+
+  <header class="masthead">
+    <div class="masthead-inner">
+      <a class="brand" href="../" aria-label="slopcop home">
+        <svg class="logo" viewBox="0 0 160 160" aria-hidden="true">
+          <circle cx="80" cy="80" r="68" fill="#ffffff"/>
+          <text x="80" y="105" text-anchor="middle" font-size="88">💩</text>
+          <g fill="none" stroke="#e53935" stroke-width="11"><circle cx="80" cy="80" r="68"/><path d="M32 32 L128 128"/></g>
+        </svg>
+        <span>slopcop</span>
+      </a>
+      <nav class="masthead-links">
+        <a href="https://github.com/JGalego/slopcop/blob/main/docs/rules/README.md"><svg class="icon"><use href="#i-book"/></svg><span class="nav-label">Rules</span></a>
+        <a href="./" aria-current="page"><svg class="icon"><use href="#i-braces"/></svg><span class="nav-label">API</span></a>
+        <a href="../#feedback"><svg class="icon"><use href="#i-message"/></svg><span class="nav-label">Feedback</span></a>
+        <a href="https://github.com/JGalego/slopcop"><svg class="icon"><use href="#i-github"/></svg><span class="nav-label">GitHub</span></a>
+      </nav>
+    </div>
+  </header>
+
+  <nav class="subnav" aria-label="API reference">
+    <div class="subnav-inner">
+      <a href="#overview">Overview</a>
+      <span class="subnav-divider" aria-hidden="true"></span>
+      <a href="#version"><span class="method get">GET</span>version</a>
+      <a href="#rules"><span class="method get">GET</span>rules</a>
+      <a href="#rule"><span class="method get">GET</span>rules/{id}</a>
+      <a href="#schema"><span class="method get">GET</span>schema</a>
+      <span class="subnav-divider" aria-hidden="true"></span>
+      <a href="#module"><span class="method js">JS</span>import</a>
+      <a href="#scan-files"><span class="method js">JS</span>scanFiles</a>
+      <a href="#scan-repository"><span class="method js">JS</span>scanRepository</a>
+      <a href="#js-metadata"><span class="method js">JS</span>metadata</a>
+      <span class="subnav-divider" aria-hidden="true"></span>
+      <a href="#errors">Errors</a>
+      <a href="#limits">Limits</a>
+    </div>
+  </nav>
+
+  <main class="doc">
+    <section id="overview" class="doc-intro">
+      <p class="eyebrow">No keys. No server. Open CORS.</p>
+      <h1>slopcop API</h1>
+      <p class="lede">slopcop.me serves its rule catalog and report format as static JSON, plus a JavaScript module that runs the same WebAssembly linter as the demo. Scans run in your browser or Deno process. Your code goes to the repository host, never to slopcop.me.</p>
+      <dl class="facts">
+        <div><dt>Base URL</dt><dd><code>https://slopcop.me/api/v1/</code></dd></div>
+        <div><dt>Auth</dt><dd>None. Every response sends <code>Access-Control-Allow-Origin: *</code>.</dd></div>
+        <div><dt>Versioning</dt><dd>Breaking changes ship under a new path, such as <code>/api/v2/</code>. Each deploy refreshes <code>v1</code> with the current linter; <a href="#version"><code>version.json</code></a> names it.</dd></div>
+      </dl>
+    </section>
+
+    <h2 class="doc-group">JSON endpoints</h2>
+
+    <section id="version" class="endpoint">
+      <header class="endpoint-head">
+        <span class="method get">GET</span>
+        <code class="endpoint-path">/api/v1/version.json</code>
+        <button type="button" class="copy-url secondary" data-copy="https://slopcop.me/api/v1/version.json" aria-label="Copy URL"><svg class="icon"><use href="#i-copy"/></svg></button>
+      </header>
+      <p>The slopcop version that built the current endpoints and module, and the number of rules it ships. Compare it with <code>slopcop --version</code> to see whether your CLI matches the site.</p>
+      <table class="fields">
+        <thead><tr><th>Field</th><th>Type</th><th>Description</th></tr></thead>
+        <tbody>
+          <tr><td><code>version</code></td><td>string</td><td>Semantic version, such as <code>0.3.1</code>.</td></tr>
+          <tr><td><code>rule_count</code></td><td>integer</td><td>Number of entries in <code>rules.json</code>.</td></tr>
+        </tbody>
+      </table>
+      <div class="example">
+        <pre><code><span class="prompt">$ </span>curl https://slopcop.me/api/v1/version.json</code></pre>
+        <div class="try" data-try="v1/version.json">
+          <button type="button" class="run"><svg class="icon"><use href="#i-play"/></svg>Try it</button>
+        </div>
+        <pre class="response"><code>{
+  "version": "0.3.1",
+  "rule_count": 46
+}</code></pre>
+      </div>
+    </section>
+
+    <section id="rules" class="endpoint">
+      <header class="endpoint-head">
+        <span class="method get">GET</span>
+        <code class="endpoint-path">/api/v1/rules.json</code>
+        <button type="button" class="copy-url secondary" data-copy="https://slopcop.me/api/v1/rules.json" aria-label="Copy URL"><svg class="icon"><use href="#i-copy"/></svg></button>
+      </header>
+      <p>Every rule as an array, ordered by ID. This is the catalog behind <code>slopcop rules</code> and <code>slopcop explain</code>, and the SARIF rule descriptors.</p>
+      <table class="fields">
+        <thead><tr><th>Field</th><th>Type</th><th>Description</th></tr></thead>
+        <tbody>
+          <tr><td><code>id</code></td><td>string</td><td>Rule ID: <code>DEAD</code>, <code>VIBE</code>, or <code>TRAIL</code> and three digits.</td></tr>
+          <tr><td><code>module</code></td><td>string</td><td><code>deadweight</code>, <code>vibecheck</code>, or <code>papertrail</code>.</td></tr>
+          <tr><td><code>description</code></td><td>string</td><td>Short name of the pattern.</td></tr>
+          <tr><td><code>default_severity</code></td><td>string</td><td><code>error</code>, <code>warning</code>, or <code>info</code>. A repository's <code>.slopcop.toml</code> can change it.</td></tr>
+          <tr><td><code>default_confidence</code></td><td>string</td><td><code>high</code>, <code>medium</code>, or <code>low</code>.</td></tr>
+          <tr><td><code>message</code></td><td>string</td><td>The message findings of this rule carry.</td></tr>
+          <tr><td><code>suggestion</code></td><td>string</td><td>How to fix a finding.</td></tr>
+          <tr><td><code>rationale</code></td><td>string</td><td>Why the pattern is a problem.</td></tr>
+          <tr><td><code>examples</code></td><td>string[]</td><td>Code or prose the rule flags.</td></tr>
+          <tr><td><code>false_positives</code></td><td>string</td><td>What the rule deliberately leaves alone.</td></tr>
+        </tbody>
+      </table>
+      <div class="example">
+        <pre><code><span class="prompt">$ </span>curl -s https://slopcop.me/api/v1/rules.json | jq -r '.[] | "\(.id) \(.description)"'</code></pre>
+        <div class="try" data-try="v1/rules.json">
+          <button type="button" class="run"><svg class="icon"><use href="#i-play"/></svg>Try it</button>
+        </div>
+        <pre class="response"><code>[
+  {
+    "id": "DEAD001",
+    "module": "deadweight",
+    "description": "Empty exception handler",
+    "default_severity": "error",
+    "default_confidence": "high",
+    "message": "Exception is swallowed without logging, rethrowing, or handling.",
+    "suggestion": "Handle the failure, rethrow it, or document a narrow and intentional exception.",
+    "rationale": "Silent exception handling hides failures and turns debugging evidence into an unexplained fallback.",
+    "examples": ["except NetworkError:\n    pass", "catch (error) {}"],
+    "false_positives": "A deliberately ignored exception with an explanatory body comment, …"
+  },
+  …
+]</code></pre>
+      </div>
+    </section>
+
+    <section id="rule" class="endpoint">
+      <header class="endpoint-head">
+        <span class="method get">GET</span>
+        <code class="endpoint-path">/api/v1/rules/{id}.json</code>
+        <button type="button" class="copy-url secondary" data-copy="https://slopcop.me/api/v1/rules/VIBE013.json" aria-label="Copy URL"><svg class="icon"><use href="#i-copy"/></svg></button>
+      </header>
+      <p>One rule, with the same fields as an entry of <a href="#rules"><code>rules.json</code></a>. An unknown ID returns 404.</p>
+      <table class="fields">
+        <thead><tr><th>Parameter</th><th>In</th><th>Description</th></tr></thead>
+        <tbody>
+          <tr><td><code>id</code></td><td>path</td><td>Rule ID in upper case, such as <code>VIBE013</code>. Case matters.</td></tr>
+        </tbody>
+      </table>
+      <div class="example">
+        <pre><code><span class="prompt">$ </span>curl https://slopcop.me/api/v1/rules/VIBE013.json</code></pre>
+        <div class="try" data-try="v1/rules/{id}.json">
+          <label class="visually-hidden" for="rule-id">Rule ID</label>
+          <select id="rule-id" class="try-input"><option>VIBE013</option></select>
+          <button type="button" class="run"><svg class="icon"><use href="#i-play"/></svg>Try it</button>
+        </div>
+        <pre class="response"><code>{
+  "id": "VIBE013",
+  "module": "vibecheck",
+  "description": "…",
+  …
+}</code></pre>
+      </div>
+    </section>
+
+    <section id="schema" class="endpoint">
+      <header class="endpoint-head">
+        <span class="method get">GET</span>
+        <code class="endpoint-path">/api/v1/report.schema.json</code>
+        <button type="button" class="copy-url secondary" data-copy="https://slopcop.me/api/v1/report.schema.json" aria-label="Copy URL"><svg class="icon"><use href="#i-copy"/></svg></button>
+      </header>
+      <p>A JSON Schema (draft 2020-12) for the report that <code>slopcop --format json</code> prints and that <a href="#scan-files"><code>scanFiles</code></a> and <a href="#scan-repository"><code>scanRepository</code></a> return. The site build checks a real report against it, so the schema and the linter cannot drift apart.</p>
+      <table class="fields">
+        <thead><tr><th>Field</th><th>Type</th><th>Description</th></tr></thead>
+        <tbody>
+          <tr><td><code>version</code></td><td>string</td><td>The slopcop version that produced the report.</td></tr>
+          <tr><td><code>findings[].path</code></td><td>string</td><td>Repository-relative path.</td></tr>
+          <tr><td><code>findings[].location</code></td><td>object</td><td>One-based <code>line</code>, <code>column</code>, <code>end_line</code>, and <code>end_column</code>. Columns count Unicode scalar values.</td></tr>
+          <tr><td><code>findings[].rule_id</code></td><td>string</td><td>Look it up with <a href="#rule"><code>rules/{id}.json</code></a>.</td></tr>
+          <tr><td><code>findings[].module</code>, <code>severity</code>, <code>confidence</code></td><td>string</td><td>As in the rule catalog, after the repository's configuration.</td></tr>
+          <tr><td><code>findings[].message</code>, <code>suggestion</code></td><td>string</td><td>What is wrong and how to fix it.</td></tr>
+          <tr><td><code>findings[].evidence</code></td><td>string | null</td><td>The matched source text.</td></tr>
+          <tr><td><code>findings[].observation</code></td><td>string | null</td><td>Detail for this finding, such as the phrases a prose rule counted.</td></tr>
+          <tr><td><code>summary</code></td><td>object</td><td><code>scanned_files</code>, <code>scanned_commits</code>, <code>skipped_files</code>, and <code>findings</code> counts.</td></tr>
+        </tbody>
+      </table>
+      <div class="example">
+        <pre><code><span class="prompt">$ </span>slopcop . --format json &gt; report.json
+<span class="prompt">$ </span>check-jsonschema --schemafile https://slopcop.me/api/v1/report.schema.json report.json</code></pre>
+        <div class="try" data-try="v1/report.schema.json">
+          <button type="button" class="run"><svg class="icon"><use href="#i-play"/></svg>Try it</button>
+        </div>
+      </div>
+    </section>
+
+    <h2 class="doc-group">JavaScript module</h2>
+
+    <section id="module" class="endpoint">
+      <header class="endpoint-head">
+        <span class="method js">JS</span>
+        <code class="endpoint-path">/api/v1/slopcop.js</code>
+        <button type="button" class="copy-url secondary" data-copy="https://slopcop.me/api/v1/slopcop.js" aria-label="Copy URL"><svg class="icon"><use href="#i-copy"/></svg></button>
+      </header>
+      <p>An ES module that loads the linter's WebAssembly build (about 1 MB) on first use. Import it from a module script or a module Worker in the browser, or from Deno with <code>--allow-net --allow-import</code>. Node cannot import modules from URLs; use the <a href="https://github.com/JGalego/slopcop#getting-started">CLI</a> there.</p>
+      <p>The linter runs synchronously once the files are in memory. Large repositories keep the thread busy for a moment, so call the module from a Worker if your page has to stay responsive.</p>
+      <div class="example">
+        <pre><code>import { scanFiles, scanRepository, rules, version } from "https://slopcop.me/api/v1/slopcop.js";</code></pre>
+        <pre><code><span class="prompt">$ </span>deno run --allow-net --allow-import scan.js</code></pre>
+      </div>
+    </section>
+
+    <section id="scan-files" class="endpoint">
+      <header class="endpoint-head">
+        <span class="method js">JS</span>
+        <code class="endpoint-path">scanFiles(files, options?) → Promise&lt;Report&gt;</code>
+      </header>
+      <p>Scans files you already have in memory and resolves to a <a href="#schema">report</a>. Paths are repository-relative, and they choose each file's language and whether it is scanned at all, just as in a checkout.</p>
+      <table class="fields">
+        <thead><tr><th>Parameter</th><th>Type</th><th>Description</th></tr></thead>
+        <tbody>
+          <tr><td><code>files</code></td><td>object | Map | iterable</td><td>Path to contents, as a plain object, a <code>Map</code>, or <code>[path, contents]</code> pairs. Contents are a string, <code>Uint8Array</code>, or <code>ArrayBuffer</code>.</td></tr>
+          <tr><td><code>options.config</code></td><td>string</td><td>The text of a <code>.slopcop.toml</code>. Without it, a <code>.slopcop.toml</code> among the files applies; without either, the defaults do.</td></tr>
+        </tbody>
+      </table>
+      <p>A <code>.gitattributes</code> among the files excludes the paths it marks <code>linguist-vendored</code> or <code>linguist-generated</code>. Binary files, unsupported types, oversized files, dependency directories such as <code>node_modules</code>, and ignored paths count toward <code>summary.skipped_files</code>.</p>
+      <div class="example">
+        <pre><code>const report = await scanFiles({
+  "src/app.py": "try:\n    run()\nexcept Exception:\n    pass\n",
+  "README.md": await (await fetch("/README.md")).text(),
+});
+for (const finding of report.findings) {
+  console.log(`${finding.path}:${finding.location.line} ${finding.rule_id} ${finding.message}`);
+}</code></pre>
+        <div class="playground">
+          <div class="playground-head">
+            <label for="play-path">Path</label>
+            <input id="play-path" class="try-input" value="tests/test_bank.py" spellcheck="false">
+            <button type="button" class="run" id="play-run"><svg class="icon"><use href="#i-play"/></svg>Run scanFiles</button>
+          </div>
+          <label class="visually-hidden" for="play-source">File contents</label>
+          <textarea id="play-source" spellcheck="false" rows="9">def transfer(src, dst, amount):
+    try:
+        src.withdraw(amount)
+        dst.deposit(amount)
+    except Exception:
+        pass
+
+def test_transfer():
+    assert True
+</textarea>
+        </div>
+        <pre class="response" id="play-output" hidden><code></code></pre>
+      </div>
+    </section>
+
+    <section id="scan-repository" class="endpoint">
+      <header class="endpoint-head">
+        <span class="method js">JS</span>
+        <code class="endpoint-path">scanRepository(repo, options?) → Promise&lt;RepositoryScan&gt;</code>
+      </header>
+      <p>Fetches a public repository from GitHub, GitLab, or Codeberg and scans it, as the demo does. The repository's own <code>.slopcop.toml</code> and <code>.gitattributes</code> files apply.</p>
+      <table class="fields">
+        <thead><tr><th>Parameter</th><th>Type</th><th>Description</th></tr></thead>
+        <tbody>
+          <tr><td><code>repo</code></td><td>string</td><td><code>owner/name</code> for GitHub, <code>gitlab.com/group/project</code>, <code>codeberg.org/owner/name</code>, or a web URL of any of them, including tree and commit URLs and an <code>@ref</code> suffix.</td></tr>
+          <tr><td><code>options.ref</code></td><td>string</td><td>Branch, tag, or commit. Overrides a ref in <code>repo</code>. Defaults to the default branch.</td></tr>
+          <tr><td><code>options.token</code></td><td>string</td><td>A GitHub token, to raise GitHub's anonymous limit. It is sent only to <code>api.github.com</code>, never to other hosts.</td></tr>
+          <tr><td><code>options.onProgress</code></td><td>function</td><td>Called with <code>{ stage, done, total }</code> as the scan resolves the ref, lists files, downloads them, and scans. <code>done</code> and <code>total</code> count downloads.</td></tr>
+        </tbody>
+      </table>
+      <table class="fields">
+        <thead><tr><th>Result field</th><th>Type</th><th>Description</th></tr></thead>
+        <tbody>
+          <tr><td><code>repo</code></td><td>string</td><td>Normalized name: <code>owner/name</code> on GitHub, <code>host/path</code> elsewhere.</td></tr>
+          <tr><td><code>ref</code></td><td>string | null</td><td>The ref you asked for, or <code>null</code> for the default branch.</td></tr>
+          <tr><td><code>sha</code></td><td>string</td><td>The full commit SHA that was scanned.</td></tr>
+          <tr><td><code>report</code></td><td>Report</td><td>See the <a href="#schema">report schema</a>.</td></tr>
+          <tr><td><code>html</code></td><td>string</td><td>A standalone page, identical to <code>slopcop --format html</code>, with findings linked to the host.</td></tr>
+          <tr><td><code>notices</code></td><td>string[]</td><td>What the scan left out and why, such as files over the <a href="#limits">limits</a> or failed downloads.</td></tr>
+          <tr><td><code>stats</code></td><td>object</td><td><code>treeFiles</code>, <code>downloaded</code>, <code>failed</code>, <code>totalMillis</code>, and <code>scanMillis</code>.</td></tr>
+        </tbody>
+      </table>
+      <div class="example">
+        <pre><code>const scan = await scanRepository("https://codeberg.org/dnkl/foot", {
+  onProgress: ({ stage, done, total }) => console.log(stage, total ? `${done}/${total}` : ""),
+});
+console.log(scan.sha, scan.report.summary);
+console.log(scan.notices.join("\n"));</code></pre>
+        <div class="playground">
+          <div class="playground-head">
+            <label for="repo-input">Repository</label>
+            <input id="repo-input" class="try-input" value="codeberg.org/dnkl/foot" spellcheck="false">
+            <button type="button" class="run" id="repo-run"><svg class="icon"><use href="#i-play"/></svg>Run scanRepository</button>
+          </div>
+        </div>
+        <pre class="response" id="repo-output" hidden><code></code></pre>
+      </div>
+    </section>
+
+    <section id="js-metadata" class="endpoint">
+      <header class="endpoint-head">
+        <span class="method js">JS</span>
+        <code class="endpoint-path">version() → Promise&lt;string&gt; · rules() → Promise&lt;Rule[]&gt;</code>
+      </header>
+      <p>The same data as <a href="#version"><code>version.json</code></a> and <a href="#rules"><code>rules.json</code></a>, read from the WebAssembly build the module loaded. They always agree with the linter that scans your files.</p>
+      <div class="example">
+        <pre><code>const catalog = new Map((await rules()).map((rule) => [rule.id, rule]));
+console.log(await version(), catalog.get("DEAD001").rationale);</code></pre>
+      </div>
+    </section>
+
+    <h2 class="doc-group">Reference</h2>
+
+    <section id="errors" class="endpoint">
+      <header class="endpoint-head"><h3>Errors</h3></header>
+      <p>The JSON endpoints return 404 for unknown paths. The module's functions reject with an <code>Error</code> whose <code>code</code> property names the cause; other errors, such as network failures, have no <code>code</code>.</p>
+      <table class="fields">
+        <thead><tr><th>code</th><th>Thrown by</th><th>Meaning</th></tr></thead>
+        <tbody>
+          <tr><td><code>bad-config</code></td><td><code>scanFiles</code></td><td>The configuration is not valid TOML or names an unknown option. The message says where. <code>scanRepository</code> ignores a broken repository config and adds a notice instead.</td></tr>
+          <tr><td><code>bad-file</code></td><td><code>scanFiles</code></td><td>A file's contents are not a string, <code>Uint8Array</code>, or <code>ArrayBuffer</code>.</td></tr>
+          <tr><td><code>bad-repository</code></td><td><code>scanRepository</code></td><td><code>repo</code> is not a repository name or a GitHub, GitLab, or Codeberg URL.</td></tr>
+          <tr><td><code>not-found</code></td><td><code>scanRepository</code></td><td>The repository or ref does not exist, or the repository is private.</td></tr>
+          <tr><td><code>rate-limit</code></td><td><code>scanRepository</code></td><td>GitHub's API limit is used up. The message says when it resets.</td></tr>
+          <tr><td><code>bad-token</code></td><td><code>scanRepository</code></td><td>GitHub rejected <code>options.token</code>.</td></tr>
+          <tr><td><code>host-limit</code></td><td><code>scanRepository</code></td><td>GitLab or Codeberg kept throttling after three retries.</td></tr>
+        </tbody>
+      </table>
+    </section>
+
+    <section id="limits" class="endpoint">
+      <header class="endpoint-head"><h3>Limits</h3></header>
+      <p>The JSON endpoints are static files on GitHub Pages with no rate limit of their own. <code>scanRepository</code> downloads every file from the repository host, so the host's limits apply to the network it runs from, and it caps each scan to stay within them. Run the CLI on a clone for anything larger.</p>
+      <table class="fields">
+        <thead><tr><th>Host</th><th>Files per scan</th><th>Host limit for anonymous clients</th></tr></thead>
+        <tbody>
+          <tr><td>GitHub</td><td>3,000</td><td>60 API requests per hour, two per scan. File downloads do not count. A token raises the limit to 5,000 per hour.</td></tr>
+          <tr><td>GitLab</td><td>400</td><td>500 API requests per minute, one per file.</td></tr>
+          <tr><td>Codeberg</td><td>1,000</td><td>2,000 API requests per 10 minutes, one per file.</td></tr>
+        </tbody>
+      </table>
+      <p>Every scan also stops at 60 MB of downloads, and files over the configured <code>max-file-size</code> (1 MB by default) are skipped before download where the host lists sizes. When GitLab or Codeberg throttles a scan, every request to that host pauses for the time the host asks, or a minute, and <code>onProgress</code> reports the wait.</p>
+    </section>
+  </main>
+
+  <footer class="footer">
+    <p>Found a bug in the API or want an endpoint? <a href="https://github.com/JGalego/slopcop/issues/new?template=feature_request.yml">Open an issue</a>. The module's source is <a href="https://github.com/JGalego/slopcop/tree/main/web/site">web/site</a> in the slopcop repository.</p>
+  </footer>
+</body>
+</html>

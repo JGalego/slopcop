@@ -7,4 +7,7 @@
 .vscode/
 /web/target/
 /web/site/pkg/
+/web/site/api/v1/rules/
+/web/site/api/v1/rules.json
+/web/site/api/v1/version.json
 __pycache__/

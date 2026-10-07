@@ -178,11 +178,13 @@ async function forgeApi(forge, url) {
   throw new Error(`${forge.name} responded with ${response.status} ${response.statusText}.`);
 }
 
-let throttleListener = () => {};
+const throttleListeners = new Set();
 
-// Calls `listener(forge, milliseconds)` whenever a forge throttles the scan and every request waits.
+// Calls `listener(forge, milliseconds)` whenever a forge throttles a scan and every request to it
+// waits. Returns a function that stops the calls.
 export function onThrottle(listener) {
-  throttleListener = listener;
+  throttleListeners.add(listener);
+  return () => throttleListeners.delete(listener);
 }
 
 // Retries a throttled request after a pause, and makes every other request to the forge wait too.
@@ -198,7 +200,7 @@ async function throttled(forge, url, retries = THROTTLE_RETRIES) {
   }
   const retryAfter = Number(response.headers.get("retry-after")) * 1000 || THROTTLE_WAIT_MS;
   pausedUntil.set(forge, Math.max(pausedUntil.get(forge) ?? 0, Date.now() + retryAfter));
-  throttleListener(forge, retryAfter);
+  for (const listener of throttleListeners) listener(forge, retryAfter);
   return throttled(forge, url, retries - 1);
 }
 
