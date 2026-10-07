@@ -78,7 +78,7 @@ static DEAD006: RuleMetadata = RuleMetadata {
     suggestion: "Remove the comment or explain the non-obvious constraint behind the operation.",
     rationale: "Narrating simple syntax increases maintenance cost without preserving intent.",
     examples: &["# Increment the counter\ncounter += 1"],
-    false_positives: "Teaching material may intentionally narrate syntax; generated tutorials can demote or disable this rule. Lines inside longer comments and labels above a group of sibling lines are not candidates.",
+    false_positives: "Teaching material may intentionally narrate syntax; generated tutorials can demote or disable this rule. Lines inside longer comments, labels above a group of sibling lines, and quoted specification steps such as `Assert: stream.[[state]] is \"errored\"` are not candidates.",
 };
 
 static DEAD007: RuleMetadata = RuleMetadata {
@@ -803,12 +803,26 @@ fn check_redundant_comment(
             let code = context.code()[offset..offset + next.len()].trim();
             if !labels_group
                 && !content.starts_with(['/', '!', '#'])
+                && !quotes_algorithm_step(content)
                 && comment_restates(content, code)
             {
                 emit(context, metadata, findings, start, None::<String>);
             }
         }
     }
+}
+
+/// Whether a comment quotes a step of a specification algorithm, as browser engines do when they
+/// annotate an implementation line by line: `Assert: stream.[[state]] is "errored"`, `Let
+/// controller be a new WritableStreamDefaultController.`, or `3.1. If input is NaN`.
+fn quotes_algorithm_step(comment: &str) -> bool {
+    static MATCHER: OnceLock<Regex> = OnceLock::new();
+    MATCHER
+        .get_or_init(|| {
+            Regex::new(r"\[\[\w+\]\]|^(?:Assert:|Step \d|\d+(?:\.\d+)*\.\s|Let \S+ be\b)")
+                .expect("algorithm step regex must compile")
+        })
+        .is_match(comment)
 }
 
 fn comment_restates(comment: &str, code: &str) -> bool {
@@ -1978,11 +1992,18 @@ mod tests {
     }
 
     #[test]
-    fn group_labels_are_not_narration() {
+    fn group_labels_and_specification_steps_are_not_narration() {
         let declarations = "class Environment {\n\t// Depth Fog\n\tvoid set_fog_depth_curve(float p_curve);\n\tfloat get_fog_depth_curve() const;\n};\n";
         assert_eq!(findings("DEAD006", "environment.h", declarations), 0);
         let paragraph = "void f() {\n\t// Main button.\n\tmain_button = memnew(Button);\n\tmain_button->set_flat(true);\n}\n";
         assert_eq!(findings("DEAD006", "toaster.cpp", paragraph), 0);
+        for step in [
+            "    // Set controller.[[started]] to true.\n    controller.started.set(true);\n",
+            "    // Assert: stream is closed.\n    assert!(stream.is_closed());\n",
+            "    // Let controller be a new controller.\n    let controller = Controller::new();\n",
+        ] {
+            assert_eq!(findings("DEAD006", "stream.rs", step), 0, "{step}");
+        }
         let single =
             "fn run() {\n    // Write the data.\n    file.write(data);\n\n    done();\n}\n";
         assert_eq!(findings("DEAD006", "ar.rs", single), 1);

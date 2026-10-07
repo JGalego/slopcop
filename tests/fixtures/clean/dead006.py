@@ -15,3 +15,10 @@ def build_toolbar(toolbar):
     main_button = Button()
     main_button.flat = True
     toolbar.add(main_button)
+
+
+def start(controller):
+    # Set controller.[[started]] to true.
+    controller.started = True
+
+    pull(controller)
