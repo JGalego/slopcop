@@ -182,7 +182,7 @@ The included CI workflow runs formatting, Clippy, tests, package verification, r
 
 ## Performance
 
-Normal scans make no network requests, download no models, and send no telemetry. Discovery respects `.gitignore`, skips common dependency and build directories, rejects binary, oversized, generated, and minified bundle files early, and scans files in parallel. Rules reuse cached prose, sentence, and paragraph analysis.
+Normal scans make no network requests, download no models, and send no telemetry. Discovery respects `.gitignore`, skips common dependency, third-party, and build directories, rejects binary, oversized, generated, and minified bundle files early, and scans files in parallel. Rules reuse cached prose, sentence, and paragraph analysis.
 
 Repeated release runs on the development x86_64 Linux host scanned the 4,096-file mixed benchmark in **63.7–78.8 ms** at **51,961–64,286 files/sec**. Treat machine-specific numbers as samples, not promises. Reproduce all five profiles with `slopcop benchmark`; methodology and results live in [benchmarks](benchmarks/README.md).
 

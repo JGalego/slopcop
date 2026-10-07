@@ -148,6 +148,7 @@ mod tests {
         assert!(scanner.wants("src/app.py", 10.0));
         assert!(!scanner.wants("assets/logo.png", 10.0));
         assert!(!scanner.wants("node_modules/pkg/index.js", 10.0));
+        assert!(!scanner.wants("third_party/zlib/inflate.c", 10.0));
         assert!(!scanner.wants("src/huge.rs", 2_000_000.0));
     }
 

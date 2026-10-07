@@ -48,7 +48,7 @@ Rule IDs are validated while loading configuration. A typo is a usage error rath
 
 ## Path selection
 
-Discovery honors `.gitignore` and the conventional global Git excludes. It also skips `.git`, dependency directories, virtual environments, caches, build output, binaries, invalid UTF-8, files above the size limit, and common generated-file headers.
+Discovery honors `.gitignore` and the conventional global Git excludes. It also skips `.git`, dependency and third-party directories, virtual environments, caches, build output, binaries, invalid UTF-8, files above the size limit, and common generated-file headers.
 
 `slopcop.ignore.paths` and `slopcop.files.exclude` are combined. `slopcop.files.include` is an allowlist when it is non-empty. Patterns use Git-style glob syntax and `/` separators. A bare filename matches at any depth; a leading `/` anchors it to the configuration directory. A trailing `/` selects a directory and its descendants. Negated patterns override earlier matches within the same list, subject to Git's parent-directory exclusion rules.
 
