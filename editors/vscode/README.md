@@ -1,5 +1,3 @@
-<p align="center"><img src="images/icon.png" width="128" height="128" alt="slopcop logo"></p>
-
 # slopcop for Visual Studio Code
 
 **Slop stops here.** We don't care whether AI wrote it. We care whether it's slop.
