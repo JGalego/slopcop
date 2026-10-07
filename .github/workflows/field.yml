@@ -42,11 +42,11 @@ jobs:
       - run: cargo build --release --locked
       - uses: actions/cache@v4
         with:
-          path: target/field/checkouts
+          path: ${{ runner.temp }}/field-checkouts
           key: field-checkouts-${{ hashFiles('benchmarks/field/projects.toml') }}
           restore-keys: field-checkouts-
       - name: Scan pinned projects
-        run: python3 -I benchmarks/field/run.py check | tee "$GITHUB_STEP_SUMMARY"
+        run: python3 -I benchmarks/field/run.py check --cache "$RUNNER_TEMP/field-checkouts" | tee "$GITHUB_STEP_SUMMARY"
       - uses: actions/upload-artifact@v4
         if: always()
         with:
