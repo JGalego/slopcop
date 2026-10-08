@@ -337,8 +337,18 @@ fn hover_text(finding: &Finding) -> String {
     else {
         return format!("**{}**: {}", finding.rule_id, finding.message);
     };
+    let replacements = if metadata.replacements.is_empty() {
+        String::new()
+    } else {
+        let pairs: Vec<String> = metadata
+            .replacements
+            .iter()
+            .map(|(expression, replacement)| format!("`{expression}` → {replacement}"))
+            .collect();
+        format!("\n\n**Replacements:** {}", pairs.join("; "))
+    };
     format!(
-        "**{}** · {} · {}\n\n{}\n\n{}\n\n**Suggestion:** {}\n\n**False positives:** {}",
+        "**{}** · {} · {}\n\n{}\n\n{}\n\n**Suggestion:** {}{replacements}\n\n**False positives:** {}",
         metadata.id,
         metadata.module,
         finding.severity,

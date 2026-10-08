@@ -30,6 +30,8 @@ An isolated ordinary word should rarely trigger. Thresholds should be constants 
 
 Add immutable `RuleMetadata` in the owning module. Reuse `ScanContext` views and cached spans. Emit the narrowest useful source location and include an observation such as a count or ratio.
 
+A rule that counts specific words or phrases lists a replacement for each one in `RuleMetadata::replacements`, and its observation names the replacements for the expressions that matched. Keep the table and the phrase list in one constant, as the vocabulary rules do with `expressions(TABLE)`. A replacement may be an instruction, such as "cut it" or "give the number", when no single word fits. Record the source of a new phrase list in [reference sources](rules/references.md).
+
 Compile regular expressions once. Avoid parsing the same document twice, cloning source text, filesystem access, network access, nondeterministic iteration in output, and locks in the per-file hot path.
 
 Severity guidance:

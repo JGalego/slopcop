@@ -18,7 +18,7 @@
   },
   "CodexBar": {
     "scanned_files": 3697,
-    "findings": 236,
+    "findings": 241,
     "rules": {
       "DEAD001": 14,
       "DEAD002": 32,
@@ -32,9 +32,10 @@
       "VIBE008": 5,
       "VIBE010": 1,
       "VIBE011": 20,
-      "VIBE018": 2
+      "VIBE018": 2,
+      "VIBE035": 5
     },
-    "digest": "e0337a732f4409f6",
+    "digest": "a37d4441fa9c2f41",
     "commit": "412de0700930997fb868a4cb4e3800c4743e13c2"
   },
   "Forgejo": {
@@ -178,7 +179,7 @@
   },
   "Open Design": {
     "scanned_files": 12387,
-    "findings": 4274,
+    "findings": 4328,
     "rules": {
       "DEAD001": 248,
       "DEAD002": 6,
@@ -201,14 +202,15 @@
       "VIBE011": 590,
       "VIBE017": 7,
       "VIBE018": 26,
-      "VIBE021": 2
+      "VIBE021": 2,
+      "VIBE035": 54
     },
-    "digest": "3a37ce6b2d83d6dd",
+    "digest": "1a86cfb38c695bb8",
     "commit": "53231d40b778d88eba23f35547bf99485d3ae9fc"
   },
   "OpenClaw": {
     "scanned_files": 52054,
-    "findings": 2154,
+    "findings": 2155,
     "rules": {
       "DEAD001": 262,
       "DEAD002": 269,
@@ -228,9 +230,10 @@
       "VIBE010": 11,
       "VIBE011": 27,
       "VIBE017": 13,
-      "VIBE018": 14
+      "VIBE018": 14,
+      "VIBE035": 1
     },
-    "digest": "40a26506b0357ed3",
+    "digest": "f4984ac91385daa3",
     "commit": "8177060846209e40a506e442785a7736f31db674"
   },
   "Portage": {
@@ -299,7 +302,7 @@
   },
   "Understand Anything": {
     "scanned_files": 497,
-    "findings": 149,
+    "findings": 159,
     "rules": {
       "DEAD001": 2,
       "DEAD002": 2,
@@ -310,9 +313,10 @@
       "VIBE003": 1,
       "VIBE007": 96,
       "VIBE008": 18,
-      "VIBE011": 5
+      "VIBE011": 5,
+      "VIBE035": 10
     },
-    "digest": "23044704ca50e0e0",
+    "digest": "034ce111c4b65222",
     "commit": "790b157028637b626c8666fa7fa28248944b900c"
   },
   "Zig": {
@@ -330,12 +334,13 @@
   },
   "ccpm": {
     "scanned_files": 25,
-    "findings": 7,
+    "findings": 8,
     "rules": {
       "VIBE007": 5,
-      "VIBE008": 2
+      "VIBE008": 2,
+      "VIBE035": 1
     },
-    "digest": "aef71f92536d5246",
+    "digest": "aee687a6c92d5394",
     "commit": "7d7e4623bc6d4c0c9ba66ca6bfecd7e5261dc697"
   },
   "curl": {

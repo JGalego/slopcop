@@ -2,6 +2,28 @@
 
 This project records user-visible changes in this file and follows Semantic Versioning.
 
+## Unreleased
+
+### Added
+
+- `VIBE027` reports citation markers and tracking parameters that chat interfaces leave in copied text, such as `:contentReference[oaicite:0]{index=0}`, `turn0search0`, `[cite: 1]`, and `?utm_source=chatgpt.com`.
+- `VIBE028` reports clusters of inflated substitutes for is and has, such as "serves as the", "boasts a", and "plays a pivotal role in".
+- `VIBE029` reports sentences that end in a participle clause commenting on their own significance, such as ", highlighting its commitment to quality".
+- `VIBE030` reports dense Latinate and academic substitutes for plain words, such as utilize, thereby, "prior to", and "in order to". It is informational by default.
+- `VIBE031` reports dense intensifiers such as truly, incredibly, and dramatically.
+- `VIBE032` reports a paragraph that opens with a stock scene-setter such as "In today's fast-paced world" or "Now more than ever".
+- `VIBE033` reports repeated appeals to unnamed studies or experts in sentences that cite nothing.
+- `VIBE034` reports the stock challenges-and-outlook close, such as "despite these challenges" with "only time will tell".
+- `VIBE035` reports Markdown headings and list items decorated with emoji. Status marks such as ✅ and ❌ are not counted. It is informational by default.
+- Rule metadata carries `replacements`, a plain alternative for each expression a rule counts. Findings name the replacements for what they matched, for example `"utilized" -> used`, and `slopcop explain`, the HTML report, the editor hover, and the JSON rule metadata list the full table.
+- `docs/rules/references.md` records the catalogs and corpus studies behind the prose rules, which rule each one informed, and the patterns slopcop leaves out.
+
+### Changed
+
+- `VIBE001`, `VIBE002`, `VIBE004`, `VIBE013`, `VIBE014`, `VIBE015`, `VIBE016`, `VIBE019`, `VIBE021`, `VIBE022`, `VIBE023`, `VIBE024`, and `VIBE025` count more phrases from the reference catalogs, such as "Moreover,", "would you like me to", "can potentially", "low-hanging fruit", "a stark reminder", "paves the way", and refusals such as "I'm sorry, but I can't". `VIBE022` and `VIBE023` count inflected forms such as leveraging, fosters, and showcases.
+- `VIBE020` counts a contrast split across two sentences, such as "It's not a cache. It's a database." or the short "It doesn't guess. It measures."
+- `VIBE001` matches its phrases at ASCII word boundaries. A Unicode boundary moved the regex off its DFA engines whenever a file held a non-ASCII character, such as an emoji or a curly quote. Findings are unchanged on the field-test projects, and a single-threaded scan of 400 Markdown files from Open Design runs 31 percent fewer instructions than 0.3.1, despite the added rules.
+
 ## 0.3.1 - 2026-10-06
 
 ### Changed

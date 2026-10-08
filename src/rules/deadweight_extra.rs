@@ -22,6 +22,7 @@ static DEAD002: RuleMetadata = RuleMetadata {
     rationale: "Unowned TODO-style scaffolding is easily mistaken for completed agent output.",
     examples: &["# TODO: implement retry handling"],
     false_positives: "Tracked debt can be intentional; configure this rule for repositories that enforce issue-linked markers separately. Markers with an owner or tracked work, such as TODO(alice), FIXME(#123), or an issue URL or number on the marker's line or the next, are excluded. So are test code, quoted references such as `todo` or \"TODO:\", lowercase xxx or hack, an XXX that stands for a value, as in \"replace the XXX\", and a lowercase or capitalized todo or fixme that does not open its comment or that heads a noun phrase, such as a Todo app or a todo list.",
+    replacements: &[],
 };
 
 static DEAD003: RuleMetadata = RuleMetadata {
@@ -39,6 +40,7 @@ static DEAD003: RuleMetadata = RuleMetadata {
         "throw new Error(\"not implemented\")",
     ],
     false_positives: "Abstract methods, Python methods whose whole body raises NotImplementedError, and raises guarded by a condition are excluded. A thrown message counts only when it says \"not implemented\", contains an uppercase TODO, or opens with todo, so a todo status or a word such as Mastodon does not.",
+    replacements: &[],
 };
 
 static DEAD004: RuleMetadata = RuleMetadata {
@@ -55,6 +57,7 @@ static DEAD004: RuleMetadata = RuleMetadata {
         "catch (error) { return null; }",
     ],
     false_positives: "Compatibility probes with an explanatory body comment, optional imports, and predicates whose false fallback is the negative answer are excluded.",
+    replacements: &[],
 };
 
 static DEAD005: RuleMetadata = RuleMetadata {
@@ -68,6 +71,7 @@ static DEAD005: RuleMetadata = RuleMetadata {
     rationale: "Empty concrete functions create an API surface that promises behavior but performs none.",
     examples: &["def publish(event):\n    pass", "function publish() {}"],
     false_positives: "Framework hooks with an explanatory body comment, decorated handlers, and test doubles in test code are excluded. So are Rust methods in a trait definition or an `impl Trait for Type` block, where an empty body is a deliberate no-op default or implementation, Rust functions under a `#[cfg(...)]` attribute, the no-op variant for other platforms, and Closure Compiler externs that declare a `@constructor`, `@interface`, or `@record`.",
+    replacements: &[],
 };
 
 static DEAD006: RuleMetadata = RuleMetadata {
@@ -81,6 +85,7 @@ static DEAD006: RuleMetadata = RuleMetadata {
     rationale: "Narrating simple syntax increases maintenance cost without preserving intent.",
     examples: &["# Increment the counter\ncounter += 1"],
     false_positives: "Teaching material may intentionally narrate syntax; generated tutorials can demote or disable this rule. Lines inside longer comments, labels above a group of sibling lines, quoted specification steps such as `Assert: stream.[[state]] is \"errored\"`, and commented-out variants of the call below, such as `#run(fast=True)` above `run(fast=False)`, are not candidates.",
+    replacements: &[],
 };
 
 static DEAD007: RuleMetadata = RuleMetadata {
@@ -94,6 +99,7 @@ static DEAD007: RuleMetadata = RuleMetadata {
     rationale: "Repeated comments are common residue from generated edits and drift independently from the code.",
     examples: &["// Validate the request\n// Validate the request"],
     false_positives: "Inline shape annotations, type directives, documentation comments, and visual separators are not standalone comment candidates. Equal comments with a different comment between them, such as repeated values under separate keys of a swagger block, are not adjacent.",
+    replacements: &[],
 };
 
 static DEAD008: RuleMetadata = RuleMetadata {
@@ -107,6 +113,7 @@ static DEAD008: RuleMetadata = RuleMetadata {
     rationale: "One-line forwarding layers add navigation cost when they introduce no policy, validation, conversion, or stable boundary.",
     examples: &["def save(item):\n    return client.save(item)"],
     false_positives: "Public facades and compatibility shims can be useful even when their current implementation delegates directly; methods that expose a member object's operation and decorated handlers are excluded.",
+    replacements: &[],
 };
 
 static DEAD009: RuleMetadata = RuleMetadata {
@@ -120,6 +127,7 @@ static DEAD009: RuleMetadata = RuleMetadata {
     rationale: "Generated code often expands a Boolean expression into ceremonial control flow that obscures the actual condition.",
     examples: &["if ready:\n    return True\nelse:\n    return False"],
     false_positives: "Explicit branches may aid breakpoint placement, but that need should be rare and documented.",
+    replacements: &[],
 };
 
 static DEAD010: RuleMetadata = RuleMetadata {
@@ -133,6 +141,7 @@ static DEAD010: RuleMetadata = RuleMetadata {
     rationale: "Always-passing assertions create the appearance of coverage without constraining behavior.",
     examples: &["assert True", "expect(true).toBe(true)", "assert!(true)"],
     false_positives: "Temporary harness smoke checks should not be committed as behavioral tests.",
+    replacements: &[],
 };
 
 static DEAD011: RuleMetadata = RuleMetadata {
@@ -146,6 +155,7 @@ static DEAD011: RuleMetadata = RuleMetadata {
     rationale: "Generated patches frequently repeat a solved block instead of finding the existing ownership boundary.",
     examples: &["Ten or more equivalent non-empty lines repeated later in one file."],
     false_positives: "Tables, generated sources, and intentionally unrolled hot paths can contain legitimate repeated blocks. Comments, embedded text, rows of numeric literals, and test code are excluded.",
+    replacements: &[],
 };
 
 static DEAD012: RuleMetadata = RuleMetadata {
@@ -159,6 +169,7 @@ static DEAD012: RuleMetadata = RuleMetadata {
     rationale: "A polished heading with no additional information makes documentation look complete while leaving the reader unaided.",
     examples: &["## Configuration\nThis section describes configuration."],
     false_positives: "Outline documents may intentionally contain empty headings while actively being drafted. Stacked headings that share one body, a leading level-one document title, and template headings such as `# %PROTOCOLS%` that a documentation build fills in are excluded.",
+    replacements: &[],
 };
 
 static DEAD013: RuleMetadata = RuleMetadata {
@@ -172,6 +183,7 @@ static DEAD013: RuleMetadata = RuleMetadata {
     rationale: "Counts of rules, commands, integrations, and similar catalogs become stale whenever the inventory changes while rarely helping a reader make a decision.",
     examples: &["The registry contains 32 stable rules."],
     false_positives: "Release snapshots, compatibility limits, generated summaries, and fixed protocol cardinalities may require exact counts.",
+    replacements: &[],
 };
 
 static DEAD014: RuleMetadata = RuleMetadata {
@@ -188,6 +200,7 @@ static DEAD014: RuleMetadata = RuleMetadata {
         "except NetworkError:\n    raise",
     ],
     false_positives: "A temporary debugger breakpoint may use this shape during local diagnosis but should not remain committed. A Python rethrow followed by another `except` clause of the same `try` is excluded, because it keeps those exceptions out of the broader handler.",
+    replacements: &[],
 };
 
 static DEAD015: RuleMetadata = RuleMetadata {
@@ -204,6 +217,7 @@ static DEAD015: RuleMetadata = RuleMetadata {
         "except OSError as error:\n    print(error)",
     ],
     false_positives: "Best-effort batch processing and interactive command loops may intentionally report one failure and continue.",
+    replacements: &[],
 };
 
 static DEAD016: RuleMetadata = RuleMetadata {
@@ -217,6 +231,7 @@ static DEAD016: RuleMetadata = RuleMetadata {
     rationale: "An empty JSX event callback creates an interface that appears interactive while silently doing nothing.",
     examples: &["<button onClick={() => {}}>Save</button>"],
     false_positives: "Story fixtures and component tests may use no-op handlers; recognized test files are excluded.",
+    replacements: &[],
 };
 
 static DEAD017: RuleMetadata = RuleMetadata {
@@ -230,6 +245,7 @@ static DEAD017: RuleMetadata = RuleMetadata {
     rationale: "A hard-coded successful response can make an unfinished operation appear complete to callers and tests.",
     examples: &["async function publish(event) { return { ok: true }; }"],
     false_positives: "Result constructors and test factories may intentionally create success values; recognized test files are excluded and only action-like names trigger.",
+    replacements: &[],
 };
 
 static DEAD018: RuleMetadata = RuleMetadata {
@@ -243,6 +259,7 @@ static DEAD018: RuleMetadata = RuleMetadata {
     rationale: "Step-by-step comments often restate control flow and become stale as the implementation changes.",
     examples: &["// Step 1: Load data\nload();\n// Step 2: Save data\nsave();"],
     false_positives: "Algorithms with a standardized sequence may need numbered phases; one isolated phase label does not trigger. Files that link a web or Internet standard, such as a WHATWG, W3C, TC39, or IETF specification, are excluded, because their step comments cite the algorithm's own numbering.",
+    replacements: &[],
 };
 
 pub(super) fn rules() -> Vec<Box<dyn Rule>> {

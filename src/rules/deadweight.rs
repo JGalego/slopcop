@@ -24,6 +24,7 @@ static METADATA: RuleMetadata = RuleMetadata {
         "} catch let error as IOError {}",
     ],
     false_positives: "A deliberately ignored exception with an explanatory body comment or a catch parameter named `ignored`, `ignore`, or `_`, an optional import, an exhausted iterator, or a guarded block that always raises or fails the test is excluded; other undocumented handlers remain findings.",
+    replacements: &[],
 };
 
 impl Rule for EmptyExceptionHandler {

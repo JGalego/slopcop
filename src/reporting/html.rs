@@ -357,9 +357,25 @@ fn write_reference(
         }
         writeln!(
             writer,
-            "<h4>Fix</h4>\n<p>{}</p>\n<h4>False positives</h4>\n<p>{}</p>\n\
+            "<h4>Fix</h4>\n<p>{}</p>",
+            Escaped(metadata.suggestion)
+        )?;
+        if !metadata.replacements.is_empty() {
+            writeln!(writer, "<h4>Replacements</h4>\n<ul>")?;
+            for (expression, replacement) in metadata.replacements {
+                writeln!(
+                    writer,
+                    "<li><code>{}</code> → {}</li>",
+                    Escaped(expression),
+                    Escaped(replacement)
+                )?;
+            }
+            writeln!(writer, "</ul>")?;
+        }
+        writeln!(
+            writer,
+            "<h4>False positives</h4>\n<p>{}</p>\n\
              <p class=\"hint\">Suppress with a reason: <code>slopcop: ignore {id} -- reason</code></p>\n</article>",
-            Escaped(metadata.suggestion),
             Escaped(metadata.false_positives),
         )?;
     }

@@ -59,6 +59,7 @@ static TRAIL001: RuleMetadata = RuleMetadata {
     rationale: "Subjects such as WIP, fix, or update do not preserve why a revision exists and make history harder to search or review.",
     examples: &["WIP", "fix", "update"],
     false_positives: "Temporary local commits can be useful; disable or demote this rule on personal branches that are always squashed.",
+    replacements: &[],
 };
 
 static TRAIL002: RuleMetadata = RuleMetadata {
@@ -72,6 +73,7 @@ static TRAIL002: RuleMetadata = RuleMetadata {
     rationale: "Fixup, squash, and amend commits are editing instructions for a later rebase, not durable history entries.",
     examples: &["fixup! Handle empty input", "squash! Add scanner cache"],
     false_positives: "These commits are expected while preparing a series; run history checks at the integration boundary.",
+    replacements: &[],
 };
 
 pub(crate) fn registry() -> Vec<PapertrailRule> {

@@ -24,6 +24,7 @@ static VIBE002: RuleMetadata = RuleMetadata {
         "Absolutely! Here's a breakdown. Let me know if you'd like more detail.",
     ],
     false_positives: "Double-quoted examples and one phrase repeated sparsely through a long guide are excluded; unquoted chat transcripts and support templates may still need configuration.",
+    replacements: &[],
 };
 
 static VIBE003: RuleMetadata = RuleMetadata {
@@ -37,6 +38,7 @@ static VIBE003: RuleMetadata = RuleMetadata {
     rationale: "Repeated words such as robust, crucial, or essential label information as important instead of showing why it matters; isolated technical uses do not trigger this rule.",
     examples: &["A robust, powerful, comprehensive, crucial, seamless, and effective solution."],
     false_positives: "Product copy intentionally uses evaluative language more often than technical documentation.",
+    replacements: MODIFIERS,
 };
 
 static VIBE004: RuleMetadata = RuleMetadata {
@@ -50,6 +52,7 @@ static VIBE004: RuleMetadata = RuleMetadata {
     rationale: "Layered may, might, perhaps, and generally clauses can make prose evasive without making uncertainty more precise.",
     examples: &["Perhaps this may generally be useful and might often help in many cases."],
     false_positives: "Scientific and risk-sensitive writing may require sustained, calibrated uncertainty.",
+    replacements: &[],
 };
 
 static VIBE005: RuleMetadata = RuleMetadata {
@@ -66,6 +69,7 @@ static VIBE005: RuleMetadata = RuleMetadata {
         "On the one hand, it is fast. On the other hand, it is small. On the one hand, it is new. On the other hand, it is tested.",
     ],
     false_positives: "Comparative analysis may legitimately weigh several named alternatives.",
+    replacements: &[],
 };
 
 static VIBE006: RuleMetadata = RuleMetadata {
@@ -81,6 +85,7 @@ static VIBE006: RuleMetadata = RuleMetadata {
         "Firstly ... Secondly ... In this section ... As discussed above ... To summarize ...",
     ],
     false_positives: "Long tutorials and formal specifications can need more navigational language.",
+    replacements: &[],
 };
 
 static VIBE007: RuleMetadata = RuleMetadata {
@@ -94,6 +99,7 @@ static VIBE007: RuleMetadata = RuleMetadata {
     rationale: "Frequent em dashes create a repetitive rhetorical cadence; a few ordinary uses never trigger this rule.",
     examples: &["Five or more em dashes in a short passage."],
     false_positives: "An established editorial style may deliberately prefer em dashes.",
+    replacements: &[],
 };
 
 static VIBE008: RuleMetadata = RuleMetadata {
@@ -110,6 +116,7 @@ static VIBE008: RuleMetadata = RuleMetadata {
         "The reason is simple: caching. The result: faster pages. What changed? The index.",
     ],
     false_positives: "Glossaries and field-reference documents naturally use many colons; release notes, code comments, lead-ins that end with a colon, and record lines such as log or validator output where three or more consecutive lines open with the same `Label:` prefix are excluded.",
+    replacements: &[],
 };
 
 static VIBE009: RuleMetadata = RuleMetadata {
@@ -125,6 +132,7 @@ static VIBE009: RuleMetadata = RuleMetadata {
         "This system reads files. This system checks prose. This system prints findings. This system exits.",
     ],
     false_positives: "Procedures and intentionally parallel rhetoric may repeat openings for clarity or effect. Record lines, such as log or validator output where three or more consecutive lines open with the same `Label:` prefix, are not counted, nor are the comments of source files that link a WHATWG, W3C, TC39, or IETF specification, which quote its algorithm. Release notes repeat one entry template by design, and comment lines that open with a code expression, such as `1. preStep(Success) -> step1(Running)`, show cases rather than sentences.",
+    replacements: &[],
 };
 
 static VIBE010: RuleMetadata = RuleMetadata {
@@ -138,6 +146,7 @@ static VIBE010: RuleMetadata = RuleMetadata {
     rationale: "Eight similarly sized sentences in sequence can indicate templated prose, but the observation is intentionally low confidence.",
     examples: &["Eight consecutive sentences whose word counts vary by at most three."],
     false_positives: "Controlled-language documentation and material written for early readers often targets uniform sentence length; lists, tables, record lines such as log or validator output where three or more consecutive lines open with the same `Label:` prefix, code comments, and release notes are excluded.",
+    replacements: &[],
 };
 
 static VIBE011: RuleMetadata = RuleMetadata {
@@ -154,6 +163,7 @@ static VIBE011: RuleMetadata = RuleMetadata {
         "The tool is simple, practical, and effective. It brings speed, reliability, and flexibility. Docs stay clear, concise, and compelling.",
     ],
     false_positives: "Reference material organized around a real three-part model can legitimately repeat triads; inline triads of concrete names or actions are not counted, and release notes are excluded. A list with nested items is an outline rather than a triad, as in an option reference that lists a description and an example under each option.",
+    replacements: &[],
 };
 
 static VIBE012: RuleMetadata = RuleMetadata {
@@ -167,6 +177,7 @@ static VIBE012: RuleMetadata = RuleMetadata {
     rationale: "Repeated this approach, this framework, and that context references can hide what each sentence is actually about.",
     examples: &["This approach improves that process within this framework and that context."],
     false_positives: "A tightly scoped paragraph may have an unambiguous local referent for several such phrases.",
+    replacements: &[],
 };
 
 static VIBE013: RuleMetadata = RuleMetadata {
@@ -182,6 +193,7 @@ static VIBE013: RuleMetadata = RuleMetadata {
         "Navigate the landscape, unlock the ecosystem, and begin a transformative journey.",
     ],
     false_positives: "A document about maps, ecology, textiles, or travel may use these words literally.",
+    replacements: METAPHORS,
 };
 
 static VIBE014: RuleMetadata = RuleMetadata {
@@ -197,6 +209,7 @@ static VIBE014: RuleMetadata = RuleMetadata {
         "This exciting opportunity builds a strong foundation, delivers valuable insights, and leaves us well-positioned to drive success.",
     ],
     false_positives: "Marketing pages are expected to use more benefit-oriented language than engineering references.",
+    replacements: POSITIVITY,
 };
 
 static VIBE015: RuleMetadata = RuleMetadata {
@@ -212,6 +225,7 @@ static VIBE015: RuleMetadata = RuleMetadata {
         "It is important to note ... Keep in mind ... Results may vary ... As with any solution ...",
     ],
     false_positives: "Safety, legal, and medical material can require multiple explicit disclaimers. Release notes are skipped, since separate entries can each say a fix applies \"in some cases\".",
+    replacements: DISCLAIMERS,
 };
 
 static VIBE016: RuleMetadata = RuleMetadata {
@@ -225,6 +239,7 @@ static VIBE016: RuleMetadata = RuleMetadata {
     rationale: "Multiple in-summary and in-conclusion turns are a strong sign that prose has been expanded beyond its information content.",
     examples: &["In summary ... In conclusion ... All in all ..."],
     false_positives: "Double-quoted examples are excluded; a compiled document containing several independent chapters may still have a conclusion per chapter.",
+    replacements: &[],
 };
 
 static VIBE017: RuleMetadata = RuleMetadata {
@@ -240,6 +255,7 @@ static VIBE017: RuleMetadata = RuleMetadata {
         "The scanner reads every tracked source file in parallel. Every tracked source file is read in parallel by the scanner.",
     ],
     false_positives: "Definitions may intentionally restate a term once in equivalent language; list entries, table rows, release notes, record lines such as validator output or `<param>` docs where three or more consecutive lines open with the same two words, comments in source files that link a WHATWG, W3C, TC39, or IETF specification, which quote its algorithm, and sentences in separate paragraphs or comments are not compared.",
+    replacements: &[],
 };
 
 static VIBE018: RuleMetadata = RuleMetadata {
@@ -253,6 +269,7 @@ static VIBE018: RuleMetadata = RuleMetadata {
     rationale: "Sustained paragraph-length symmetry is observable but weak evidence of templated expansion, so this rule is informational by default.",
     examples: &["Five 20-plus-word paragraphs whose lengths all fall within a narrow band."],
     false_positives: "Edited publications, slide notes, and constrained layouts may enforce paragraph length intentionally; code comments and steps separated by examples are excluded.",
+    replacements: &[],
 };
 
 static VIBE019: RuleMetadata = RuleMetadata {
@@ -263,9 +280,10 @@ static VIBE019: RuleMetadata = RuleMetadata {
     default_confidence: Confidence::High,
     message: "Repository prose contains an unmistakable chatbot response artifact.",
     suggestion: "Remove the assistant identity or runtime disclaimer and keep only repository-specific information.",
-    rationale: "Chatbot identity, cutoff, and browsing disclaimers are interface residue rather than useful project documentation.",
+    rationale: "Chatbot identity, cutoff, refusal, browsing, and source-availability disclaimers are interface residue rather than useful project documentation.",
     examples: &["As an AI language model, I do not have access to real-time information."],
     false_positives: "Double-quoted examples are excluded; stored chat transcripts may need a named suppression.",
+    replacements: &[],
 };
 
 static VIBE020: RuleMetadata = RuleMetadata {
@@ -276,11 +294,13 @@ static VIBE020: RuleMetadata = RuleMetadata {
     default_confidence: Confidence::Medium,
     message: "The prose repeatedly frames claims as stock rhetorical contrasts.",
     suggestion: "State the claim directly and keep a contrast only where the rejected alternative is one a reader would actually consider.",
-    rationale: "Templates such as \"it's X, not Y\" and \"the goal isn't X; it's Y\" manufacture a reversal around each claim and make prose predictable without adding information.",
+    rationale: "Templates such as \"it's X, not Y\", \"the goal isn't X; it's Y\", and the two-sentence \"It's not X. It's Y.\" manufacture a reversal around each claim and make prose predictable without adding information.",
     examples: &[
         "It's a cache, not a database. The goal isn't speed; it's predictability. Rather than tuning the size, measure the misses.",
+        "It's not a cache. It's a database. It doesn't guess. It measures.",
     ],
     false_positives: "One or two contrasts never trigger this rule, and double-quoted examples are excluded; comparison guides that weigh named alternatives may still need configuration.",
+    replacements: &[],
 };
 
 static VIBE021: RuleMetadata = RuleMetadata {
@@ -291,11 +311,12 @@ static VIBE021: RuleMetadata = RuleMetadata {
     default_confidence: Confidence::Medium,
     message: "The prose repeatedly adds emphasis with correlative constructions.",
     suggestion: "State both facts directly; keep a correlative pair only where the second item is genuinely surprising.",
-    rationale: "Repeated not-only/but-also and everything-from/to constructions add rhetorical lift where a direct sentence would carry the same information.",
+    rationale: "Repeated not-only/but-also, everything-from/to, from-beginners-to-experts, and whether-you're-a constructions add rhetorical lift where a direct sentence would carry the same information.",
     examples: &[
         "Not only is it fast, but it is also clear. It handles everything from scripts to services.",
     ],
     false_positives: "Plain both/and and whether/or clauses never trigger this rule alone, and double-quoted examples are excluded.",
+    replacements: &[],
 };
 
 static VIBE022: RuleMetadata = RuleMetadata {
@@ -311,6 +332,7 @@ static VIBE022: RuleMetadata = RuleMetadata {
         "Empower key stakeholders to leverage actionable insights, streamline workflows, and drive alignment across cross-functional teams.",
     ],
     false_positives: "Isolated domain terms such as a best-practices guide or a leveraged buyout do not trigger this rule; management documents may use more of this vocabulary on purpose.",
+    replacements: JARGON,
 };
 
 static VIBE023: RuleMetadata = RuleMetadata {
@@ -326,6 +348,7 @@ static VIBE023: RuleMetadata = RuleMetadata {
         "A nuanced, holistic review delves into meaningful trade-offs and offers a thoughtful, strategic perspective.",
     ],
     false_positives: "Common technical terms such as context, pattern, constraint, and edge case are not counted; essays about strategy or design may legitimately use several of these words.",
+    replacements: AI_VOCABULARY,
 };
 
 static VIBE024: RuleMetadata = RuleMetadata {
@@ -341,6 +364,7 @@ static VIBE024: RuleMetadata = RuleMetadata {
         "This is a reminder that progress isn't always linear. Ultimately, a tool is only as good as the people using it.",
     ],
     false_positives: "One reflective sentence never triggers this rule, and double-quoted examples are excluded; essays and retrospectives may draw lessons on purpose.",
+    replacements: MORAL_FRAMING,
 };
 
 static VIBE025: RuleMetadata = RuleMetadata {
@@ -356,6 +380,7 @@ static VIBE025: RuleMetadata = RuleMetadata {
         "The release marks a pivotal moment and a fundamental shift: a meaningful step forward for the project.",
     ],
     false_positives: "One characterization never triggers this rule, and double-quoted examples are excluded; retrospectives may name a real turning point.",
+    replacements: DRAMATIC_CHARACTERIZATIONS,
 };
 
 static VIBE026: RuleMetadata = RuleMetadata {
@@ -369,6 +394,151 @@ static VIBE026: RuleMetadata = RuleMetadata {
     rationale: "Openers such as \"you're essentially asking whether\" paraphrase a chat prompt and are residue in repository prose, which has no asker.",
     examples: &["You're essentially asking whether the cache can be shared between workers."],
     false_positives: "Double-quoted examples are excluded; FAQ pages written as dialogue may need a named suppression.",
+    replacements: &[],
+};
+
+static VIBE027: RuleMetadata = RuleMetadata {
+    id: "VIBE027",
+    module: Module::Vibecheck,
+    description: "Chat interface citation artifacts",
+    default_severity: Severity::Warning,
+    default_confidence: Confidence::High,
+    message: "The prose contains a citation marker or tracking parameter left by a chat interface.",
+    suggestion: "Replace each marker with the source it stands for, or delete it, and strip chat tracking parameters from links.",
+    rationale: "Chat interfaces annotate answers with internal citation markers and tag the links they return; copied into a repository, the markers point nowhere and the parameters only record where the text came from.",
+    examples: &[
+        "The cache is shared between workers. :contentReference[oaicite:0]{index=0}",
+        "See the [guide](https://example.com/guide?utm_source=chatgpt.com) for details.",
+    ],
+    false_positives: "Double-quoted examples and inline code are excluded; a document about these markers should quote them or put them in code spans.",
+    replacements: CITATION_ARTIFACT_REPLACEMENTS,
+};
+
+static VIBE028: RuleMetadata = RuleMetadata {
+    id: "VIBE028",
+    module: Module::Vibecheck,
+    description: "Inflated copula substitutes",
+    default_severity: Severity::Warning,
+    default_confidence: Confidence::Medium,
+    message: "The prose repeatedly replaces a plain is or has with an inflated verb phrase.",
+    suggestion: "Write is, are, or has, or say what the subject actually does.",
+    rationale: "\"Serves as\", \"stands as\", \"boasts\", and \"plays a pivotal role in\" avoid the plain verb and add weight without adding information.",
+    examples: &[
+        "The parser serves as the entry point. The cache stands as a key layer. The scheduler plays a pivotal role in throughput.",
+    ],
+    false_positives: "One or two uses never trigger this rule, and double-quoted examples are excluded; a component that literally acts in a role, such as a proxy, is not counted.",
+    replacements: COPULA_SUBSTITUTES,
+};
+
+static VIBE029: RuleMetadata = RuleMetadata {
+    id: "VIBE029",
+    module: Module::Vibecheck,
+    description: "Trailing participle commentary",
+    default_severity: Severity::Warning,
+    default_confidence: Confidence::Medium,
+    message: "Sentences repeatedly end with a participle clause that comments on their own significance.",
+    suggestion: "End the sentence at the fact; if the significance matters, state the evidence for it in a sentence of its own.",
+    rationale: "Clauses such as \", highlighting its importance\" or \", contributing to a culture of quality\" attach an unsupported interpretation to a fact and read as superficial analysis.",
+    examples: &[
+        "The team rewrote the parser, highlighting its commitment to quality. Builds now finish sooner, underscoring the value of caching. Reviews moved earlier, fostering collaboration.",
+    ],
+    false_positives: "Participles that describe an action, such as \", ensuring only one writer holds the lock\", are not counted; fewer than three commentary clauses never trigger this rule, and release notes are excluded.",
+    replacements: PARTICIPLE_COMMENTARY,
+};
+
+static VIBE030: RuleMetadata = RuleMetadata {
+    id: "VIBE030",
+    module: Module::Vibecheck,
+    description: "Inflated wording density",
+    default_severity: Severity::Info,
+    default_confidence: Confidence::Medium,
+    message: "Long or formal substitutes for plain words are unusually dense.",
+    suggestion: "Use the plain word: use for utilize, before for prior to, to for in order to.",
+    rationale: "Latinate substitutes such as utilize, thereby, and prior to lengthen sentences without changing their meaning, and corpus comparisons find them far more often in model rewrites than in the human originals.",
+    examples: &[
+        "In order to ascertain the cause, we utilized the logs prior to the restart, thereby elucidating the failure.",
+    ],
+    false_positives: "Legal, standards, and academic writing may require formal register; fewer than five uses, or fewer than three distinct forms, never trigger this rule.",
+    replacements: PLAIN_WORDS,
+};
+
+static VIBE031: RuleMetadata = RuleMetadata {
+    id: "VIBE031",
+    module: Module::Vibecheck,
+    description: "Empty intensifier density",
+    default_severity: Severity::Warning,
+    default_confidence: Confidence::Medium,
+    message: "Intensifying adverbs are unusually dense.",
+    suggestion: "Delete the intensifier, or replace it with the number or comparison it stands for.",
+    rationale: "Truly, incredibly, and dramatically assert a degree the sentence does not show; a measurement carries the same emphasis and can be checked.",
+    examples: &[
+        "The new cache is incredibly fast, truly reliable, and dramatically simpler. It is undeniably an extremely good fit.",
+    ],
+    false_positives: "Informal writing uses more intensifiers on purpose; fewer than five, or fewer than three distinct forms, never trigger this rule, and double-quoted examples are excluded.",
+    replacements: INTENSIFIERS,
+};
+
+static VIBE032: RuleMetadata = RuleMetadata {
+    id: "VIBE032",
+    module: Module::Vibecheck,
+    description: "Stock scene-setting opener",
+    default_severity: Severity::Warning,
+    default_confidence: Confidence::Medium,
+    message: "A paragraph opens with a stock scene-setting phrase.",
+    suggestion: "Delete the opener and start with the claim.",
+    rationale: "Openers such as \"in today's fast-paced world\" and \"now more than ever\" assert a present-day urgency that every reader already assumes, and delay the first fact.",
+    examples: &[
+        "In today's fast-paced world, developers need fast feedback.",
+        "Now more than ever, teams rely on automation.",
+    ],
+    false_positives: "One such phrase inside a paragraph is ignored, and double-quoted examples are excluded; historical writing may contrast eras on purpose.",
+    replacements: SCENE_SETTERS,
+};
+
+static VIBE033: RuleMetadata = RuleMetadata {
+    id: "VIBE033",
+    module: Module::Vibecheck,
+    description: "Unattributed authority",
+    default_severity: Severity::Warning,
+    default_confidence: Confidence::Medium,
+    message: "The prose cites unnamed studies or experts without a source.",
+    suggestion: "Name and link the study, report, or person, or drop the claim.",
+    rationale: "\"Studies show\" and \"experts agree\" borrow authority the text cannot be checked against; a named source lets the reader verify the claim.",
+    examples: &[
+        "Studies show that code review reduces defects. Experts agree that small pull requests are easier to review.",
+    ],
+    false_positives: "Sentences that carry a link, a numbered or footnote citation, an et al. reference, or a parenthesized year are not counted; one unattributed claim never triggers this rule.",
+    replacements: UNATTRIBUTED_AUTHORITY,
+};
+
+static VIBE034: RuleMetadata = RuleMetadata {
+    id: "VIBE034",
+    module: Module::Vibecheck,
+    description: "Challenges-and-outlook formula",
+    default_severity: Severity::Warning,
+    default_confidence: Confidence::Medium,
+    message: "The prose closes on a stock challenges-but-promising outlook.",
+    suggestion: "Name the specific open problem and its status, and drop the forecast unless something concrete is planned.",
+    rationale: "\"Despite these challenges, it continues to thrive\" and \"only time will tell\" resolve every topic the same way, without naming a problem or a plan.",
+    examples: &[
+        "Despite these challenges, the project continues to thrive. Only time will tell how it evolves.",
+    ],
+    false_positives: "One phrase never triggers this rule, and double-quoted examples are excluded; roadmaps that name concrete plans may still use one or two of these phrases.",
+    replacements: OUTLOOK_FORMULAS,
+};
+
+static VIBE035: RuleMetadata = RuleMetadata {
+    id: "VIBE035",
+    module: Module::Vibecheck,
+    description: "Emoji as structure markers",
+    default_severity: Severity::Info,
+    default_confidence: Confidence::Low,
+    message: "Many headings or list items open with a decorative emoji.",
+    suggestion: "Delete the emoji and let the heading or item text carry the meaning.",
+    rationale: "Emoji in front of every heading or bullet decorate the structure without adding information and make the document harder to search and read aloud.",
+    examples: &["## 🚀 Features\n## 📦 Installation\n## 🛠️ Usage\n## 🤝 Contributing"],
+    false_positives: "Status marks such as ✅, ❌, and ⚠️ are not counted, since checklists and compatibility tables use them as data; fewer than four marked lines or three distinct emoji never trigger this rule.",
+    replacements: &[],
 };
 
 pub(super) fn rules() -> Vec<Box<dyn Rule>> {
@@ -398,6 +568,15 @@ pub(super) fn rules() -> Vec<Box<dyn Rule>> {
         boxed(&VIBE024, check_moral_framing),
         boxed(&VIBE025, check_dramatic_characterizations),
         boxed(&VIBE026, check_restated_premise),
+        boxed(&VIBE027, check_citation_artifacts),
+        boxed(&VIBE028, check_copula_substitutes),
+        boxed(&VIBE029, check_participle_commentary),
+        boxed(&VIBE030, check_inflated_wording),
+        boxed(&VIBE031, check_intensifiers),
+        boxed(&VIBE032, check_scene_setters),
+        boxed(&VIBE033, check_unattributed_authority),
+        boxed(&VIBE034, check_outlook_formula),
+        boxed(&VIBE035, check_emoji_markers),
     ]
 }
 
@@ -554,7 +733,15 @@ fn check_assistant_framing(
         "i would recommend",
         "let me know if you'd like",
         "let me know if you want",
+        "let me know if you need",
+        "let me know if you have any",
         "if you'd like, i can",
+        "would you like me to",
+        "is there anything else i can",
+        "here's a revised",
+        "here is a revised",
+        "here's an updated version",
+        "here is an updated version",
     ];
     /// Interjections count only as a whole sentence, the way an assistant opens a reply.
     const INTERJECTIONS: &[&str] = &["absolutely", "certainly", "of course", "definitely", "sure"];
@@ -590,34 +777,37 @@ fn check_assistant_framing(
     );
 }
 
+const MODIFIERS: &[(&str, &str)] = &[
+    ("robust", "name the failure it withstands"),
+    ("seamless", "name the step it removes"),
+    ("seamlessly", "name the step it removes"),
+    ("powerful", "say what it can do"),
+    ("comprehensive", "say what it covers"),
+    ("effective", "state the measured effect"),
+    ("efficient", "give the cost or the speed"),
+    ("crucial", "say what breaks without it"),
+    ("crucially", "cut it"),
+    ("vital", "say what breaks without it"),
+    ("important", "say why it matters, or cut it"),
+    ("significant", "give the size"),
+    ("valuable", "say what it is used for"),
+    ("essential", "required, or say what breaks without it"),
+    ("critical", "say what breaks without it"),
+    ("pivotal", "say what depends on it"),
+    ("paramount", "first, or cut it"),
+    ("noteworthy", "cut it and state the fact"),
+];
+
 fn check_modifiers(
     context: &ScanContext<'_>,
     metadata: &'static RuleMetadata,
     findings: &mut Vec<crate::model::Finding>,
 ) {
-    const TERMS: &[&str] = &[
-        "robust",
-        "seamless",
-        "powerful",
-        "comprehensive",
-        "effective",
-        "efficient",
-        "crucial",
-        "vital",
-        "important",
-        "significant",
-        "valuable",
-        "essential",
-        "critical",
-        "pivotal",
-        "paramount",
-        "noteworthy",
-    ];
     check_word_density(
         context,
         metadata,
         findings,
-        TERMS,
+        &expressions(MODIFIERS),
         6,
         80,
         "generic modifiers",
@@ -659,6 +849,11 @@ fn check_hedging(
         "does not necessarily",
         "depending on the circumstances",
         "while this may be true",
+        "can potentially",
+        "may potentially",
+        "may be able to",
+        "helps ensure",
+        "help ensure",
     ];
     check_phrase_cluster(
         context,
@@ -1285,39 +1480,52 @@ fn check_vague_abstractions(
     );
 }
 
+const METAPHORS: &[(&str, &str)] = &[
+    ("landscape", "field, market, or the specific tools"),
+    ("journey", "process, or the steps"),
+    ("tapestry", "mix, or list the parts"),
+    ("rich tapestry", "mix, or list the parts"),
+    ("ecosystem", "the specific tools, packages, or users"),
+    ("navigate", "handle, use, or work through"),
+    ("unlock", "enable, allow"),
+    ("realm", "area, field, or cut it"),
+    ("cornerstone", "basis, or say what depends on it"),
+    ("bridge the gap", "connect, and name both sides"),
+    ("game-changer", "say what changes"),
+    ("game changer", "say what changes"),
+    ("transformative", "say what changes"),
+    ("paradigm", "model, approach"),
+    ("tip of the iceberg", "name the rest"),
+    ("double-edged sword", "name the benefit and the cost"),
+    ("slippery slope", "name the next step and why it follows"),
+    ("moving target", "changes often"),
+    ("level the playing field", "name who gains access to what"),
+    ("connect the dots", "explain the link"),
+    ("piece of the puzzle", "part"),
+    ("north star", "goal"),
+    ("symphony", "combination, or name the parts"),
+    ("beacon", "example, or cut it"),
+    ("labyrinth", "name the parts that make it hard"),
+    ("uncharted territory", "new, untested"),
+    ("uncharted waters", "new, untested"),
+    ("deep dive", "detailed look, analysis"),
+    ("deep-dive", "detailed look, analysis"),
+    ("embark on", "start"),
+    ("embarks on", "starts"),
+    ("the fabric of", "part of"),
+    ("treasure trove", "collection, or list it"),
+];
+
 fn check_metaphors(
     context: &ScanContext<'_>,
     metadata: &'static RuleMetadata,
     findings: &mut Vec<crate::model::Finding>,
 ) {
-    const PHRASES: &[&str] = &[
-        "landscape",
-        "journey",
-        "tapestry",
-        "ecosystem",
-        "navigate",
-        "unlock",
-        "realm",
-        "cornerstone",
-        "bridge the gap",
-        "game-changer",
-        "transformative",
-        "paradigm",
-        "game changer",
-        "tip of the iceberg",
-        "double-edged sword",
-        "slippery slope",
-        "moving target",
-        "level the playing field",
-        "connect the dots",
-        "piece of the puzzle",
-        "north star",
-    ];
     check_distinct_cluster(
         context,
         metadata,
         findings,
-        PHRASES,
+        &expressions(METAPHORS),
         DistinctThresholds {
             minimum: 5,
             distinct_minimum: 4,
@@ -1327,39 +1535,52 @@ fn check_metaphors(
     );
 }
 
+const POSITIVITY: &[(&str, &str)] = &[
+    ("drive success", "name the outcome"),
+    ("elevate", "improve, raise"),
+    ("elevates", "improves, raises"),
+    ("elevating", "improving, raising"),
+    ("unlock potential", "say what becomes possible"),
+    ("best-in-class", "cite the comparison"),
+    ("world-class", "cite the comparison"),
+    ("cutting-edge", "new, or name the technique"),
+    ("maximize value", "say what improves and by how much"),
+    ("accelerate innovation", "say what ships sooner"),
+    ("deliver value", "name the benefit"),
+    ("exciting opportunity", "opportunity, or say what it allows"),
+    ("exciting possibilities", "list them"),
+    ("great opportunity to", "a chance to"),
+    ("promising development", "state the result"),
+    ("powerful tool", "tool, and say what it does"),
+    ("transformative potential", "say what could change"),
+    ("meaningful impact", "state the effect"),
+    ("positive momentum", "state the trend with numbers"),
+    ("strong foundation", "name what it supports"),
+    ("valuable insights", "state the findings"),
+    ("well-positioned to", "able to, or cut it"),
+    ("poised to", "about to, or cut it"),
+    ("the possibilities are endless", "name two possibilities"),
+    ("take it to the next level", "say what improves"),
+    ("groundbreaking", "new, or say what it changes"),
+    ("revolutionize", "change, and say how"),
+    ("revolutionizes", "changes, and say how"),
+    ("revolutionizing", "changing, and say how"),
+    ("revolutionary", "new, and say what changes"),
+    ("unparalleled", "cite the comparison"),
+    ("unleash", "use, release"),
+    ("supercharge", "speed up, and say by how much"),
+];
+
 fn check_corporate_positivity(
     context: &ScanContext<'_>,
     metadata: &'static RuleMetadata,
     findings: &mut Vec<crate::model::Finding>,
 ) {
-    const PHRASES: &[&str] = &[
-        "drive success",
-        "elevate",
-        "unlock potential",
-        "best-in-class",
-        "world-class",
-        "cutting-edge",
-        "maximize value",
-        "accelerate innovation",
-        "deliver value",
-        "exciting opportunity",
-        "exciting possibilities",
-        "great opportunity to",
-        "promising development",
-        "powerful tool",
-        "transformative potential",
-        "meaningful impact",
-        "positive momentum",
-        "strong foundation",
-        "valuable insights",
-        "well-positioned to",
-        "poised to",
-    ];
     check_distinct_cluster(
         context,
         metadata,
         findings,
-        PHRASES,
+        &expressions(POSITIVITY),
         DistinctThresholds {
             minimum: 4,
             distinct_minimum: 3,
@@ -1369,51 +1590,74 @@ fn check_corporate_positivity(
     );
 }
 
+const JARGON: &[(&str, &str)] = &[
+    ("empower", "let, allow"),
+    ("empowers", "lets, allows"),
+    ("empowering", "letting, allowing"),
+    ("leverage", "use"),
+    ("leverages", "uses"),
+    ("leveraging", "using"),
+    ("streamline", "simplify, speed up"),
+    ("streamlines", "simplifies, speeds up"),
+    ("streamlining", "simplifying, speeding up"),
+    ("enhance", "improve"),
+    ("enhances", "improves"),
+    ("enhancing", "improving"),
+    ("foster", "encourage, build"),
+    ("fosters", "encourages, builds"),
+    ("fostering", "encouraging, building"),
+    ("harness", "use"),
+    ("harnesses", "uses"),
+    ("harnessing", "using"),
+    ("facilitate", "help, allow"),
+    ("facilitates", "helps, allows"),
+    ("facilitating", "helping, allowing"),
+    ("spearhead", "lead"),
+    ("drive impact", "name the effect"),
+    ("drive alignment", "agree on the specific point"),
+    ("ensure alignment", "agree on the specific point"),
+    ("unlock value", "name the benefit"),
+    ("foster collaboration", "say who works together on what"),
+    ("foster an environment", "describe the practice"),
+    ("enhance productivity", "say what gets faster"),
+    ("maximize efficiency", "say what gets cheaper or faster"),
+    ("maximize opportunities", "name them"),
+    ("optimize workflows", "name the step that changes"),
+    ("actionable insights", "findings, recommendations"),
+    ("meaningful insights", "findings"),
+    ("key stakeholders", "name the people or teams"),
+    ("cross-functional", "name the teams"),
+    ("move the needle", "change the metric, and give the number"),
+    ("low-hanging fruit", "easy fixes, and name them"),
+    ("circle back", "return to, follow up on"),
+    ("touch base", "talk, meet"),
+    ("best practices", "name the practice"),
+    ("strategic priorities", "name the goals"),
+    ("strategic initiatives", "name the projects"),
+    ("business outcomes", "name the result"),
+    ("value proposition", "say what it does for whom"),
+    ("thought leadership", "name the work, or cut it"),
+    ("create synergies", "say what combining them saves"),
+    ("synergy", "say what combining them saves"),
+    ("end-to-end solution", "say what it covers"),
+    ("one-stop shop", "say what it covers"),
+    ("turnkey solution", "say what is included"),
+    ("address challenges", "name the problem and the fix"),
+    ("navigate complexities", "name the problem"),
+    ("position ourselves", "prepare to"),
+    ("fast-paced world", "cut it"),
+];
+
 fn check_workplace_jargon(
     context: &ScanContext<'_>,
     metadata: &'static RuleMetadata,
     findings: &mut Vec<crate::model::Finding>,
 ) {
-    const PHRASES: &[&str] = &[
-        "empower",
-        "leverage",
-        "streamline",
-        "enhance",
-        "foster",
-        "harness",
-        "facilitate",
-        "drive impact",
-        "drive alignment",
-        "ensure alignment",
-        "unlock value",
-        "foster collaboration",
-        "foster an environment",
-        "enhance productivity",
-        "maximize efficiency",
-        "maximize opportunities",
-        "optimize workflows",
-        "actionable insights",
-        "meaningful insights",
-        "key stakeholders",
-        "cross-functional",
-        "move the needle",
-        "best practices",
-        "strategic priorities",
-        "strategic initiatives",
-        "business outcomes",
-        "value proposition",
-        "thought leadership",
-        "create synergies",
-        "address challenges",
-        "navigate complexities",
-        "position ourselves",
-        "fast-paced world",
-    ];
     check_distinct_cluster(
         context,
         metadata,
         findings,
-        PHRASES,
+        &expressions(JARGON),
         DistinctThresholds {
             minimum: 6,
             distinct_minimum: 4,
@@ -1423,40 +1667,76 @@ fn check_workplace_jargon(
     );
 }
 
+const AI_VOCABULARY: &[(&str, &str)] = &[
+    ("nuanced", "name the distinction"),
+    ("nuance", "name the distinction"),
+    ("nuances", "name the distinctions"),
+    ("thoughtful", "careful, or show the care"),
+    ("thoughtfully", "carefully, or show the care"),
+    ("meaningful", "say what it changes"),
+    ("meaningfully", "say what it changes"),
+    ("holistic", "complete, or say what it covers"),
+    ("holistically", "say what it covers"),
+    ("strategic", "planned, or name the goal"),
+    ("strategically", "name the goal"),
+    ("compelling", "convincing, or state the reason"),
+    ("multifaceted", "name the facets"),
+    ("intricate", "complex, or name the parts"),
+    ("intricacies", "details"),
+    ("intricately", "closely, or say how"),
+    ("delve", "look at, examine"),
+    ("delves", "looks at, examines"),
+    ("delved", "looked at, examined"),
+    ("delving", "looking at, examining"),
+    ("broader", "wider, or name the scope"),
+    ("sustainable", "say how long it lasts"),
+    ("profound", "large, or give the size"),
+    ("profoundly", "give the size"),
+    ("showcase", "show"),
+    ("showcases", "shows"),
+    ("showcased", "showed"),
+    ("showcasing", "showing"),
+    (
+        "interplay",
+        "interaction, or say how they affect each other",
+    ),
+    ("meticulous", "careful, or show the care"),
+    ("meticulously", "carefully, or show the care"),
+    ("commendable", "good, and say why"),
+    ("garner", "get, earn"),
+    ("garnered", "got, earned"),
+    ("garners", "gets, earns"),
+    ("vibrant", "active, or give the numbers"),
+    ("bolster", "strengthen, support"),
+    ("bolsters", "strengthens, supports"),
+    ("bolstered", "strengthened, supported"),
+    ("bolstering", "strengthening, supporting"),
+    ("resonate", "appeal to, matter to"),
+    ("resonates", "appeals to, matters to"),
+    ("unwavering", "steady, or cut it"),
+    ("invaluable", "useful, and say for what"),
+    ("burgeoning", "growing"),
+    ("interconnectedness", "links, or name them"),
+    ("impactful", "effective, or state the effect"),
+    ("foundational", "basic, or say what depends on it"),
+    ("encompass", "cover, include"),
+    ("encompasses", "covers, includes"),
+    ("encompassing", "covering, including"),
+    ("illuminates", "shows, explains"),
+    ("unraveling", "untangling, explaining"),
+    ("accentuates", "stresses, or cut it"),
+];
+
 fn check_ai_vocabulary(
     context: &ScanContext<'_>,
     metadata: &'static RuleMetadata,
     findings: &mut Vec<crate::model::Finding>,
 ) {
-    const TERMS: &[&str] = &[
-        "nuanced",
-        "nuance",
-        "nuances",
-        "thoughtful",
-        "thoughtfully",
-        "meaningful",
-        "meaningfully",
-        "holistic",
-        "holistically",
-        "strategic",
-        "strategically",
-        "compelling",
-        "multifaceted",
-        "intricate",
-        "intricacies",
-        "delve",
-        "delves",
-        "delving",
-        "broader",
-        "sustainable",
-        "profound",
-        "profoundly",
-    ];
     check_distinct_cluster(
         context,
         metadata,
         findings,
-        TERMS,
+        &expressions(AI_VOCABULARY),
         DistinctThresholds {
             minimum: 5,
             distinct_minimum: 3,
@@ -1466,36 +1746,42 @@ fn check_ai_vocabulary(
     );
 }
 
+const MORAL_FRAMING: &[(&str, &str)] = &[
+    ("is a reminder that", "cut it and end on the finding"),
+    ("serves as a reminder that", "cut it and end on the finding"),
+    ("a stark reminder", "cut it and end on the finding"),
+    ("reminds us that", "cut it and end on the finding"),
+    ("teaches us that", "cut it and end on the finding"),
+    ("the lesson is that", "cut it and end on the finding"),
+    ("there's a lesson here", "cut it and end on the finding"),
+    ("speaks to the importance of", "say why it matters here"),
+    ("underscores the importance of", "say why it matters here"),
+    ("highlights the importance of", "say why it matters here"),
+    ("highlighting the importance of", "say why it matters here"),
+    ("speaks volumes", "say what it shows"),
+    ("a testament to", "shows, or state what it proves"),
+    ("isn't always linear", "describe the actual setbacks"),
+    ("is not always linear", "describe the actual setbacks"),
+    ("is a journey, not a destination", "cut it"),
+    ("is only as good as the", "depends on the"),
+    ("is only as effective as the", "depends on the"),
+    ("is only as strong as the", "depends on the"),
+    ("the human element", "name the people and what they do"),
+    ("what matters most", "name it"),
+    ("at the end of the day, it's about", "cut it"),
+    ("in a world where", "cut it and state the condition"),
+];
+
 fn check_moral_framing(
     context: &ScanContext<'_>,
     metadata: &'static RuleMetadata,
     findings: &mut Vec<crate::model::Finding>,
 ) {
-    const PHRASES: &[&str] = &[
-        "is a reminder that",
-        "serves as a reminder that",
-        "reminds us that",
-        "teaches us that",
-        "the lesson is that",
-        "there's a lesson here",
-        "speaks to the importance of",
-        "a testament to",
-        "isn't always linear",
-        "is not always linear",
-        "is a journey, not a destination",
-        "is only as good as the",
-        "is only as effective as the",
-        "is only as strong as the",
-        "the human element",
-        "what matters most",
-        "at the end of the day, it's about",
-        "in a world where",
-    ];
     check_distinct_cluster(
         context,
         metadata,
         findings,
-        PHRASES,
+        &expressions(MORAL_FRAMING),
         DistinctThresholds {
             minimum: 2,
             distinct_minimum: 2,
@@ -1505,34 +1791,45 @@ fn check_moral_framing(
     );
 }
 
+const DRAMATIC_CHARACTERIZATIONS: &[(&str, &str)] = &[
+    ("inflection point", "change, with the date or number"),
+    ("pivotal moment", "say what changed and when"),
+    ("defining moment", "say what changed and when"),
+    ("watershed moment", "say what changed and when"),
+    ("critical juncture", "decision point, and name the decision"),
+    ("turning point", "say what changed"),
+    ("fundamental shift", "change, and say what changed"),
+    ("seismic shift", "change, and say what changed"),
+    ("paradigm shift", "change, and say what changed"),
+    ("sea change", "change, and say what changed"),
+    ("new era", "say what is new"),
+    ("a new chapter", "say what starts"),
+    ("transformative opportunity", "name the opportunity"),
+    ("powerful framework", "framework, and say what it does"),
+    ("compelling case", "state the evidence"),
+    ("clear signal", "state what it indicates"),
+    ("step forward", "improvement, and give the size"),
+    ("game-changing", "say what changes"),
+    ("pave the way", "allow, enable"),
+    ("paves the way", "allows, enables"),
+    ("set the stage for", "allow, enable"),
+    ("sets the stage for", "allows, enables"),
+    ("indelible mark", "name the lasting effect"),
+    ("enduring legacy", "name what remains"),
+    ("unprecedented", "first, or give the comparison"),
+    ("monumental", "large, and give the size"),
+];
+
 fn check_dramatic_characterizations(
     context: &ScanContext<'_>,
     metadata: &'static RuleMetadata,
     findings: &mut Vec<crate::model::Finding>,
 ) {
-    const PHRASES: &[&str] = &[
-        "inflection point",
-        "pivotal moment",
-        "defining moment",
-        "watershed moment",
-        "critical juncture",
-        "turning point",
-        "fundamental shift",
-        "seismic shift",
-        "sea change",
-        "new era",
-        "transformative opportunity",
-        "powerful framework",
-        "compelling case",
-        "clear signal",
-        "step forward",
-        "game-changing",
-    ];
     check_distinct_cluster(
         context,
         metadata,
         findings,
-        PHRASES,
+        &expressions(DRAMATIC_CHARACTERIZATIONS),
         DistinctThresholds {
             minimum: 2,
             distinct_minimum: 2,
@@ -1542,31 +1839,44 @@ fn check_dramatic_characterizations(
     );
 }
 
+const DISCLAIMERS: &[(&str, &str)] = &[
+    ("it is important to note", "cut it and state the fact"),
+    ("it's important to note", "cut it and state the fact"),
+    ("it is worth noting", "cut it and state the fact"),
+    ("it's worth noting", "cut it and state the fact"),
+    ("it is worth mentioning", "cut it and state the fact"),
+    ("it's worth mentioning", "cut it and state the fact"),
+    ("it bears mentioning", "cut it and state the fact"),
+    ("it should be emphasized", "cut it and state the fact"),
+    ("it goes without saying", "cut it"),
+    ("needless to say", "cut it"),
+    ("keep in mind", "note, or cut it"),
+    (
+        "results may vary",
+        "state the condition that changes the result",
+    ),
+    ("should be noted", "cut it and state the fact"),
+    ("in some cases", "name the cases"),
+    ("as with any", "cut it"),
+    ("depending on your needs", "name the deciding factor"),
+    ("depending on the context", "name the deciding factor"),
+    ("one-size-fits-all", "name the cases that differ"),
+    (
+        "depends on the specific situation",
+        "name the deciding factor",
+    ),
+    ("depends on your specific", "name the deciding factor"),
+    ("your individual circumstances", "name the deciding factor"),
+    ("your specific circumstances", "name the deciding factor"),
+    ("every situation is different", "name what differs"),
+    ("not necessarily true in every case", "name the exception"),
+];
+
 fn check_disclaimers(
     context: &ScanContext<'_>,
     metadata: &'static RuleMetadata,
     findings: &mut Vec<crate::model::Finding>,
 ) {
-    const PHRASES: &[&str] = &[
-        "it is important to note",
-        "it's important to note",
-        "it is worth noting",
-        "it's worth noting",
-        "keep in mind",
-        "results may vary",
-        "should be noted",
-        "in some cases",
-        "as with any",
-        "depending on your needs",
-        "depending on the context",
-        "one-size-fits-all",
-        "depends on the specific situation",
-        "depends on your specific",
-        "your individual circumstances",
-        "your specific circumstances",
-        "every situation is different",
-        "not necessarily true in every case",
-    ];
     if is_release_notes(context) {
         return;
     }
@@ -1574,7 +1884,7 @@ fn check_disclaimers(
         context,
         metadata,
         findings,
-        PHRASES,
+        &expressions(DISCLAIMERS),
         4,
         0,
         "generic disclaimers",
@@ -1600,6 +1910,10 @@ fn check_conclusions(
         "the broader lesson",
         "this serves as a reminder",
         "this reinforces the importance",
+        "to sum up",
+        "in closing",
+        "in the final analysis",
+        "to wrap up",
     ];
     if !is_prose(context) {
         return;
@@ -1746,6 +2060,22 @@ fn check_chatbot_residue(
         "i don't have access to real-time information",
         "i cannot browse the internet",
         "i can't browse the internet",
+        "as of my last update",
+        "as of my latest update",
+        "as of my last training",
+        "my training cutoff",
+        "i'm sorry, but i can't",
+        "i'm sorry, but i cannot",
+        "i cannot fulfill this request",
+        "i can't fulfill this request",
+        "i can't assist with that",
+        "i cannot assist with that",
+        "while specific details are limited",
+        "while specific details are scarce",
+        "in the provided search results",
+        "based on the provided search results",
+        "i don't have specific information",
+        "i do not have specific information",
     ];
     if !is_prose(context) {
         return;
@@ -1803,6 +2133,61 @@ fn contrast_matchers() -> &'static [Regex] {
     })
 }
 
+/// Matches a contrast split across two sentences, as in "It's not a cache. It's a database.", "It
+/// doesn't cache. It caches lazily.", or the short "It doesn't guess. It measures.", and returns
+/// its template number after the one-sentence templates. Rust's regex engine has no
+/// backreferences, so the repeated verb is compared here.
+fn split_contrast(first: &str, second: &str) -> Option<usize> {
+    static MATCHERS: OnceLock<[Regex; 3]> = OnceLock::new();
+    // Every template opens with it, this, that, or they; skip the regexes for other sentences.
+    let opener = |text: &str| {
+        text.get(..2).is_some_and(|prefix| {
+            prefix.eq_ignore_ascii_case("it") || prefix.eq_ignore_ascii_case("th")
+        })
+    };
+    if !opener(first) || !opener(second) {
+        return None;
+    }
+    let [negated, affirmed, did_not] = MATCHERS.get_or_init(|| {
+        let subject = r"(?:it|this|that|they)";
+        [
+            format!(r"^{subject}(?:(?:'s|'re| is| are| was| were)(?: not| no longer)\b|(?: is| are| was| were)n't\b)"),
+            format!(r"^{subject}(?:'s|'re| is| are| was| were)\b"),
+            format!(r"^{subject} (?:does|do|did)n't (?:just |only |merely )?([a-z]{{3,}})\b"),
+        ]
+        .map(|pattern| {
+            Regex::new(&format!("(?i){}", pattern.replace('\'', "['\u{2019}]")))
+                .expect("VIBE020 split contrast regexes must compile")
+        })
+    });
+    if negated.is_match(first) {
+        let rest = &second[affirmed.find(second)?.end()..];
+        let rest = rest.to_ascii_lowercase();
+        return (!rest.starts_with(" not") && !rest.starts_with("n't"))
+            .then_some(CONTRAST_TEMPLATES.len());
+    }
+    let verb = did_not
+        .captures(first)?
+        .get(1)?
+        .as_str()
+        .to_ascii_lowercase();
+    let mut words = second.split_whitespace();
+    let subject = words.next()?.to_ascii_lowercase();
+    let next_word = words
+        .next()?
+        .trim_matches(|character: char| !character.is_alphabetic())
+        .to_ascii_lowercase();
+    let same_verb = next_word.starts_with(&verb) && next_word.len() <= verb.len() + 3;
+    let aphorism =
+        word_count(first) <= SPLIT_APHORISM_WORDS && word_count(second) <= SPLIT_APHORISM_WORDS;
+    (matches!(subject.as_str(), "it" | "this" | "that" | "they") && (same_verb || aphorism))
+        .then_some(CONTRAST_TEMPLATES.len() + 1)
+}
+
+/// The most words in each sentence of a "It doesn't X. It Ys." pair whose verbs differ. A longer
+/// second sentence usually explains a failure rather than staging a reversal.
+const SPLIT_APHORISM_WORDS: usize = 6;
+
 fn check_rhetorical_contrasts(
     context: &ScanContext<'_>,
     metadata: &'static RuleMetadata,
@@ -1812,17 +2197,25 @@ fn check_rhetorical_contrasts(
         return;
     }
     let prose = context.prose();
+    let sentences: Vec<(usize, &str)> = context
+        .sentences()
+        .iter()
+        .map(|sentence| {
+            let text = sentence.text(prose);
+            // Comment markers and list bullets stay in the prose view; skip them to reach the
+            // sentence's first word.
+            let trimmed = text.trim_start_matches(|character: char| {
+                character.is_whitespace()
+                    || matches!(character, '-' | '*' | '+' | '>' | '/' | '#' | '!')
+            });
+            (
+                sentence.start + text.len() - trimmed.len(),
+                trimmed.trim_end(),
+            )
+        })
+        .collect();
     let mut hits = Vec::new();
-    for sentence in context.sentences() {
-        let text = sentence.text(prose);
-        // Comment markers and list bullets stay in the prose view; skip them to reach the
-        // sentence's first word.
-        let trimmed = text.trim_start_matches(|character: char| {
-            character.is_whitespace()
-                || matches!(character, '-' | '*' | '+' | '>' | '/' | '#' | '!')
-        });
-        let base = sentence.start + text.len() - trimmed.len();
-        let trimmed = trimmed.trim_end();
+    for (index, (base, trimmed)) in sentences.iter().enumerate() {
         let hit = contrast_matchers()
             .iter()
             .enumerate()
@@ -1830,6 +2223,12 @@ fn check_rhetorical_contrasts(
                 matcher
                     .find(trimmed)
                     .map(|found| (base + found.start(), template))
+            })
+            .or_else(|| {
+                sentences
+                    .get(index + 1)
+                    .and_then(|(_, next)| split_contrast(trimmed, next))
+                    .map(|template| (*base, template))
             });
         if let Some((offset, template)) =
             hit.filter(|(offset, _)| !inside_double_quotes(prose, *offset))
@@ -1863,6 +2262,11 @@ fn correlative_matchers() -> &'static [(Regex, bool)] {
                 r"(?i)\b(?:everything|anything) from\b[^.!?]{1,80}?\bto\b",
                 true,
             ),
+            (
+                r"(?i)\bfrom (?:beginners|novices|newcomers|hobbyists|startups|small businesses|individuals) to\b",
+                true,
+            ),
+            (r"(?i)\bwhether you(?:'re|\u{2019}re| are) an? \b", true),
             (r"(?i)\bboth\b[^.!?,;]{1,50}?\band\b", false),
             (r"(?i)\bwhether\b[^.!?;]{1,60}?\bor\b", false),
         ]
@@ -1955,6 +2359,658 @@ fn check_restated_premise(
     }
 }
 
+/// Markers that chat interfaces leave in copied answers, paired with the form a finding names.
+/// Each pattern is matched case-insensitively against the prose view.
+const CITATION_ARTIFACTS: &[(&str, &str)] = &[
+    (r"\boaicite\b", "oaicite"),
+    (r"\bcontentreference\[", "contentReference"),
+    (r"\boai_citation\b", "oai_citation"),
+    (
+        r"\bturn\d+(?:search|news|image|view|fetch|file)\d+\b",
+        "turn0search0",
+    ),
+    (r"\battributableindex\b", "attributableIndex"),
+    (r"\bgrok_(?:card|render_citation_card_json)\b", "grok_card"),
+    (r"\[cite(?:_start|_end|: ?\d+(?:, ?\d+)*)\]", "[cite: 1]"),
+    (
+        r"\[span_\d+\]\((?:start|end)_span\)",
+        "[span_1](start_span)",
+    ),
+    (
+        "\u{3010}\\d+\u{2020}[^\u{3011}]{0,40}\u{3011}",
+        "\u{3010}4\u{2020}source\u{3011}",
+    ),
+    (r"\bppl-ai-file-upload\b", "ppl-ai-file-upload"),
+    (r"\[(?:attached_file|web):\d+\]", "[web:1]"),
+    (
+        r"[?&]utm_source=(?:chatgpt\.com|openai|perplexity(?:\.ai)?|copilot\.com|claude\.ai)\b",
+        "utm_source=chatgpt.com",
+    ),
+    (r":::writing\{", ":::writing"),
+];
+
+const CITE_SOURCE: &str = "the source it stands for, as a real link, or delete it";
+
+const CITATION_ARTIFACT_REPLACEMENTS: &[(&str, &str)] = &[
+    ("oaicite", CITE_SOURCE),
+    ("contentReference", CITE_SOURCE),
+    ("oai_citation", CITE_SOURCE),
+    ("turn0search0", CITE_SOURCE),
+    ("attributableIndex", CITE_SOURCE),
+    ("grok_card", CITE_SOURCE),
+    ("[cite: 1]", CITE_SOURCE),
+    ("[span_1](start_span)", "delete the span markers"),
+    ("\u{3010}4\u{2020}source\u{3011}", CITE_SOURCE),
+    ("[web:1]", CITE_SOURCE),
+    ("ppl-ai-file-upload", "a link to the file, or delete it"),
+    (
+        "utm_source=chatgpt.com",
+        "the URL without the tracking parameter",
+    ),
+    (":::writing", "delete the wrapper and keep the text"),
+];
+
+/// Returns one regex that finds every artifact in a single pass, and the per-artifact regexes that
+/// name the form of each match.
+fn citation_artifact_matchers() -> &'static (Regex, Vec<(Regex, &'static str)>) {
+    static MATCHERS: OnceLock<(Regex, Vec<(Regex, &'static str)>)> = OnceLock::new();
+    MATCHERS.get_or_init(|| {
+        // ASCII word boundaries keep the regex on its DFA engines; a Unicode `\b` falls back to a
+        // slower engine whenever the prose holds a non-ASCII character, and every marker is ASCII.
+        let compile = |pattern: &str| {
+            Regex::new(&format!("(?i){}", pattern.replace(r"\b", r"(?-u:\b)")))
+                .expect("VIBE027 artifact regexes must compile")
+        };
+        let combined: Vec<String> = CITATION_ARTIFACTS
+            .iter()
+            .map(|(pattern, _)| format!("(?:{pattern})"))
+            .collect();
+        (
+            compile(&combined.join("|")),
+            CITATION_ARTIFACTS
+                .iter()
+                .map(|(pattern, form)| (compile(pattern), *form))
+                .collect(),
+        )
+    })
+}
+
+fn check_citation_artifacts(
+    context: &ScanContext<'_>,
+    metadata: &'static RuleMetadata,
+    findings: &mut Vec<crate::model::Finding>,
+) {
+    if !is_prose(context) {
+        return;
+    }
+    let prose = context.prose();
+    let (combined, forms) = citation_artifact_matchers();
+    let hits: Vec<(usize, &str)> = combined
+        .find_iter(prose)
+        .filter(|found| !inside_double_quotes(prose, found.start()))
+        .filter_map(|found| {
+            forms
+                .iter()
+                .find(|(matcher, _)| matcher.is_match(found.as_str()))
+                .map(|(_, form)| (found.start(), *form))
+        })
+        .collect();
+    let Some((offset, form)) = hits.first() else {
+        return;
+    };
+    emit(
+        context,
+        metadata,
+        findings,
+        *offset,
+        Some(with_replacements(
+            metadata,
+            format!(
+                "observed {} chat interface artifact(s), beginning with {form}",
+                hits.len()
+            ),
+            hits.iter().map(|(_, form)| *form),
+        )),
+    );
+}
+
+const COPULA_SUBSTITUTES: &[(&str, &str)] = &[
+    ("serves as a", "is a"),
+    ("serves as an", "is an"),
+    ("serves as the", "is the"),
+    ("serve as a", "is a, are a"),
+    ("serves to", "cut it and keep the verb that follows"),
+    ("stands as a", "is a"),
+    ("stands as an", "is an"),
+    ("stands as the", "is the"),
+    ("functions as a", "is a"),
+    ("functions as the", "is the"),
+    ("boasts a", "has a"),
+    ("boasts an", "has an"),
+    ("boasts the", "has the"),
+    ("boasts over", "has over"),
+    ("plays a crucial role in", "say what it does"),
+    ("play a crucial role in", "say what they do"),
+    ("plays a pivotal role in", "say what it does"),
+    ("play a pivotal role in", "say what they do"),
+    ("plays a key role in", "say what it does"),
+    ("play a key role in", "say what they do"),
+    ("plays a vital role in", "say what it does"),
+    ("play a vital role in", "say what they do"),
+    ("plays a significant role in", "say what it does"),
+    ("play a significant role in", "say what they do"),
+    ("plays a central role in", "say what it does"),
+    ("play a central role in", "say what they do"),
+    ("plays a critical role in", "say what it does"),
+    ("play a critical role in", "say what they do"),
+    ("plays a major role in", "say what it does"),
+    ("play a major role in", "say what they do"),
+    ("plays an instrumental role in", "say what it does"),
+    ("play an instrumental role in", "say what they do"),
+    ("plays an important role in", "say what it does"),
+    ("play an important role in", "say what they do"),
+];
+
+fn check_copula_substitutes(
+    context: &ScanContext<'_>,
+    metadata: &'static RuleMetadata,
+    findings: &mut Vec<crate::model::Finding>,
+) {
+    check_distinct_cluster(
+        context,
+        metadata,
+        findings,
+        &expressions(COPULA_SUBSTITUTES),
+        DistinctThresholds {
+            minimum: 3,
+            distinct_minimum: 2,
+            words_per_hit: 200,
+        },
+        "inflated copula substitutes",
+    );
+}
+
+const SHOW_EVIDENCE: &str = "end the sentence, then state the evidence, or cut it";
+
+/// Participles that interpret the clause before them. Action participles such as `ensuring` or
+/// `making` describe what the code does and are not listed.
+const PARTICIPLE_COMMENTARY: &[(&str, &str)] = &[
+    ("highlighting", SHOW_EVIDENCE),
+    ("underscoring", SHOW_EVIDENCE),
+    ("underlining", SHOW_EVIDENCE),
+    ("emphasizing", SHOW_EVIDENCE),
+    ("emphasising", SHOW_EVIDENCE),
+    ("showcasing", SHOW_EVIDENCE),
+    ("illustrating", SHOW_EVIDENCE),
+    ("demonstrating", SHOW_EVIDENCE),
+    (
+        "reflecting",
+        "name what it reflects and how you know, or cut it",
+    ),
+    (
+        "symbolizing",
+        "name what it reflects and how you know, or cut it",
+    ),
+    (
+        "signaling",
+        "name what it reflects and how you know, or cut it",
+    ),
+    (
+        "signalling",
+        "name what it reflects and how you know, or cut it",
+    ),
+    ("cementing", "say what changed, or cut it"),
+    ("solidifying", "say what changed, or cut it"),
+    ("reinforcing", "say what changed, or cut it"),
+    ("fostering", "say who does what, or cut it"),
+    ("cultivating", "say who does what, or cut it"),
+    (
+        "contributing to",
+        "state the effect and its size, or cut it",
+    ),
+    ("paving the way", "name what it enables, or cut it"),
+    ("setting the stage", "name what it enables, or cut it"),
+];
+
+fn participle_matcher() -> &'static Regex {
+    static MATCHER: OnceLock<Regex> = OnceLock::new();
+    MATCHER.get_or_init(|| {
+        let forms: Vec<&str> = PARTICIPLE_COMMENTARY
+            .iter()
+            .map(|(form, _)| *form)
+            .collect();
+        Regex::new(&format!(
+            r"(?i),\s+(?:thereby\s+|further\s+|ultimately\s+)?({})(?-u:\b)",
+            forms.join("|")
+        ))
+        .expect("VIBE029 participle regex must compile")
+    })
+}
+
+fn check_participle_commentary(
+    context: &ScanContext<'_>,
+    metadata: &'static RuleMetadata,
+    findings: &mut Vec<crate::model::Finding>,
+) {
+    if !is_prose(context) || is_release_notes(context) {
+        return;
+    }
+    let prose = context.prose();
+    let hits: Vec<(usize, String)> = participle_matcher()
+        .captures_iter(prose)
+        .filter_map(|captures| captures.get(1))
+        .filter(|found| !inside_double_quotes(prose, found.start()))
+        .map(|found| (found.start(), found.as_str().to_ascii_lowercase()))
+        .collect();
+    let distinct: HashSet<_> = hits.iter().map(|(_, form)| form.as_str()).collect();
+    if hits.len() >= 3 && distinct.len() >= 2 && hits.len() * 200 >= context.prose_word_count() {
+        emit(
+            context,
+            metadata,
+            findings,
+            hits[0].0,
+            Some(with_replacements(
+                metadata,
+                format!(
+                    "observed {} trailing commentary clauses using {} distinct participles",
+                    hits.len(),
+                    distinct.len()
+                ),
+                hits.iter().map(|(_, form)| form.as_str()),
+            )),
+        );
+    }
+}
+
+const PLAIN_WORDS: &[(&str, &str)] = &[
+    ("utilize", "use"),
+    ("utilizes", "uses"),
+    ("utilized", "used"),
+    ("utilizing", "using"),
+    ("utilization", "use"),
+    ("utilise", "use"),
+    ("utilised", "used"),
+    ("utilising", "using"),
+    ("in order to", "to"),
+    ("prior to", "before"),
+    ("subsequent to", "after"),
+    ("in light of", "because of, given"),
+    ("with respect to", "about, for"),
+    ("with regard to", "about"),
+    ("in regard to", "about"),
+    ("pertaining to", "about"),
+    ("due to the fact that", "because"),
+    ("owing to the fact that", "because"),
+    ("in the event that", "if"),
+    ("at this point in time", "now"),
+    ("for the purpose of", "to, for"),
+    ("has the ability to", "can"),
+    ("in close proximity to", "near"),
+    ("in a timely manner", "promptly, or give the deadline"),
+    ("a myriad of", "many"),
+    ("myriad", "many"),
+    ("a plethora of", "many"),
+    ("the vast majority of", "most"),
+    ("in the realm of", "in"),
+    ("akin to", "like"),
+    ("commence", "start"),
+    ("commences", "starts"),
+    ("commenced", "started"),
+    ("endeavor", "try, effort"),
+    ("endeavors", "tries, efforts"),
+    ("endeavour", "try, effort"),
+    ("endeavours", "tries, efforts"),
+    ("ascertain", "find out, check"),
+    ("scrutinize", "examine, check"),
+    ("warranting", "justifying, requiring"),
+    ("elucidate", "explain"),
+    ("elucidates", "explains"),
+    ("elucidating", "explaining"),
+    ("necessitate", "require"),
+    ("necessitates", "requires"),
+    ("necessitating", "requiring"),
+    ("constitutes", "is"),
+    ("delineate", "describe, outline"),
+    ("delineates", "describes, outlines"),
+    ("aforementioned", "this, the"),
+    ("thereby", "so, which"),
+    ("henceforth", "from now on"),
+];
+
+fn check_inflated_wording(
+    context: &ScanContext<'_>,
+    metadata: &'static RuleMetadata,
+    findings: &mut Vec<crate::model::Finding>,
+) {
+    check_distinct_cluster(
+        context,
+        metadata,
+        findings,
+        &expressions(PLAIN_WORDS),
+        DistinctThresholds {
+            minimum: 5,
+            distinct_minimum: 3,
+            words_per_hit: 150,
+        },
+        "inflated substitutes for plain words",
+    );
+}
+
+const GIVE_NUMBER: &str = "cut it, or give the number";
+const CITE_EVIDENCE: &str = "cut it, or cite the evidence";
+const BEFORE_AFTER: &str = "give the before and after numbers";
+
+const INTENSIFIERS: &[(&str, &str)] = &[
+    ("truly", "cut it"),
+    ("genuinely", "cut it"),
+    ("deeply", "cut it"),
+    ("utterly", "cut it"),
+    ("absolutely", "cut it"),
+    ("incredibly", GIVE_NUMBER),
+    ("extremely", GIVE_NUMBER),
+    ("exceptionally", GIVE_NUMBER),
+    ("remarkably", GIVE_NUMBER),
+    ("immensely", GIVE_NUMBER),
+    ("tremendously", GIVE_NUMBER),
+    ("undeniably", CITE_EVIDENCE),
+    ("undoubtedly", CITE_EVIDENCE),
+    ("unquestionably", CITE_EVIDENCE),
+    ("dramatically", BEFORE_AFTER),
+    ("drastically", BEFORE_AFTER),
+    ("vastly", BEFORE_AFTER),
+];
+
+fn check_intensifiers(
+    context: &ScanContext<'_>,
+    metadata: &'static RuleMetadata,
+    findings: &mut Vec<crate::model::Finding>,
+) {
+    check_distinct_cluster(
+        context,
+        metadata,
+        findings,
+        &expressions(INTENSIFIERS),
+        DistinctThresholds {
+            minimum: 5,
+            distinct_minimum: 3,
+            words_per_hit: 120,
+        },
+        "intensifiers",
+    );
+}
+
+const START_WITH_CLAIM: &str = "cut it and start with the claim";
+
+const SCENE_SETTERS: &[(&str, &str)] = &[
+    ("in today's fast-paced", START_WITH_CLAIM),
+    ("in today's digital", START_WITH_CLAIM),
+    ("in today's rapidly", START_WITH_CLAIM),
+    ("in today's ever-changing", START_WITH_CLAIM),
+    ("in today's ever-evolving", START_WITH_CLAIM),
+    ("in today's modern", START_WITH_CLAIM),
+    ("in today's competitive", START_WITH_CLAIM),
+    ("in today's interconnected", START_WITH_CLAIM),
+    ("in today's world", START_WITH_CLAIM),
+    ("in the ever-evolving", START_WITH_CLAIM),
+    ("in an ever-evolving", START_WITH_CLAIM),
+    ("in the ever-changing", START_WITH_CLAIM),
+    ("in an ever-changing", START_WITH_CLAIM),
+    ("in the rapidly evolving", START_WITH_CLAIM),
+    ("in this day and age", START_WITH_CLAIM),
+    ("now more than ever", START_WITH_CLAIM),
+    ("in the age of ai", START_WITH_CLAIM),
+    ("in the age of artificial intelligence", START_WITH_CLAIM),
+    ("in the digital age", START_WITH_CLAIM),
+    ("in an era of", START_WITH_CLAIM),
+    ("in an era where", START_WITH_CLAIM),
+    ("in the modern era", START_WITH_CLAIM),
+    ("as technology continues to evolve", START_WITH_CLAIM),
+    (
+        "imagine a world where",
+        "cut it and describe the actual change",
+    ),
+    ("picture this", START_WITH_CLAIM),
+    ("have you ever wondered", "cut it and answer the question"),
+    ("ever wondered", "cut it and answer the question"),
+    ("look no further", "cut it and say what it does"),
+];
+
+/// Reports a scene-setting phrase that opens a paragraph, or two anywhere. Headings, list markers,
+/// and comment markers before the phrase still count as its opening.
+fn check_scene_setters(
+    context: &ScanContext<'_>,
+    metadata: &'static RuleMetadata,
+    findings: &mut Vec<crate::model::Finding>,
+) {
+    if !is_prose(context) {
+        return;
+    }
+    let prose = context.prose();
+    let hits = context_phrase_hits(context, &expressions(SCENE_SETTERS));
+    let opens_paragraph = |offset: usize| {
+        paragraph_index(context, offset).is_some_and(|index| {
+            prose[context.paragraphs()[index].start..offset]
+                .chars()
+                .all(|character| !character.is_alphanumeric())
+        })
+    };
+    let Some(&(offset, _)) = hits
+        .iter()
+        .find(|(offset, _)| opens_paragraph(*offset))
+        .or_else(|| (hits.len() >= 2).then(|| &hits[0]))
+    else {
+        return;
+    };
+    emit(
+        context,
+        metadata,
+        findings,
+        offset,
+        Some(with_replacements(
+            metadata,
+            format!("observed {} scene-setting phrase(s)", hits.len()),
+            hits.iter().map(|(_, phrase)| *phrase),
+        )),
+    );
+}
+
+const NAME_SOURCE: &str = "name and link the source, or cut the claim";
+
+const UNATTRIBUTED_AUTHORITY: &[(&str, &str)] = &[
+    ("studies show", NAME_SOURCE),
+    ("studies have shown", NAME_SOURCE),
+    ("studies suggest", NAME_SOURCE),
+    ("research shows", NAME_SOURCE),
+    ("research has shown", NAME_SOURCE),
+    ("research suggests", NAME_SOURCE),
+    ("experts agree", NAME_SOURCE),
+    ("experts say", NAME_SOURCE),
+    ("experts argue", NAME_SOURCE),
+    ("experts believe", NAME_SOURCE),
+    ("experts recommend", NAME_SOURCE),
+    ("according to experts", NAME_SOURCE),
+    ("many experts", NAME_SOURCE),
+    ("industry experts", NAME_SOURCE),
+    ("industry reports", NAME_SOURCE),
+    ("it is widely accepted", NAME_SOURCE),
+    ("it's widely accepted", NAME_SOURCE),
+    ("it is widely believed", NAME_SOURCE),
+    ("it is generally accepted", NAME_SOURCE),
+    ("it is generally understood", NAME_SOURCE),
+    ("it's generally understood", NAME_SOURCE),
+    ("observers have noted", NAME_SOURCE),
+    ("critics argue", NAME_SOURCE),
+    ("many people believe", NAME_SOURCE),
+    ("the data speaks for itself", "show the data"),
+];
+
+/// Matches the citations that attribute a claim: a link, a numbered or footnote reference, an
+/// et al. reference, a DOI, or a parenthesized year such as `(Kobak, 2024)`.
+fn citation_matcher() -> &'static Regex {
+    static MATCHER: OnceLock<Regex> = OnceLock::new();
+    MATCHER.get_or_init(|| {
+        Regex::new(
+            r"(?i)https?://|\]\(|\[\^|\[\d+\]|\bet al\b|\bdoi\b|\([^()]*\b(?:1[89]|20)\d\d[a-z]?\)",
+        )
+        .expect("VIBE033 citation regex must compile")
+    })
+}
+
+fn check_unattributed_authority(
+    context: &ScanContext<'_>,
+    metadata: &'static RuleMetadata,
+    findings: &mut Vec<crate::model::Finding>,
+) {
+    if !is_prose(context) {
+        return;
+    }
+    let prose = context.prose();
+    let sentences = context.sentences();
+    let hits: Vec<(usize, &str)> =
+        context_phrase_hits(context, &expressions(UNATTRIBUTED_AUTHORITY))
+            .into_iter()
+            .filter(|(offset, _)| {
+                let index = sentences.partition_point(|sentence| sentence.end <= *offset);
+                sentences
+                    .get(index)
+                    .is_none_or(|sentence| !citation_matcher().is_match(sentence.text(prose)))
+            })
+            .collect();
+    if hits.len() >= 2 {
+        emit(
+            context,
+            metadata,
+            findings,
+            hits[0].0,
+            Some(with_replacements(
+                metadata,
+                format!("observed {} unattributed appeals to authority", hits.len()),
+                hits.iter().map(|(_, phrase)| *phrase),
+            )),
+        );
+    }
+}
+
+const NAME_PROBLEM: &str = "name the open problem and its status";
+const CUT_FORECAST: &str = "cut the forecast, or name the planned change";
+
+const OUTLOOK_FORMULAS: &[(&str, &str)] = &[
+    ("despite these challenges", NAME_PROBLEM),
+    ("despite its challenges", NAME_PROBLEM),
+    ("despite the challenges", NAME_PROBLEM),
+    ("faces several challenges", "name the challenges"),
+    ("faces numerous challenges", "name the challenges"),
+    ("faces significant challenges", "name the challenges"),
+    ("challenges and opportunities", "name them"),
+    ("continues to thrive", "give the current numbers"),
+    (
+        "continues to evolve",
+        "say what changed recently, or cut it",
+    ),
+    ("continue to evolve", "say what changed recently, or cut it"),
+    ("will continue to shape", CUT_FORECAST),
+    ("remains to be seen", "say what would decide it, or cut it"),
+    ("only time will tell", CUT_FORECAST),
+    ("the future looks bright", CUT_FORECAST),
+    ("the future looks promising", CUT_FORECAST),
+    ("the future is bright", CUT_FORECAST),
+    ("exciting times ahead", CUT_FORECAST),
+    ("looking ahead", CUT_FORECAST),
+    ("future outlook", CUT_FORECAST),
+    ("poised for growth", "give the numbers"),
+    ("is only the beginning", CUT_FORECAST),
+];
+
+fn check_outlook_formula(
+    context: &ScanContext<'_>,
+    metadata: &'static RuleMetadata,
+    findings: &mut Vec<crate::model::Finding>,
+) {
+    check_distinct_cluster(
+        context,
+        metadata,
+        findings,
+        &expressions(OUTLOOK_FORMULAS),
+        DistinctThresholds {
+            minimum: 2,
+            distinct_minimum: 2,
+            words_per_hit: 400,
+        },
+        "challenges-and-outlook phrases",
+    );
+}
+
+/// Pictographic ranges whose characters decorate a heading or list item. Status marks such as
+/// check marks, crosses, and warning signs record data in checklists and are not counted.
+fn is_decorative_emoji(character: char) -> bool {
+    const STATUS: &[char] = &[
+        '\u{2705}',
+        '\u{274C}',
+        '\u{274E}',
+        '\u{2714}',
+        '\u{2716}',
+        '\u{2611}',
+        '\u{2713}',
+        '\u{2717}',
+        '\u{2718}',
+        '\u{26A0}',
+        '\u{2B55}',
+        '\u{1F534}',
+        '\u{1F7E2}',
+        '\u{1F7E1}',
+        '\u{1F7E0}',
+    ];
+    matches!(
+        character,
+        '\u{1F300}'..='\u{1FAFF}' | '\u{2600}'..='\u{27BF}' | '\u{2B50}' | '\u{23E9}'..='\u{23FA}'
+    ) && !STATUS.contains(&character)
+}
+
+fn check_emoji_markers(
+    context: &ScanContext<'_>,
+    metadata: &'static RuleMetadata,
+    findings: &mut Vec<crate::model::Finding>,
+) {
+    if context.source_type != SourceType::Documentation {
+        return;
+    }
+    let prose = context.prose();
+    let mut marked = Vec::new();
+    let mut distinct = HashSet::new();
+    let mut offset = 0;
+    for line in prose.split_inclusive('\n') {
+        let trimmed = line.trim_start();
+        let text = if trimmed.starts_with('#') {
+            Some(trimmed.trim_start_matches('#'))
+        } else if is_list_item(trimmed) {
+            trimmed.split_once(' ').map(|(_, rest)| rest)
+        } else {
+            None
+        };
+        if let Some(emoji) = text
+            .and_then(|text| text.trim_start().chars().next())
+            .filter(|character| is_decorative_emoji(*character))
+        {
+            marked.push(offset + line.len() - trimmed.len());
+            distinct.insert(emoji);
+        }
+        offset += line.len();
+    }
+    if marked.len() >= 4 && distinct.len() >= 3 {
+        emit(
+            context,
+            metadata,
+            findings,
+            marked[0],
+            Some(format!(
+                "observed {} headings or list items that open with an emoji, using {} distinct emoji",
+                marked.len(),
+                distinct.len()
+            )),
+        );
+    }
+}
+
 fn check_word_density(
     context: &ScanContext<'_>,
     metadata: &'static RuleMetadata,
@@ -1968,10 +3024,12 @@ fn check_word_density(
         return;
     }
     let tokens = words(context.prose());
-    let count = tokens
+    let matched: Vec<&str> = tokens
         .iter()
-        .filter(|word| terms.contains(&word.as_str()))
-        .count();
+        .map(String::as_str)
+        .filter(|word| terms.contains(word))
+        .collect();
+    let count = matched.len();
     if count >= minimum && count * words_per_hit >= tokens.len() {
         let offset = terms
             .iter()
@@ -1983,9 +3041,10 @@ fn check_word_density(
             metadata,
             findings,
             offset,
-            Some(format!(
-                "observed {count} {label} across {} words",
-                tokens.len()
+            Some(with_replacements(
+                metadata,
+                format!("observed {count} {label} across {} words", tokens.len()),
+                matched,
             )),
         );
     }
@@ -2012,10 +3071,14 @@ fn check_phrase_cluster(
             metadata,
             findings,
             hits[0].0,
-            Some(format!(
-                "observed {} {label} across {} words",
-                hits.len(),
-                context.prose_word_count()
+            Some(with_replacements(
+                metadata,
+                format!(
+                    "observed {} {label} across {} words",
+                    hits.len(),
+                    context.prose_word_count()
+                ),
+                hits.iter().map(|(_, phrase)| *phrase),
             )),
         );
     }
@@ -2061,19 +3124,67 @@ fn report_distinct_cluster(
             metadata,
             findings,
             hits[0].0,
-            Some(format!(
-                "observed {} {label} using {} distinct forms",
-                hits.len(),
-                distinct.len()
+            Some(with_replacements(
+                metadata,
+                format!(
+                    "observed {} {label} using {} distinct forms",
+                    hits.len(),
+                    distinct.len()
+                ),
+                hits.iter().map(|(_, phrase)| *phrase),
             )),
         );
     }
 }
 
+/// The most replacements one finding lists; `slopcop explain` prints the full table.
+const LISTED_REPLACEMENTS: usize = 6;
+
+/// Appends the replacements for the distinct expressions a finding matched, in the order they first
+/// appear, so the observation says what to write instead. Expressions that share a replacement are
+/// listed together.
+pub(super) fn with_replacements<'a>(
+    metadata: &RuleMetadata,
+    observation: String,
+    matched: impl IntoIterator<Item = &'a str>,
+) -> String {
+    let mut seen = HashSet::new();
+    let mut groups: Vec<(&str, Vec<String>)> = Vec::new();
+    for expression in matched {
+        let expression = expression.trim();
+        let Some(replacement) = metadata.replacement_for(expression) else {
+            continue;
+        };
+        if !seen.insert(expression.to_lowercase()) {
+            continue;
+        }
+        let quoted = format!("\"{expression}\"");
+        if let Some((_, expressions)) = groups.iter_mut().find(|(shared, _)| *shared == replacement)
+        {
+            expressions.push(quoted);
+        } else if groups.len() < LISTED_REPLACEMENTS {
+            groups.push((replacement, vec![quoted]));
+        }
+    }
+    if groups.is_empty() {
+        return observation;
+    }
+    let listed: Vec<String> = groups
+        .iter()
+        .map(|(replacement, expressions)| format!("{} -> {replacement}", expressions.join(", ")))
+        .collect();
+    format!("{observation}; replacements: {}", listed.join("; "))
+}
+
+/// Lists the expressions of a replacement table, for rules whose table is also their phrase list.
+fn expressions(table: &[(&'static str, &'static str)]) -> Vec<&'static str> {
+    table.iter().map(|(expression, _)| *expression).collect()
+}
+
 /// Finds whole-phrase occurrences in lowercase prose. A phrase written with `'` also matches a
 /// typographic apostrophe, and a phrase nested inside a longer match, such as `may` inside
 /// `it may be helpful to`, is not counted again.
-fn phrase_hits<'a>(haystack: &str, phrases: &'a [&str]) -> Vec<(usize, &'a str)> {
+fn phrase_hits<'a>(haystack: &str, phrases: &[&'a str]) -> Vec<(usize, &'a str)> {
     let mut hits = Vec::new();
     with_phrase_matcher(phrases, |matcher, owners| {
         // Each spelling advances past its own previous match, as repeated `str::find` calls do, so
@@ -2142,7 +3253,7 @@ fn with_phrase_matcher<R>(phrases: &[&str], search: impl FnOnce(&AhoCorasick, &[
 
 fn context_phrase_hits<'a>(
     context: &ScanContext<'_>,
-    phrases: &'a [&str],
+    phrases: &[&'a str],
 ) -> Vec<(usize, &'a str)> {
     phrase_hits(context.lower_prose(), phrases)
         .into_iter()
@@ -2243,11 +3354,304 @@ mod tests {
                 "In summary, measurements decide. The benchmark records latency, throughput, allocation count, startup time, and peak memory before any decision is made. Ultimately, the tests pass. In conclusion, ship it.",
                 "In conclusion, the measured p95 stayed below 10 ms.",
             ),
+            (
+                "VIBE028",
+                "The parser serves as the entry point. The cache stands as a key layer. The scheduler plays a pivotal role in throughput.",
+                "The parser serves as the entry point. The proxy acts as a gateway, and the cache acts as a buffer.",
+            ),
+            (
+                "VIBE030",
+                "In order to ascertain the cause, we utilized the logs prior to the restart, thereby isolating the failure.",
+                "Logs written prior to version 2 use the old format, so the reader converts them first.",
+            ),
+            (
+                "VIBE031",
+                "It is incredibly fast, truly reliable, and dramatically simpler. It is undeniably an extremely good fit.",
+                "It answers in 2 ms instead of 40 ms, and it is truly optional.",
+            ),
+            (
+                "VIBE034",
+                "Despite these challenges, the project continues to thrive. Only time will tell.",
+                "Looking ahead, the 2.0 release removes the legacy loader.",
+            ),
         ];
         for (rule, bad, clean) in cases {
             assert_eq!(findings(rule, bad), 1, "{rule} should trigger");
             assert_eq!(findings(rule, clean), 0, "{rule} should stay quiet");
         }
+    }
+
+    fn observation(rule_id: &str, source: &str) -> String {
+        let path = Path::new("README.md");
+        let context = ScanContext::new(path, source, crate::language::classify(path));
+        let rule = rules()
+            .into_iter()
+            .find(|rule| rule.metadata().id == rule_id)
+            .expect("registered rule");
+        let mut results = Vec::new();
+        rule.check(&context, &mut results);
+        results
+            .pop()
+            .and_then(|finding| finding.observation)
+            .unwrap_or_default()
+    }
+
+    #[test]
+    fn findings_name_replacements_for_matched_expressions() {
+        let observed = observation(
+            "VIBE030",
+            "In order to ascertain the cause, we utilized the logs prior to the restart, thereby isolating the failure.",
+        );
+        assert!(
+            observed.ends_with(
+                r#"replacements: "in order to" -> to; "ascertain" -> find out, check; "utilized" -> used; "prior to" -> before; "thereby" -> so, which"#
+            ),
+            "{observed}"
+        );
+        let grouped = observation(
+            "VIBE027",
+            "Shared. :contentReference[oaicite:0]{index=0} See [the guide](https://example.com/?utm_source=chatgpt.com).",
+        );
+        assert!(
+            grouped.contains(
+                r#"replacements: "contentReference", "oaicite" -> the source it stands for"#
+            ),
+            "{grouped}"
+        );
+    }
+
+    #[test]
+    fn every_listed_expression_has_a_replacement_and_no_duplicates() {
+        for rule in rules() {
+            let metadata = rule.metadata();
+            let mut seen = HashSet::new();
+            for (expression, replacement) in metadata.replacements {
+                assert!(!replacement.is_empty(), "{} {expression}", metadata.id);
+                assert!(
+                    seen.insert(*expression),
+                    "{} lists {expression} twice",
+                    metadata.id
+                );
+                assert_eq!(
+                    metadata.replacement_for(expression),
+                    Some(*replacement),
+                    "{} {expression}",
+                    metadata.id
+                );
+            }
+        }
+    }
+
+    #[test]
+    fn citation_artifacts_trigger_alone_but_not_in_code_or_quotes() {
+        for artifact in [
+            "Shared between workers.:contentReference[oaicite:3]{index=3}",
+            "See the notes turn0search12 for details.",
+            "The parser is fast [cite: 4, 12].",
+            "The parser is fast.\u{3010}12\u{2020}L3-L9\u{3011}",
+            "Read [the guide](https://example.com/guide?utm_source=chatgpt.com).",
+            "[span_1](start_span)The parser is fast.[span_1](end_span)",
+        ] {
+            assert_eq!(findings("VIBE027", artifact), 1, "{artifact}");
+        }
+        assert_eq!(
+            findings(
+                "VIBE027",
+                "Strip `oaicite` markers and the \"utm_source=chatgpt.com\" parameter."
+            ),
+            0
+        );
+        assert_eq!(
+            findings_at(
+                "VIBE027",
+                "clean.py",
+                "PATTERN = \"contentReference[oaicite:0]\"\n"
+            ),
+            0
+        );
+    }
+
+    #[test]
+    fn participle_commentary_ignores_action_participles() {
+        assert_eq!(
+            findings(
+                "VIBE029",
+                "The team rewrote the parser, highlighting its commitment to quality. Builds finish sooner, underscoring the value of caching. Reviews moved earlier, fostering collaboration."
+            ),
+            1
+        );
+        assert_eq!(
+            findings(
+                "VIBE029",
+                "The writer takes the lock, ensuring only one process appends. The reader copies the buffer, making later writes safe. The cache evicts old keys, keeping memory flat."
+            ),
+            0
+        );
+        assert_eq!(
+            findings(
+                "VIBE029",
+                "The team rewrote the parser, highlighting its commitment to quality. Builds finish sooner, highlighting the value of caching."
+            ),
+            0
+        );
+    }
+
+    #[test]
+    fn scene_setters_trigger_when_they_open_a_paragraph() {
+        assert_eq!(
+            findings(
+                "VIBE032",
+                "In today's fast-paced world, feedback must be fast."
+            ),
+            1
+        );
+        assert_eq!(
+            findings(
+                "VIBE032",
+                "## Now more than ever\n\nThe linter runs in a second."
+            ),
+            1
+        );
+        assert_eq!(
+            findings(
+                "VIBE032",
+                "Programmers who worked in the digital age of punch cards waited a day."
+            ),
+            0
+        );
+        assert_eq!(
+            findings(
+                "VIBE032",
+                "Programmers in the digital age had punch cards. They waited, now more than ever."
+            ),
+            1
+        );
+    }
+
+    #[test]
+    fn unattributed_authority_accepts_cited_sentences() {
+        assert_eq!(
+            findings(
+                "VIBE033",
+                "Studies show that review reduces defects. Experts agree that small changes are easier."
+            ),
+            1
+        );
+        assert_eq!(
+            findings(
+                "VIBE033",
+                "Studies show that review reduces defects (Bacchelli and Bird, 2013). Experts agree, as the [survey](https://example.com) reports."
+            ),
+            0
+        );
+        assert_eq!(
+            findings(
+                "VIBE033",
+                "Studies show that review reduces defects [3]. Experts agree that small changes are easier."
+            ),
+            0
+        );
+    }
+
+    #[test]
+    fn emoji_markers_skip_status_marks() {
+        assert_eq!(
+            findings(
+                "VIBE035",
+                "## \u{1F680} Features\n\n## \u{1F4E6} Install\n\n## \u{1F6E0}\u{FE0F} Usage\n\n- \u{1F91D} Contributing\n"
+            ),
+            1
+        );
+        assert_eq!(
+            findings(
+                "VIBE035",
+                "- \u{2705} Linux\n- \u{2705} macOS\n- \u{274C} Windows\n- \u{26A0}\u{FE0F} FreeBSD\n"
+            ),
+            0
+        );
+        assert_eq!(
+            findings(
+                "VIBE035",
+                "## \u{1F680} Features\n\n## \u{1F680} Install\n\n## \u{1F680} Usage\n\n## \u{1F680} Help\n"
+            ),
+            0
+        );
+    }
+
+    #[test]
+    fn contrasts_split_across_sentences_count() {
+        assert_eq!(
+            findings(
+                "VIBE020",
+                "It's not a cache. It's a database. It doesn't guess. It measures. The goal isn't speed; it's predictability."
+            ),
+            1
+        );
+        assert_eq!(
+            findings(
+                "VIBE020",
+                "It's not a cache. It's not a database either. It doesn't guess. Then it reads the log."
+            ),
+            0
+        );
+        assert_eq!(
+            split_contrast("This isn't a bug.", "It is expected."),
+            Some(CONTRAST_TEMPLATES.len())
+        );
+        assert_eq!(
+            split_contrast("It doesn't guess.", "It measures."),
+            Some(CONTRAST_TEMPLATES.len() + 1)
+        );
+        assert_eq!(
+            split_contrast(
+                "It doesn't cache.",
+                "It caches lazily after the first read."
+            ),
+            Some(CONTRAST_TEMPLATES.len() + 1)
+        );
+        assert_eq!(
+            split_contrast(
+                "It doesn't compile.",
+                "It fails with error E0502 on line 4."
+            ),
+            None
+        );
+    }
+
+    #[test]
+    fn workplace_jargon_counts_inflected_forms() {
+        assert_eq!(
+            findings(
+                "VIBE022",
+                "Leveraging shared tooling empowers teams, streamlining reviews and fostering ownership while enhancing velocity and harnessing feedback."
+            ),
+            1
+        );
+    }
+
+    #[test]
+    fn reference_phrases_extend_existing_rules() {
+        assert_eq!(
+            findings(
+                "VIBE019",
+                "I'm sorry, but I can't share the deployment keys."
+            ),
+            1
+        );
+        assert_eq!(
+            findings(
+                "VIBE021",
+                "Whether you're a beginner or an expert, it helps. It suits everyone from startups to enterprises."
+            ),
+            1
+        );
+        assert_eq!(
+            findings(
+                "VIBE023",
+                "The release showcases a vibrant community, bolstered by meticulous reviews and an invaluable interplay of ideas."
+            ),
+            1
+        );
     }
 
     #[test]

@@ -2,7 +2,7 @@ use std::sync::OnceLock;
 
 use regex::Regex;
 
-use super::vibecheck_extra::inside_double_quotes;
+use super::vibecheck_extra::{inside_double_quotes, with_replacements};
 use super::{Rule, ScanContext};
 use crate::language::SourceType;
 use crate::model::{Confidence, Finding, Module, RuleMetadata, Severity};
@@ -44,6 +44,59 @@ const TRANSITIONS: &[&str] = &[
     r"\b(?:fundamentally|(?:perhaps )?(?:more |most )?importantly|notably|to be clear),",
     r"\bfrom this perspective\b",
     r"\bin today's .{0,24} landscape\b",
+    r"\b(?:moreover|furthermore|additionally),",
+    r"\bin essence\b",
+    r"\bthat being said\b",
+    r"\bto put it simply\b",
+    r"\ball things considered\b",
+    r"\bwhen it comes to\b",
+    r"\bthis begs the question\b",
+    r"\bthis is where [a-z ]{1,30} comes in\b",
+    r"\bhere(?:'s| is) (?:the (?:kicker|deal|catch)|where (?:it|things) gets?)\b",
+    r"\bplot twist\b",
+    r"\bwhat (?:nobody|no one) tells you\b",
+    r"\bthe part (?:everyone|nobody|most people) (?:misses|overlooks)\b",
+    r"\bwhat if i told you\b",
+];
+
+/// Plain alternatives for the transitions that have one. Most signposts are best deleted, so the
+/// replacement says so.
+const TRANSITION_REPLACEMENTS: &[(&str, &str)] = &[
+    ("ultimately", "cut it"),
+    ("that said", "but, still"),
+    ("that being said", "but, still"),
+    ("at its core", "cut it"),
+    ("in essence", "cut it"),
+    ("at a high level", "cut it, or say \"in short\""),
+    ("with that in mind", "so"),
+    ("in other words", "cut it and say it once, clearly"),
+    ("put differently", "cut it and say it once, clearly"),
+    ("put another way", "cut it and say it once, clearly"),
+    ("to put it simply", "cut it and say it simply"),
+    ("taken together", "cut it"),
+    ("all things considered", "cut it"),
+    ("more broadly", "cut it"),
+    ("moreover,", "also, and"),
+    ("furthermore,", "also, and"),
+    ("additionally,", "also"),
+    ("notably,", "cut it"),
+    ("importantly,", "cut it"),
+    ("fundamentally,", "cut it"),
+    ("to be clear,", "cut it"),
+    ("when it comes to", "for, about"),
+    ("it comes down to", "depends on"),
+    ("it all comes down to", "depends on"),
+    ("here's the thing", "cut it"),
+    ("here is the thing", "cut it"),
+    ("here's the kicker", "cut it"),
+    ("here's the deal", "cut it"),
+    ("here's the catch", "but"),
+    ("plot twist", "cut it"),
+    (
+        "this begs the question",
+        "this raises the question, or ask it",
+    ),
+    ("from this perspective", "cut it"),
 ];
 
 static METADATA: RuleMetadata = RuleMetadata {
@@ -58,8 +111,10 @@ static METADATA: RuleMetadata = RuleMetadata {
     examples: &[
         "Ultimately ... That said ... At its core ... With that in mind ...",
         "The real question is ... Put differently ... The bottom line is ... Let's unpack that.",
+        "Moreover, ... Furthermore, ... In essence ... Here's the kicker: ...",
     ],
     false_positives: "Long-form teaching material and formal argument may legitimately use more transitions; one phrase never triggers this rule, and double-quoted examples are excluded.",
+    replacements: TRANSITION_REPLACEMENTS,
 };
 
 impl Rule for FormulaicTransitionDensity {
@@ -77,18 +132,20 @@ impl Rule for FormulaicTransitionDensity {
 
         let prose = context.prose();
         let words = prose.split_whitespace().count();
-        let mut matches = transition_matcher()
+        let matches: Vec<_> = transition_matcher()
             .find_iter(prose)
-            .filter(|found| !inside_double_quotes(prose, found.start()));
-        let Some(first) = matches.next() else {
-            return;
-        };
-        let count = 1 + matches.count();
+            .filter(|found| !inside_double_quotes(prose, found.start()))
+            .collect();
+        let count = matches.len();
         if count < 4 || count.saturating_mul(120) < words.max(1) {
             return;
         }
 
-        let first_offset = first.start();
+        let first_offset = matches[0].start();
+        let expressions: Vec<String> = matches
+            .iter()
+            .map(|found| found.as_str().trim_end_matches(',').to_lowercase())
+            .collect();
         findings.push(Finding {
             path: context.path.to_path_buf(),
             location: context.location(first_offset),
@@ -98,8 +155,10 @@ impl Rule for FormulaicTransitionDensity {
             confidence: METADATA.default_confidence,
             message: METADATA.message.to_owned(),
             evidence: Some(context.line_at(first_offset)),
-            observation: Some(format!(
-                "observed {count} transition markers across {words} words"
+            observation: Some(with_replacements(
+                &METADATA,
+                format!("observed {count} transition markers across {words} words"),
+                expressions.iter().map(String::as_str),
             )),
             suggestion: METADATA.suggestion,
         });
@@ -109,7 +168,12 @@ impl Rule for FormulaicTransitionDensity {
 fn transition_matcher() -> &'static Regex {
     static MATCHER: OnceLock<Regex> = OnceLock::new();
     MATCHER.get_or_init(|| {
-        let pattern = TRANSITIONS.join("|").replace('\'', "['\u{2019}]");
+        // ASCII word boundaries keep the regex on its DFA engines; a Unicode `\b` falls back to a
+        // slower engine whenever the prose holds a non-ASCII character, and every phrase is ASCII.
+        let pattern = TRANSITIONS
+            .join("|")
+            .replace('\'', "['\u{2019}]")
+            .replace(r"\b", r"(?-u:\b)");
         Regex::new(&format!("(?i){pattern}")).expect("VIBE001 transition regexes must compile")
     })
 }
@@ -176,6 +240,19 @@ mod tests {
                 "Notably, the steps matter. More broadly, what matters is the order. It\u{2019}s worth noting that it comes down to timing."
             ),
             1
+        );
+    }
+
+    #[test]
+    fn detects_reference_transitions_and_names_replacements() {
+        let source = "Moreover, the parser is small. Furthermore, it is fast. In essence, it works. Here's the kicker: it is free.";
+        let context = ScanContext::new(Path::new("README.md"), source, SourceType::Documentation);
+        let mut findings = Vec::new();
+        FormulaicTransitionDensity.check(&context, &mut findings);
+        let observation = findings[0].observation.as_deref().unwrap_or_default();
+        assert!(
+            observation.contains(r#""moreover", "furthermore" -> also, and"#),
+            "{observation}"
         );
     }
 

@@ -376,6 +376,12 @@ fn explain(rule_id: &str) -> ExitCode {
         println!("  {example}");
     }
     println!("\nSuggestion: {}", metadata.suggestion);
+    if !metadata.replacements.is_empty() {
+        println!("\nReplacements:");
+        for (expression, replacement) in metadata.replacements {
+            println!("  {expression} -> {replacement}");
+        }
+    }
     println!("\nFalse positives: {}", metadata.false_positives);
     println!(
         "\nConfigure with `[slopcop.rules]` and `{} = \"info|warning|error|off\"`.",

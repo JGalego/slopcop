@@ -1,0 +1,1 @@
+The parser serves as the entry point for every request. The cache stands as a key layer between the parser and the store. The scheduler plays a pivotal role in throughput, and the config file boasts a dozen options.

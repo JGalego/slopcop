@@ -4,6 +4,8 @@ Every registered rule is deterministic. Defaults are conservative and can be cha
 
 Confidence describes how directly the rule observes its quality smell. It never estimates who wrote the artifact.
 
+Rules that count specific expressions carry a replacement for each one. A finding's observation names the replacements for the expressions it matched, such as `"utilized" -> used`, and `slopcop explain RULE_ID` prints the whole table. [Reference sources](references.md) lists the catalogs and corpus studies behind the prose rules, and the catalogued patterns that slopcop leaves out.
+
 ## deadweight
 
 | Rule | Default | Confidence | Trigger | Quiet boundary |
@@ -56,14 +58,23 @@ Confidence describes how directly the rule observes its quality smell. It never 
 | `VIBE016` | warning | high | Three unquoted conclusion markers, such as "in conclusion", "the key takeaway", or "this serves as a reminder", with at least two in the latter half | Quoted examples, one closing section, or independent chapter conclusions |
 | `VIBE017` | warning | high | Adjacent substantial sentences with at least seven shared content words and 75 percent set overlap | Definitions, neighboring sentences that add distinct facts, sentences in different paragraphs or comments, list entries, table rows, record lines such as validator output or `<param>` docs where three or more consecutive lines open with the same two words, comments in source files that link a WHATWG, W3C, TC39, or IETF specification, which quote its algorithm, and release notes |
 | `VIBE018` | info | low | Five substantial consecutive paragraphs whose word counts remain within a 20 percent band | Paragraphs sized by their evidence, a constrained publication format, walkthrough steps separated by code examples, or code comments |
-| `VIBE019` | warning | high | One unquoted chatbot identity, cutoff, or browsing-disclaimer artifact | Quoted examples and stored chat transcripts |
-| `VIBE020` | warning | medium | Three unquoted rhetorical contrast templates of at least two kinds, such as "it's X, not Y" or "the goal isn't X; it's Y", at a density of one per 250 words or more | One or two contrasts, one template repeated, quoted examples, and release notes |
-| `VIBE021` | warning | medium | Two unquoted not-only/but-also or everything-from/to constructions, or four correlatives including one of those at a density of one per 150 words or more | Plain both/and and whether/or clauses, one emphatic pair, quoted examples, and release notes |
+| `VIBE019` | warning | high | One unquoted chatbot identity, cutoff, refusal, browsing, or source-availability artifact, such as "I'm sorry, but I can't" or "while specific details are limited" | Quoted examples and stored chat transcripts |
+| `VIBE020` | warning | medium | Three unquoted rhetorical contrast templates of at least two kinds, such as "it's X, not Y", "the goal isn't X; it's Y", or the two-sentence "It's not X. It's Y.", at a density of one per 250 words or more | One or two contrasts, one template repeated, quoted examples, and release notes |
+| `VIBE021` | warning | medium | Two unquoted not-only/but-also, everything-from/to, from-beginners-to-experts, or whether-you're-a constructions, or four correlatives including one of those at a density of one per 150 words or more | Plain both/and and whether/or clauses, one emphatic pair, quoted examples, and release notes |
 | `VIBE022` | warning | medium | Six workplace jargon markers, such as "leverage", "key stakeholders", or "drive alignment", using at least four forms, at one per 100 words or more | Isolated domain terms and concrete descriptions of who does what |
 | `VIBE023` | warning | medium | Five unquoted generic AI-favored words, such as nuanced, holistic, or delve, using at least three forms, at one per 120 words or more | Common technical terms such as context, pattern, and edge case; quoted examples; one word repeated; or sparse use in long prose |
 | `VIBE024` | warning | medium | Two unquoted generalized-lesson phrases of different forms, such as "this is a reminder that" or "is only as good as the", at one per 400 words or more | One reflective sentence, quoted examples, and literal discussion of lessons or reminders |
 | `VIBE025` | warning | medium | Two unquoted dramatic characterizations of different forms, such as "pivotal moment" or "fundamental shift", at one per 300 words or more | One characterization, quoted examples, and literal technical uses such as an inflection point on a curve |
 | `VIBE026` | warning | medium | One unquoted paraphrase of a reader's question, such as "you're essentially asking whether" | Quoted examples, ordinary conditionals such as "if what you are describing is a bug", and FAQ dialogue with a suppression |
+| `VIBE027` | warning | high | One unquoted citation marker or tracking parameter left by a chat interface, such as `oaicite`, `turn0search0`, `[cite: 1]`, or `?utm_source=chatgpt.com` | Quoted examples and inline code |
+| `VIBE028` | warning | medium | Three inflated substitutes for is or has, such as "serves as the", "boasts a", or "plays a pivotal role in", using at least two forms, at one per 200 words or more | One or two uses, quoted examples, and components that act in a role, such as a proxy that "acts as a gateway" |
+| `VIBE029` | warning | medium | Three sentences ending in a participle clause that comments on significance, such as ", highlighting its commitment", using at least two participles, at one per 200 words or more | Action participles such as ", ensuring only one writer holds the lock", quoted examples, and release notes |
+| `VIBE030` | info | medium | Five long or formal substitutes for plain words, such as utilize, thereby, or "prior to", using at least three forms, at one per 150 words or more | Occasional formal phrasing; legal, standards, and academic register may need configuration |
+| `VIBE031` | warning | medium | Five intensifying adverbs, such as truly, incredibly, or dramatically, using at least three forms, at one per 120 words or more | Sparse informal emphasis and quoted examples |
+| `VIBE032` | warning | medium | One unquoted scene-setting phrase that opens a paragraph, such as "In today's fast-paced world" or "Now more than ever", or two anywhere | One such phrase inside a paragraph, as in "programmers who worked in the digital age of punch cards" |
+| `VIBE033` | warning | medium | Two unquoted appeals to unnamed authority, such as "studies show" or "experts agree", in sentences without a citation | Sentences with a link, a numbered or footnote citation, an et al. reference, a DOI, or a parenthesized year |
+| `VIBE034` | warning | medium | Two challenges-and-outlook phrases of different forms, such as "despite these challenges" or "only time will tell", at one per 400 words or more | One phrase, quoted examples, and roadmaps that name concrete plans |
+| `VIBE035` | info | low | Four Markdown headings or list items that open with a decorative emoji, using at least three distinct emoji | Status marks such as ✅, ❌, and ⚠️ in checklists and compatibility tables |
 
 ## Configuration
 

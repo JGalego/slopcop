@@ -82,6 +82,53 @@ pub struct RuleMetadata {
     pub rationale: &'static str,
     pub examples: &'static [&'static str],
     pub false_positives: &'static str,
+    /// Plain alternatives for the expressions the rule counts, as `(expression, replacement)`
+    /// pairs. A finding names the replacements for the expressions it matched; rules that observe
+    /// structure rather than wording leave this empty.
+    #[serde(serialize_with = "serialize_replacements")]
+    pub replacements: &'static [(&'static str, &'static str)],
+}
+
+impl RuleMetadata {
+    /// Returns the replacement for an expression the rule matched. Both sides are lowercased and
+    /// stripped of surrounding punctuation, and a typographic apostrophe compares equal to `'`.
+    #[must_use]
+    pub fn replacement_for(&self, matched: &str) -> Option<&'static str> {
+        let matched = normalize_expression(matched);
+        self.replacements
+            .iter()
+            .find(|(expression, _)| normalize_expression(expression) == matched)
+            .map(|(_, replacement)| *replacement)
+    }
+}
+
+fn normalize_expression(expression: &str) -> String {
+    expression
+        .trim_matches(|character: char| !character.is_alphanumeric())
+        .to_lowercase()
+        .replace('\u{2019}', "'")
+}
+
+fn serialize_replacements<S: serde::Serializer>(
+    replacements: &&'static [(&'static str, &'static str)],
+    serializer: S,
+) -> Result<S::Ok, S::Error> {
+    use serde::ser::SerializeSeq;
+
+    #[derive(Serialize)]
+    struct Entry {
+        expression: &'static str,
+        replacement: &'static str,
+    }
+
+    let mut sequence = serializer.serialize_seq(Some(replacements.len()))?;
+    for (expression, replacement) in *replacements {
+        sequence.serialize_element(&Entry {
+            expression,
+            replacement,
+        })?;
+    }
+    sequence.end()
 }
 
 /// A one-based source range. Columns count Unicode scalar values, and `end_column` is the column
