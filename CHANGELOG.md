@@ -2,7 +2,7 @@
 
 This project records user-visible changes in this file and follows Semantic Versioning.
 
-## Unreleased
+## 0.4.0 - 2026-10-08
 
 ### Added
 

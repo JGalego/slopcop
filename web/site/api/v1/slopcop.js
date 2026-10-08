@@ -11,7 +11,7 @@ const load = () => (ready ??= init({ module_or_path: new URL("../../pkg/slopcop_
 
 const failure = (message, code) => Object.assign(new Error(message), { code });
 
-// Returns the slopcop version this module runs, such as "0.3.1".
+// Returns the slopcop version this module runs, such as "0.4.0".
 export async function version() {
   await load();
   return linterVersion();

@@ -29,7 +29,7 @@ Pin the action to a release tag or a commit SHA in real workflows. When the acti
 
 | Input | Default | Meaning |
 | --- | --- | --- |
-| `version` | the pinned tag, or the latest release | Release tag to install, such as `v0.3.1`. |
+| `version` | the pinned tag, or the latest release | Release tag to install, such as `v0.4.0`. |
 | `binary` | | Path to an existing executable. Nothing is downloaded. |
 | `paths` | `.` | Whitespace-separated files or directories, relative to the repository root. |
 | `mode` | `auto` | `auto` reports findings on changed lines for pull requests and scans everything for other events. `changed` and `all` force one behavior. |
