@@ -6,11 +6,13 @@
 //! returned by [`Scanner::finish`]. [`Scanner::html`] renders the same scan as a downloadable page.
 
 use std::path::{Component, Path, PathBuf};
+use std::sync::Arc;
 
 use slopcop::attributes::LinguistExclusions;
 use slopcop::config::{CONFIG_FILE_NAME, Config};
 use slopcop::discovery::SKIPPED_DIRECTORIES;
 use slopcop::language::{SourceType, classify};
+use slopcop::polygraph::{MODEL_SHA256, Model, install_model, model_file_name};
 use slopcop::reporting::{HtmlContext, write_html, write_json};
 use slopcop::rules::metadata_registry;
 use slopcop::{ScanOptions, ScanResult, SourceFile, scan_sources};
@@ -32,6 +34,22 @@ pub fn rules() -> String {
 #[must_use]
 pub fn version() -> String {
     env!("CARGO_PKG_VERSION").to_owned()
+}
+
+/// Describes the Polygraph model this build accepts as JSON: its `file` name on the site and the
+/// `sha256` of its contents.
+///
+/// # Panics
+///
+/// Panics if the description cannot be serialized, which would be a programming error.
+#[wasm_bindgen]
+#[must_use]
+pub fn polygraph_model() -> String {
+    serde_json::to_string(&serde_json::json!({
+        "file": model_file_name(),
+        "sha256": MODEL_SHA256,
+    }))
+    .expect("model description serializes")
 }
 
 #[wasm_bindgen]
@@ -79,6 +97,20 @@ impl Scanner {
     pub fn wants(&self, path: &str, size: f64) -> bool {
         let path = Path::new(path);
         wanted(path, size, &self.options) && !self.attributes.excludes(path)
+    }
+
+    /// Turns the Polygraph rules on with the model file's bytes, as `--polygraph` does.
+    ///
+    /// # Errors
+    ///
+    /// Returns an error when the bytes are not the model this build accepts.
+    // wasm-bindgen passes JavaScript arrays in as owned values.
+    #[allow(clippy::needless_pass_by_value)]
+    pub fn load_polygraph(&mut self, bytes: Vec<u8>) -> Result<(), JsError> {
+        let model = Model::from_bytes(&bytes).map_err(|error| JsError::new(&error.to_string()))?;
+        install_model(Arc::new(model));
+        self.options.config.polygraph_enabled = true;
+        Ok(())
     }
 
     pub fn add(&mut self, path: String, bytes: Vec<u8>) {

@@ -35,6 +35,7 @@
     <symbol id="i-review" viewBox="0 0 24 24"><path d="m3 17 2 2 4-4"/><path d="m3 7 2 2 4-4"/><path d="M13 6h8"/><path d="M13 12h8"/><path d="M13 18h8"/></symbol>
     <symbol id="i-deadweight" viewBox="0 0 24 24"><circle cx="6" cy="6" r="3"/><path d="M8.12 8.12 12 12"/><path d="M20 4 8.12 15.88"/><circle cx="6" cy="18" r="3"/><path d="M14.8 14.8 20 20"/></symbol>
     <symbol id="i-vibecheck" viewBox="0 0 24 24"><path d="M22 12h-4l-3 9L9 3l-3 9H2"/></symbol>
+    <symbol id="i-polygraph" viewBox="0 0 24 24"><path d="M3 17l4-8 4 5 3-9 3 7 4-3"/></symbol>
     <symbol id="i-papertrail" viewBox="0 0 24 24"><circle cx="12" cy="12" r="3"/><path d="M3 12h6"/><path d="M15 12h6"/></symbol>
     <symbol id="i-terminal" viewBox="0 0 24 24"><path d="m4 17 6-6-6-6"/><path d="M12 19h8"/></symbol>
   </svg>
@@ -63,7 +64,7 @@
     <section class="intro" id="intro">
       <div class="hero">
       <div class="hero-copy">
-      <p class="eyebrow">Deterministic. No model. No server.</p>
+      <p class="eyebrow">Deterministic by default. No server.</p>
       <h1>Slop stops here.</h1>
       <p class="lede">Point slopcop at a public repository on GitHub, GitLab, or Codeberg. Files are fetched straight from the host and scanned by the real linter compiled to WebAssembly. Nothing leaves your browser.</p>
 
@@ -74,6 +75,9 @@
         <input id="ref" name="ref" type="text" placeholder="ref (optional)" spellcheck="false">
         <button id="scan-button" type="submit"><svg class="icon"><use href="#i-search"/></svg>Scan</button>
       </form>
+      <p class="option">
+        <label for="polygraph"><input id="polygraph" type="checkbox"> Polygraph <span id="polygraph-hint">(experimental, downloads a 4 MB model once)</span></label>
+      </p>
       <p class="examples" id="examples">Try
         <button type="button" data-repo="JGalego/slopcop">JGalego/slopcop</button>
         <button type="button" data-repo="pallets/flask">pallets/flask</button>
@@ -302,6 +306,11 @@
           <article class="module" data-module="vibecheck">
             <header><svg class="icon"><use href="#i-vibecheck"/></svg><h3>vibecheck</h3><span class="module-count"></span></header>
             <p>Patterns in prose and comments: stock transitions, assistant framing, hedging, forced symmetry, and uniform rhythm. One “robust” is fine. Density and repetition are not.</p>
+            <ul class="module-rules"></ul>
+          </article>
+          <article class="module" data-module="polygraph">
+            <header><svg class="icon"><use href="#i-polygraph"/></svg><h3>polygraph</h3><span class="module-count"></span></header>
+            <p>Optional checks that use a small fixed model: comments that restate the code below them and paragraphs copied between files. Off by default; tick Polygraph above to run it in the browser. Language-model rules need the CLI.</p>
             <ul class="module-rules"></ul>
           </article>
           <article class="module" data-module="papertrail">

@@ -1,0 +1,436 @@
+[
+[
+"<div align=\"center\"> <img src=\"docs/assets/slopcop.svg\" width=\"128\" height=\"128\" alt=\"slopcop logo\"> <h1>slopcop</h1> <p><strong>Slop stops here.</strong></p> <p> <a href=\"https://github.com/JGalego/slopcop/actions/workflows/ci.yml\"><img alt=\"CI\" src=\"https://img.shields.io/github/actions/workflow/status/JGalego/slopcop/ci.yml?branch=main&amp;style=flat-square&amp;label=build\"></a> <a href=\"https://crates.io/crates/slopcop\"><img alt=\"crates.io\" src=\"https://img.shields.io/crates/v/slopcop?style=flat-square\"></a> <a href=\"LICENSE\"><img alt=\"MIT license\" src=\"https://img.shields.io/badge/license-MIT-171717?style=flat-square\"></a> <img alt=\"AI probability: nope\" src=\"https://img.shields.io/badge/AI%20probability-nope-c7ff3d?style=flat-square&amp;labelColor=171717\"> <img alt=\"bullshit budget: zero\" src=\"https://img.shields.io/badge/bullshit%20budget-zero-c7ff3d?style=flat-square&amp;labelColor=171717\"> </p> </div>",
+"`slopcop` finds observable quality problems in source code, comments, documentation, and repository configuration.",
+"4616971",
+"82314881",
+"918790"
+],
+[
+"On Windows (into `%LOCALAPPDATA%\\Programs\\slopcop`, added to your user `PATH`):",
+"Both scripts download the latest release from GitHub and verify its SHA-256 checksum before installing.",
+"291444",
+"737166",
+"785480"
+],
+[
+"**papertrail** checks commit messages and branch history for placeholder subjects and autosquash commits that should not reach an integration branch.",
+"**vibecheck** measures patterns in prose and code comments: clustered stock transitions, assistant framing, generic modifier density, repeated sentence openings, forced symmetry, restatement, disclaimer clusters, and unusually uniform rhythm.",
+"369205",
+"1127908",
+"1786610"
+],
+[
+"Unknown rule IDs and configurations that disable every rule are rejected.",
+"Suppress a named rule on the same or following line and include a reason:",
+"155927",
+"346668",
+"182111"
+],
+[
+"Git path arguments are relative to the current directory.",
+"```yaml repos: - repo: https://github.com/JGalego/slopcop rev: v0.4.0 hooks: - id: slopcop - id: slopcop-commit-msg ```",
+"245919",
+"248340",
+"3710848"
+],
+[
+"On pull requests it reports findings on changed lines as annotations; on other events it scans everything:",
+"```yaml - uses: actions/checkout@v5 - uses: JGalego/slopcop@main ```",
+"147987",
+"478152",
+"904405"
+],
+[
+"The HTML report is a single self-contained page with no scripts or external resources, so it can be attached to a CI run or opened offline.",
+"It lists the findings by file, with a severity filter, and explains every rule that fired.",
+"83742",
+"462787",
+"331039"
+],
+[
+"Repeated release runs on the development x86_64 Linux host scanned the 4,096-file mixed benchmark in **63.7–78.8 ms** at **51,961–64,286 files/sec**.",
+"Reproduce all five profiles with `slopcop benchmark`; methodology and results live in [benchmarks](benchmarks/README.md).",
+"555296",
+"2074572",
+"1388279"
+],
+[
+"Humans write slop too, so the harder test was code from projects that ban or restrict AI contributions, such as [Godot](https://github.com/godotengine/godot), [curl](https://github.com/curl/curl), and [Zig](https://codeberg.org/ziglang/zig).",
+"People wrote that code, so each finding there was either human slop or a mistake in slopcop.",
+"572757",
+"5237200",
+"543567"
+],
+[
+"The [Field test](.github/workflows/field.yml) workflow scans all of them and compares the per-rule counts and a digest of every finding with [baseline.json](benchmarks/field/baseline.json).",
+"A rule change that moves the numbers fails the job until `make field-baseline` records the new ones, so the effect on real code shows up in the pull request diff.",
+"673972",
+"1956285",
+"851688"
+],
+[
+"`slopcop` is a Rust library with a thin command-line binary.",
+"The library boundary keeps rule behavior independently testable and lets future editor or service integrations reuse the scanner without parsing terminal output.",
+"199457",
+"535749",
+"926544"
+],
+[
+"A code view masks comments and strings for structural checks.",
+"A prose view keeps documentation, comments, and docstrings while masking Markdown front matter, HTML comments, nested code fences, and literals.",
+"301915",
+"273633",
+"965457"
+],
+[
+"`rules` owns the registry and the `Rule` trait.",
+"Metadata travels with each rule and powers `rules`, `explain`, SARIF descriptors, configuration validation, and fixture coverage checks.",
+"356512",
+"314895",
+"1073608"
+],
+[
+"Selection, configuration, and hunk lookup use normalized absolute paths; reports use invocation-relative paths where possible.",
+"Each finding carries a range from its reported position to the end of that line's content, since rules report one position and judge the line or construct that starts there.",
+"117166",
+"535072",
+"460161"
+],
+[
+"Prose tokenization and segmentation are lazy, so code-only checks do not pay for unused document statistics.",
+"The scanner favors a conservative local heuristic over whole-program analysis.",
+"106210",
+"585385",
+"250069"
+],
+[
+"```toml [slopcop] fail-level = \"warning\" max-file-size = 1000000",
+"[slopcop.rules] VIBE003 = \"info\" DEAD004 = \"error\" VIBE018 = \"off\"",
+"598295",
+"882603",
+"892793"
+],
+[
+"A project may override an individual rule with `info`, `warning`, `error`, or `off`.",
+"A typo is a usage error rather than a silently ignored setting.",
+"201461",
+"643992",
+"315801"
+],
+[
+"When the scan root sits inside a Git work tree, the `.gitattributes` files between the root and the top of the tree apply as well.",
+"`slopcop.files.include` is an allowlist when it is non-empty.",
+"192807",
+"1389983",
+"346411"
+],
+[
+"An inline suppression names one or more rules and includes a reason after `--`:",
+"```python # slopcop: ignore DEAD004 -- optional compatibility probe return None ```",
+"157283",
+"187231",
+"956150"
+],
+[
+"Color is enabled only for terminal text output and is disabled when `NO_COLOR` is set.",
+"A rule earns an ID when it detects an observable quality problem with a useful explanation and a defensible quiet case.",
+"202526",
+"509415",
+"722503"
+],
+[
+"Do not add syntax, formatting, type, or unused-import checks already owned by compilers and mainstream linters.",
+"State what is counted and why the threshold separates them.",
+"69340",
+"786596",
+"153380"
+],
+[
+"A replacement may be an instruction, such as \"cut it\" or \"give the number\", when no single word fits.",
+"Record the source of a new phrase list in [reference sources](rules/references.md).",
+"55822",
+"307046",
+"525737"
+],
+[
+"The registry-driven corpus test fails when either file is missing, the positive file does not emit its rule, any rule fires on its own clean control, the aggregate clean corpus has a cross-rule finding, or the aggregate slop corpus misses a registered ID.",
+"Add a regression fixture for a real false positive.",
+"110116",
+"2119448",
+"191486"
+],
+[
+"Report benchmark changes when a detector adds a pass, a regular expression, or a new allocation per file.",
+"slopcop runs as a single binary with no network access, so every integration below starts the same executable and reads its exit code or one of its report formats.",
+"221171",
+"380595",
+"1100462"
+],
+[
+"| | `binary` | | Path to an existing executable.",
+"| | `paths` | `.` | Whitespace-separated files or directories, relative to the repository root.",
+"236963",
+"333106",
+"776380"
+],
+[
+"| | `sarif-file` | `slopcop.sarif` | Where the SARIF report is written.",
+"The action sets two outputs: `findings`, the number of findings reported, and `exit-code`, which follows the CLI's exit codes.",
+"402995",
+"1408768",
+"867762"
+],
+[
+"GitHub shows at most ten warning and ten error annotations per step.",
+"For larger reports, or to track findings over time, enable SARIF upload.",
+"81580",
+"442670",
+"293719"
+],
+[
+"--format gitlab > gl-code-quality-report.json artifacts: when: always reports: codequality: gl-code-quality-report.json ```",
+"The job fails when a finding reaches the configured `fail-level`, and `when: always` keeps the report in that case.",
+"384481",
+"1483137",
+"531416"
+],
+[
+"--format sarif | reviewdog -f=sarif -name=slopcop -reporter=github-pr-review -filter-mode=added ```",
+"slopcop exits with `1` when it reports findings.",
+"294158",
+"1382627",
+"259220"
+],
+[
+"`slopcop lsp` starts a language server on standard input and output.",
+"Any editor with a Language Server Protocol client can use it, and the findings match a command-line scan of the same file: every rule judges one file at a time, and the server uses the same configuration discovery as `--stdin`, starting in the directory of the file being edited.",
+"667096",
+"651313",
+"1968597"
+],
+[
+"Saving `.slopcop.toml` in the editor lints every open file again.",
+"Configuration errors are shown once as an editor message, and diagnostics stay empty until the file is fixed.",
+"214692",
+"492071",
+"437908"
+],
+[
+"Install one with **Extensions: Install from VSIX...**, or with `code --install-extension` and the file for your platform, such as `slopcop-<tag>-linux-x64.vsix`.",
+"```sh cd editors/vscode npm ci npx vsce package ```",
+"1131559",
+"3128315",
+"980364"
+],
+[
+"```elisp (with-eval-after-load 'eglot (add-to-list 'eglot-server-programs '((python-mode python-ts-mode markdown-mode) .",
+"Eglot runs one server per major mode, so this replaces another Python server in those modes.",
+"762358",
+"2015568",
+"511253"
+],
+[
+"A finding's observation names the replacements for the expressions it matched, such as `\"utilized\" -> used`, and `slopcop explain RULE_ID` prints the whole table.",
+"[Reference sources](references.md) lists the catalogs and corpus studies behind the prose rules, and the catalogued patterns that slopcop leaves out.",
+"498135",
+"830897",
+"1257485"
+],
+[
+"reference, a DOI, or a parenthesized year | | `VIBE034` | warning | medium | Two challenges-and-outlook phrases of different forms, such as \"despite these challenges\" or \"only time will tell\", at one per 400 words or more | One phrase, quoted examples, and roadmaps that name concrete plans | | `VIBE035` | info | low | Four Markdown headings or list items that open with a decorative emoji, using at least three distinct emoji | Status marks such as ✅, ❌, and ⚠️ in checklists and compatibility tables |",
+"Override a default or disable one named rule:",
+"209246",
+"5996395",
+"264420"
+],
+[
+"Each rule still needs a defensible quiet case, as [the rule development guide](../contributing-rules.md) requires, so slopcop counts clusters and densities where a catalog bans single words.",
+"| Source | What it catalogs | Rules it informed | | --- | --- | --- | | [Wikipedia: Signs of AI writing](https://en.wikipedia.org/wiki/Wikipedia:Signs_of_AI_writing) | The most detailed field guide, maintained by editors who review AI-written article drafts: inflated significance, copula avoidance, trailing participle analysis, vague attribution, challenges-and-outlook conclusions, collaborative phrasing, knowledge-cutoff hedging, and the citation markers and tracking parameters that chat interfaces leave in copied text | `VIBE019`, `VIBE023`, `VIBE024`, `VIBE025`, `VIBE027`, `VIBE028`, `VIBE029`, `VIBE033`, `VIBE034`, `VIBE035` | | [Is It Slop?",
+"1773531",
+"1369971",
+"19220158"
+],
+[
+"It measures.\" | `VIBE020` | | Business-speak | \"low-hanging fruit\", \"circle back\", \"one-stop shop\" | `VIBE022` |",
+"Each source pairs the words it flags with plainer alternatives, and slopcop keeps those pairs with the rules.",
+"229872",
+"1061320",
+"607813"
+],
+[
+"Some catalogued patterns are not rules, because they are house style, need semantic judgment, or need information that a deterministic offline scan does not have.",
+"- **Single banned words.** Most catalogs ban a word on sight.",
+"186317",
+"740991",
+"315192"
+],
+[
+"- **Typographic characters.** Curly quotes, the ellipsis character, and Unicode bullets come from word processors and keyboard layouts as often as from models.",
+"- **Template placeholders.** Text such as `[Your Name]` belongs in issue and license templates, which repositories keep on purpose.",
+"375178",
+"1086151",
+"908998"
+],
+[
+"Repositories hold little narrative prose, so only the words that the Kobak et al.",
+"This project records user-visible changes in this file and follows Semantic Versioning.",
+"82285",
+"463434",
+"285042"
+],
+[
+"- `VIBE032` reports a paragraph that opens with a stock scene-setter such as \"In today's fast-paced world\" or \"Now more than ever\".",
+"- `VIBE033` reports repeated appeals to unnamed studies or experts in sentences that cite nothing.",
+"147862",
+"618193",
+"432302"
+],
+[
+"- `docs/rules/references.md` records the catalogs and corpus studies behind the prose rules, which rule each one informed, and the patterns slopcop leaves out.",
+"- `VIBE001`, `VIBE002`, `VIBE004`, `VIBE013`, `VIBE014`, `VIBE015`, `VIBE016`, `VIBE019`, `VIBE021`, `VIBE022`, `VIBE023`, `VIBE024`, and `VIBE025` count more phrases from the reference catalogs, such as \"Moreover,\", \"would you like me to\", \"can potentially\", \"low-hanging fruit\", \"a stark reminder\", \"paves the way\", and refusals such as \"I'm sorry, but I can't\".",
+"397613",
+"1288600",
+"17396188"
+],
+[
+"Findings are unchanged on the field-test projects, and a single-threaded scan of 400 Markdown files from Open Design runs 31 percent fewer instructions than 0.3.1, despite the added rules.",
+"- The GitHub Action is named \"slopcop linter\", because GitHub Marketplace rejects a name that matches an existing GitHub account.",
+"185956",
+"870841",
+"1474600"
+],
+[
+"- The repository is a GitHub Action (`uses: JGalego/slopcop@<tag>`).",
+"It installs a checksum-verified release binary, reports findings on pull request changed lines as workflow annotations, scans everything on other events, and can upload SARIF to code scanning.",
+"478823",
+"823651",
+"1555926"
+],
+[
+"- `slopcop lsp` runs a Language Server Protocol server.",
+"It publishes findings as diagnostics while files are edited, shows rule explanations on hover, and offers a quick fix that inserts a suppression directive in the file's comment syntax.",
+"245618",
+"743959",
+"1116567"
+],
+[
+"- `--format gitlab` writes a GitLab Code Quality report.",
+"Fingerprints come from the rule, path, and line text, so findings keep their identity when edits move them.",
+"108793",
+"797960",
+"397052"
+],
+[
+"A note says when the branch has moved since the scan and offers a rescan.",
+"- The browser demo links each finding to a prefilled Most Wanted nomination (`w`), and its results summary, empty state, and footer link to the missed-slop form.",
+"123357",
+"293116",
+"744552"
+],
+[
+"- `DEAD002` no longer reports a lowercase or capitalized `todo` that opens a comment as part of a noun phrase, such as `// todo list to expanded` or `// Todo snapshot.`.",
+"The words that form these phrases are a short fixed list: list, item, entry, card, row, app, snapshot, content, state, and status, with their plurals.",
+"465637",
+"1837143",
+"858765"
+],
+[
+"Comments such as `// 'todo' - show a11y violations` or `# reject literal \"TODO\" text on a slide` are no longer reported.",
+"A triple-quoted docstring that holds only a marker still is.",
+"140870",
+"892477",
+"209609"
+],
+[
+"A message still counts when it says \"not implemented\", contains an uppercase `TODO`, or opens with `todo`.",
+"- `DEAD014` no longer reports a Python `except X: raise` that is followed by another `except` clause of the same `try`.",
+"373735",
+"612033",
+"1005270"
+],
+[
+"Bold Markdown labels such as `**Task:**`, lead-ins such as `**Using pandas:**` or a colon before a list, and joined tokens such as `<file>:<line>` no longer count toward colon density.",
+"A sentence that contains a URL is no longer skipped when it also has a colon in its text.",
+"430410",
+"2106433",
+"340798"
+],
+[
+"- The browser demo links each finding to a prefilled false-positive issue, and its footer links to the bug, false-positive, feature, and security report forms.",
+"Unexpected scan errors offer a prefilled bug report.",
+"317576",
+"867418",
+"321527"
+],
+[
+"- `VIBE022` reports dense workplace productivity jargon such as \"leverage\", \"streamline\", \"key stakeholders\", and \"drive alignment\".",
+"- `VIBE023` reports dense generic AI vocabulary such as \"nuanced\", \"holistic\", \"meaningful\", and \"delve\".",
+"318584",
+"751481",
+"676196"
+],
+[
+"It no longer counts double-quoted examples or a literal \"the key is\" followed by an ordinary predicate.",
+"- `VIBE002` recognizes more assistant-response phrases, such as \"here's a breakdown\", \"you're absolutely right\", and \"let me know if you'd like\", and counts standalone interjections such as \"Absolutely!\".",
+"327493",
+"410852",
+"1111781"
+],
+[
+"- `VIBE011` reports repeated inline triads of abstract qualities such as \"clear, concise, and compelling\" and \"speed, reliability, and flexibility\".",
+"- `VIBE012` counts more vague demonstratives, including \"this dynamic\", \"this shift\", \"this reality\", and \"that perspective\".",
+"299917",
+"785887",
+"545591"
+],
+[
+"- `Config::from_toml` for loading configuration text without reading the filesystem.",
+"- reStructuredText prose no longer includes directives, literal and doctest blocks, roles, or field markers.",
+"268847",
+"651834",
+"854487"
+],
+[
+"- `DEAD007` no longer treats comments that differ only in symbols as duplicates.",
+"- `DEAD006` no longer judges single lines of a longer comment block.",
+"206444",
+"392826",
+"332474"
+],
+[
+"- Exact staged-blob scanning and changed-hunk filtering for Git workflows.",
+"- Text, JSON, SARIF 2.1.0, and GitHub annotation reporters.",
+"140886",
+"455784",
+"480454"
+],
+[
+"Install Rust with `rustup`, clone the repository, then run:",
+"This builds the workspace and installs the repository's local pre-commit hook.",
+"391587",
+"762692",
+"569110"
+],
+[
+"If the difference is intended, run `make field-baseline` and review the diff of `benchmarks/field/baseline.json` in the pull request.",
+"CI also tests Rust 1.85, the minimum supported compiler.",
+"170212",
+"892451",
+"299059"
+],
+[
+"Papertrail rules use focused commit-message tests and Git integration tests instead of file fixtures.",
+"Describe the observable problem, the chosen signal, and the cases that should remain quiet.",
+"56075",
+"809195",
+"340101"
+],
+[
+"Rerun it from the Actions tab with the issue number.",
+"Set the `GEMINI_MODEL` variable to change the model.",
+"19862",
+"167081",
+"285979"
+]
+]

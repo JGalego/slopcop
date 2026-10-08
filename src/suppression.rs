@@ -19,6 +19,16 @@ pub fn apply(source: &str, findings: &mut Vec<Finding>) {
     });
 }
 
+/// The lines on which `rule_id` is suppressed: each directive covers its own line and the next.
+#[cfg(feature = "polygraph")]
+pub(crate) fn suppressed_lines(source: &str, rule_id: &str) -> HashSet<usize> {
+    parse(source)
+        .into_iter()
+        .filter(|suppression| suppression.rules.contains(rule_id))
+        .flat_map(|suppression| [suppression.line, suppression.line + 1])
+        .collect()
+}
+
 fn parse(source: &str) -> Vec<Suppression> {
     source
         .lines()
@@ -54,6 +64,7 @@ fn parse(source: &str) -> Vec<Suppression> {
 fn is_rule_id(value: &str) -> bool {
     let prefix = value
         .strip_prefix("DEAD")
+        .or_else(|| value.strip_prefix("POLY"))
         .or_else(|| value.strip_prefix("VIBE"));
     prefix
         .is_some_and(|digits| digits.len() == 3 && digits.bytes().all(|byte| byte.is_ascii_digit()))

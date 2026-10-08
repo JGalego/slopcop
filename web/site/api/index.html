@@ -229,6 +229,7 @@
         <tbody>
           <tr><td><code>files</code></td><td>object | Map | iterable</td><td>Path to contents, as a plain object, a <code>Map</code>, or <code>[path, contents]</code> pairs. Contents are a string, <code>Uint8Array</code>, or <code>ArrayBuffer</code>.</td></tr>
           <tr><td><code>options.config</code></td><td>string</td><td>The text of a <code>.slopcop.toml</code>. Without it, a <code>.slopcop.toml</code> among the files applies; without either, the defaults do.</td></tr>
+          <tr><td><code>options.polygraph</code></td><td>boolean</td><td>Run the optional Polygraph rules. The 4 MB model they use downloads from this site once and is checked against its SHA-256. Default <code>false</code>.</td></tr>
         </tbody>
       </table>
       <p>A <code>.gitattributes</code> among the files excludes the paths it marks <code>linguist-vendored</code> or <code>linguist-generated</code>. Binary files, unsupported types, oversized files, dependency directories such as <code>node_modules</code>, and ignored paths count toward <code>summary.skipped_files</code>.</p>
@@ -275,6 +276,7 @@ def test_transfer():
           <tr><td><code>options.ref</code></td><td>string</td><td>Branch, tag, or commit. Overrides a ref in <code>repo</code>. Defaults to the default branch.</td></tr>
           <tr><td><code>options.token</code></td><td>string</td><td>A GitHub token, to raise GitHub's anonymous limit. It is sent only to <code>api.github.com</code>, never to other hosts.</td></tr>
           <tr><td><code>options.onProgress</code></td><td>function</td><td>Called with <code>{ stage, done, total }</code> as the scan resolves the ref, lists files, downloads them, and scans. <code>done</code> and <code>total</code> count downloads.</td></tr>
+          <tr><td><code>options.polygraph</code></td><td>boolean</td><td>Run the optional Polygraph rules, which download a 4 MB model from this site once. Default <code>false</code>.</td></tr>
         </tbody>
       </table>
       <table class="fields">

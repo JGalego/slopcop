@@ -61,7 +61,12 @@ fn self_lint_keeps_every_module_enabled_and_source_in_scope() {
             .includes_file(&root.join("tests/fixtures/slop/dead001.py")),
         "intentional positive fixtures should be excluded from self-lint"
     );
-    for metadata in metadata_registry() {
+    // Polygraph is opt-in: it needs a build feature and a model, so the default self-lint cannot
+    // enable it. CI self-lints with `--polygraph` where the model is available.
+    for metadata in metadata_registry()
+        .into_iter()
+        .filter(|metadata| metadata.module != slopcop::Module::Polygraph)
+    {
         assert!(
             config.rule_enabled(metadata.id, metadata.module),
             "self-lint disabled {}",

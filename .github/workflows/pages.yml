@@ -46,6 +46,7 @@ jobs:
         working-directory: web
       - run: cargo clippy --locked --all-targets -- -W clippy::all -W clippy::pedantic -D warnings
         working-directory: web
+      - run: make web-model
       - run: make web
       - uses: actions/upload-pages-artifact@v5
         with:

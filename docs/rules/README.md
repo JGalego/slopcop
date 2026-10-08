@@ -76,6 +76,17 @@ Rules that count specific expressions carry a replacement for each one. A findin
 | `VIBE034` | warning | medium | Two challenges-and-outlook phrases of different forms, such as "despite these challenges" or "only time will tell", at one per 400 words or more | One phrase, quoted examples, and roadmaps that name concrete plans |
 | `VIBE035` | info | low | Four Markdown headings or list items that open with a decorative emoji, using at least three distinct emoji | Status marks such as ✅, ❌, and ⚠️ in checklists and compatibility tables |
 
+## polygraph
+
+These rules need the `polygraph` cargo feature and a model file, and they are off unless `--polygraph` or `[slopcop.polygraph] enabled = true` turns them on. `POLY003` and `POLY004` decide with integer arithmetic over a static embedding model, so their findings are identical on every platform. `POLY001` and `POLY002` also need the `polygraph-lm` feature and a language model; they are reproducible on one build and CPU family but not across CPUs. The rule IDs are valid in `[slopcop.rules]` in every build. See [configuration](../configuration.md#polygraph).
+
+| Rule | Default | Confidence | Trigger | Quiet boundary |
+| --- | --- | --- | --- | --- |
+| `POLY001` | info | low | `POLY001_TRIGGER` | `POLY001_QUIET` |
+| `POLY002` | info | low | `POLY002_TRIGGER` | `POLY002_QUIET` |
+| `POLY003` | warning | medium | A one- or two-line comment of three to fourteen words directly above a code line whose identifier words, split at case changes and underscores, embed at a cosine of 0.90 or more to the comment | Comments that give a reason, a constraint, a link, or a number, comments with code or punctuation such as backticks, parentheses, and semicolons, documentation comments, blocks of three or more comment lines, structural lines such as a closing brace, and source files that link a WHATWG, W3C, TC39, or IETF specification |
+| `POLY004` | warning | medium | A paragraph of twenty words or more that embeds at a cosine of 0.97 or more to a paragraph of similar length in another file | Paragraphs in the same file, list entries and table rows, licenses, notices, and anything under a vendored or third-party directory, release notes, text that is mostly not English, and paragraphs with a suppression directive |
+
 ## Configuration
 
 Override a default or disable one named rule:

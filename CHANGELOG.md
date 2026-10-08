@@ -2,6 +2,17 @@
 
 This project records user-visible changes in this file and follows Semantic Versioning.
 
+## Unreleased
+
+### Added
+
+- `polygraph`, an optional module for checks that need a model. It is compiled only with the `polygraph` cargo feature, is off unless `[slopcop.polygraph] enabled = true` or `--polygraph` turns it on, and downloads nothing during a scan. A scan that asks for it without a model exits with code 2.
+- `POLY003` reports a short comment that restates the code line below it, found by comparing static embeddings of the comment and of the line's identifier words. On the field-test projects about one in four findings is also reported by `DEAD006`.
+- `POLY004` reports a paragraph that nearly repeats a paragraph in another file. It is the first rule that compares files: each file hands its paragraphs to one pass after the scan.
+- `POLY001` reports a run of sentences that a small language model finds unusually predictable, and `POLY002` reports a document whose sentences are almost equally predictable. Both are informational, need the `polygraph-lm` feature and a SmolLM2-135M directory, and run only when one is configured.
+- `--polygraph`, `--no-polygraph`, `--polygraph-model`, and `--polygraph-lm`, and a `[slopcop.polygraph]` configuration section.
+- Rule IDs from this module are valid in `[slopcop.rules]` in every build, and `slopcop explain` describes them without the feature.
+
 ## 0.4.0 - 2026-10-08
 
 ### Added

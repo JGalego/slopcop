@@ -55,8 +55,14 @@ impl ScanError {
     }
 }
 
+/// What a file hands to the one pass that compares files.
+#[cfg(feature = "polygraph")]
+type ProjectData = Vec<crate::polygraph::Paragraph>;
+#[cfg(not(feature = "polygraph"))]
+type ProjectData = ();
+
 enum FileOutcome {
-    Scanned(Vec<Finding>),
+    Scanned(Vec<Finding>, ProjectData),
     Skipped,
 }
 
@@ -79,7 +85,7 @@ pub fn scan_paths(paths: &[PathBuf], options: &ScanOptions) -> Result<ScanResult
         .map(|path| scan_file(path, options, &rules))
         .collect();
 
-    Ok(finish_scan(outcomes?))
+    Ok(finish_scan(outcomes?, options))
 }
 
 /// Scans in-memory source files and returns findings in stable source order.
@@ -91,7 +97,7 @@ pub fn scan_sources(sources: Vec<SourceFile>, options: &ScanOptions) -> ScanResu
         .filter(|source| options.config.path_filter.includes_file(&source.path))
         .map(|source| scan_bytes(&source.path, &source.bytes, options, &rules))
         .collect();
-    finish_scan(outcomes)
+    finish_scan(outcomes, options)
 }
 
 fn enabled_rules(options: &ScanOptions) -> Vec<Box<dyn crate::rules::Rule>> {
@@ -105,19 +111,33 @@ fn enabled_rules(options: &ScanOptions) -> Vec<Box<dyn crate::rules::Rule>> {
         .collect()
 }
 
-fn finish_scan(outcomes: Vec<FileOutcome>) -> ScanResult {
+fn finish_scan(outcomes: Vec<FileOutcome>, options: &ScanOptions) -> ScanResult {
     let mut scanned_files = 0;
     let mut skipped_files = 0;
     let mut findings = Vec::new();
+    #[cfg(feature = "polygraph")]
+    let mut paragraphs = Vec::new();
     for outcome in outcomes {
         match outcome {
-            FileOutcome::Scanned(mut file_findings) => {
+            #[cfg_attr(not(feature = "polygraph"), allow(unused_variables))]
+            FileOutcome::Scanned(mut file_findings, project) => {
                 scanned_files += 1;
                 findings.append(&mut file_findings);
+                #[cfg(feature = "polygraph")]
+                paragraphs.extend(project);
             }
             FileOutcome::Skipped => skipped_files += 1,
         }
     }
+    #[cfg(feature = "polygraph")]
+    for mut finding in crate::polygraph::find_duplicates(paragraphs) {
+        finding.severity = options
+            .config
+            .severity_for(finding.rule_id, finding.severity);
+        findings.push(finding);
+    }
+    #[cfg(not(feature = "polygraph"))]
+    let _ = options;
 
     findings.sort_by(|left, right| {
         left.path
@@ -188,7 +208,21 @@ fn scan_bytes(
             .severity_for(finding.rule_id, finding.severity);
     }
 
-    FileOutcome::Scanned(findings)
+    #[cfg(feature = "polygraph")]
+    let project = match crate::polygraph::installed_model() {
+        Some(model)
+            if options
+                .config
+                .rule_enabled("POLY004", crate::model::Module::Polygraph) =>
+        {
+            crate::polygraph::collect_paragraphs(&context, model)
+        }
+        _ => Vec::new(),
+    };
+    #[cfg(not(feature = "polygraph"))]
+    let project = ();
+
+    FileOutcome::Scanned(findings, project)
 }
 
 fn looks_generated(source: &str) -> bool {

@@ -20,6 +20,7 @@ pub enum RuleSetting {
 }
 
 #[derive(Clone, Debug)]
+#[allow(clippy::struct_excessive_bools)] // one switch per module
 pub struct Config {
     pub source_path: Option<PathBuf>,
     pub fail_level: Severity,
@@ -27,6 +28,13 @@ pub struct Config {
     pub deadweight_enabled: bool,
     pub papertrail_enabled: bool,
     pub vibecheck_enabled: bool,
+    /// Off unless a configuration or a command-line flag turns it on.
+    pub polygraph_enabled: bool,
+    /// The model file named by the configuration, resolved against the configuration's directory.
+    pub polygraph_model: Option<PathBuf>,
+    /// The language-model directory named by the configuration. The language-model rules run only
+    /// when one is given here, on the command line, or in the environment.
+    pub polygraph_language_model: Option<PathBuf>,
     pub rules: BTreeMap<String, RuleSetting>,
     pub path_filter: PathFilter,
 }
@@ -40,6 +48,9 @@ impl Default for Config {
             deadweight_enabled: true,
             papertrail_enabled: true,
             vibecheck_enabled: true,
+            polygraph_enabled: false,
+            polygraph_model: None,
+            polygraph_language_model: None,
             rules: BTreeMap::new(),
             path_filter: PathFilter::default(),
         }
@@ -215,6 +226,8 @@ struct Section {
     #[serde(default)]
     vibecheck: ModuleSection,
     #[serde(default)]
+    polygraph: PolygraphSection,
+    #[serde(default)]
     rules: BTreeMap<String, String>,
     #[serde(default)]
     ignore: IgnoreSection,
@@ -233,6 +246,16 @@ impl Default for ModuleSection {
     fn default() -> Self {
         Self { enabled: true }
     }
+}
+
+#[derive(Debug, Default, Deserialize)]
+#[serde(deny_unknown_fields)]
+struct PolygraphSection {
+    #[serde(default)]
+    enabled: bool,
+    model: Option<PathBuf>,
+    #[serde(rename = "language-model")]
+    language_model: Option<PathBuf>,
 }
 
 #[derive(Debug, Default, Deserialize)]
@@ -341,12 +364,14 @@ impl Config {
         let deadweight_enabled = section.deadweight.enabled;
         let papertrail_enabled = section.papertrail.enabled;
         let vibecheck_enabled = section.vibecheck.enabled;
+        let polygraph_enabled = section.polygraph.enabled;
         let enabled_count = metadata_registry()
             .into_iter()
             .filter(|metadata| match metadata.module {
                 Module::Deadweight => deadweight_enabled,
                 Module::Papertrail => papertrail_enabled,
                 Module::Vibecheck => vibecheck_enabled,
+                Module::Polygraph => polygraph_enabled,
             })
             .filter(|metadata| rules.get(metadata.id) != Some(&RuleSetting::Disabled))
             .count();
@@ -360,6 +385,14 @@ impl Config {
             .parent()
             .unwrap_or_else(|| Path::new("."))
             .to_path_buf();
+        let polygraph_model = section
+            .polygraph
+            .model
+            .map(|model| absolute_path(&model, &base));
+        let polygraph_language_model = section
+            .polygraph
+            .language_model
+            .map(|model| absolute_path(&model, &base));
         let path_filter = PathFilter::new(&base, &section.files.include, &excludes)?;
 
         Ok(Self {
@@ -369,6 +402,9 @@ impl Config {
             deadweight_enabled,
             papertrail_enabled,
             vibecheck_enabled,
+            polygraph_enabled,
+            polygraph_model,
+            polygraph_language_model,
             rules,
             path_filter,
         })
@@ -380,6 +416,7 @@ impl Config {
             Module::Deadweight => self.deadweight_enabled,
             Module::Papertrail => self.papertrail_enabled,
             Module::Vibecheck => self.vibecheck_enabled,
+            Module::Polygraph => self.polygraph_enabled,
         };
         module_enabled && self.rules.get(rule_id) != Some(&RuleSetting::Disabled)
     }

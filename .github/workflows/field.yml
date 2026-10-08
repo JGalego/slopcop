@@ -5,6 +5,7 @@ on:
     branches: [main]
     paths:
       - "src/**"
+      - "polygraph/**"
       - "benchmarks/field/**"
       - "Cargo.toml"
       - "Cargo.lock"
@@ -12,6 +13,7 @@ on:
   pull_request:
     paths:
       - "src/**"
+      - "polygraph/**"
       - "benchmarks/field/**"
       - "Cargo.toml"
       - "Cargo.lock"
@@ -51,5 +53,30 @@ jobs:
         if: always()
         with:
           name: field-findings
+          path: target/field/findings
+          if-no-files-found: ignore
+
+  compare-polygraph:
+    name: Compare polygraph detections with the baseline
+    runs-on: ubuntu-24.04
+    timeout-minutes: 60
+    steps:
+      - uses: actions/checkout@v5
+      - uses: dtolnay/rust-toolchain@stable
+      - uses: Swatinem/rust-cache@v2
+      - run: cargo build --release --locked --features polygraph
+      - uses: actions/cache@v4
+        with:
+          path: ${{ runner.temp }}/field-checkouts
+          key: field-checkouts-${{ hashFiles('benchmarks/field/projects.toml') }}
+          restore-keys: field-checkouts-
+      - name: Fetch the polygraph model
+        run: sh polygraph/fetch.sh model
+      - name: Scan pinned projects with polygraph
+        run: python3 -I benchmarks/field/run.py check --polygraph --cache "$RUNNER_TEMP/field-checkouts" | tee "$GITHUB_STEP_SUMMARY"
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: field-findings-polygraph
           path: target/field/findings
           if-no-files-found: ignore

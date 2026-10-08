@@ -4,6 +4,7 @@
 //   import { scanFiles, scanRepository } from "https://slopcop.me/api/v1/slopcop.js";
 import init, { Scanner, rules as ruleList, version as linterVersion } from "../../pkg/slopcop_web.js";
 import { parseRepository } from "../../forges.js";
+import { loadModel } from "../../polygraph.js";
 import { CONFIG_FILE, resolve, scanRepository as scanCommit } from "../../scan.js";
 
 let ready;
@@ -28,8 +29,10 @@ export async function rules() {
 // `files` maps repository-relative paths to contents, as a plain object, a Map, or any iterable of
 // [path, content] pairs. Contents are strings, Uint8Arrays, or ArrayBuffers. A `.slopcop.toml` or
 // `.gitattributes` among the files applies as it would in a checkout, and `options.config` takes
-// the place of `.slopcop.toml`. Files the CLI would skip count as skipped files.
-export async function scanFiles(files, { config } = {}) {
+// the place of `.slopcop.toml`. Files the CLI would skip count as skipped files. Pass
+// `polygraph: true` to run the optional Polygraph rules, which download a 4 MB model from this
+// site once.
+export async function scanFiles(files, { config, polygraph = false } = {}) {
   await load();
   const entries = (Symbol.iterator in Object(files) ? [...files] : Object.entries(files ?? {}))
     .map(([path, content]) => [String(path).replace(/^\.?\//, ""), bytesOf(path, content)]);
@@ -43,6 +46,7 @@ export async function scanFiles(files, { config } = {}) {
     throw failure(`Invalid ${CONFIG_FILE}: ${error.message}`, "bad-config");
   }
   try {
+    if (polygraph) scanner.load_polygraph(await loadModel());
     for (const [path, bytes] of entries) {
       if (path.split("/").pop() === ".gitattributes") scanner.attributes(path, decoder.decode(bytes));
     }
@@ -67,7 +71,8 @@ export async function scanFiles(files, { config } = {}) {
 //   token       a GitHub token, to raise GitHub's anonymous limit of 60 API requests per hour.
 //               It is only sent to api.github.com.
 //   onProgress  called as onProgress({ stage, done, total }) while the scan runs.
-export async function scanRepository(repo, { ref, token, onProgress } = {}) {
+//   polygraph   true runs the optional Polygraph rules, which download a 4 MB model once.
+export async function scanRepository(repo, { ref, token, onProgress, polygraph = false } = {}) {
   await load();
   const target = typeof repo === "string" ? parseRepository(repo) : null;
   if (!target) {
@@ -77,7 +82,8 @@ export async function scanRepository(repo, { ref, token, onProgress } = {}) {
   ref ||= target.ref;
   report("Resolving " + (ref || "default branch"));
   const sha = await resolve(target.repo, ref, token);
-  const scanned = await scanCommit(target.repo, ref, sha, token, report);
+  const model = polygraph ? await loadModel((stage) => report(stage)) : undefined;
+  const scanned = await scanCommit(target.repo, ref, sha, token, report, { polygraph: model });
   return {
     repo: scanned.repo,
     ref: scanned.ref,

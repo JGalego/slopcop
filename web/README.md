@@ -14,6 +14,12 @@ make web-serve
 
 Open <http://localhost:8000>. Append `#owner/repo` or `#owner/repo@ref` to the URL to start a scan directly. GitHub repositories are named `owner/repo`; GitLab and Codeberg repositories carry their host, as in `#gitlab.com/group/project` or `#codeberg.org/owner/repo@ref`. After changing Rust code, run `make web` again; page changes only need a reload.
 
+## Polygraph in the browser
+
+The Polygraph checkbox runs the optional embedding rules (`POLY003` and `POLY004`) in the same WebAssembly module. It is unchecked by default. Checking it downloads a 4 MB model from `models/` on the site once, checks its SHA-256 in `polygraph.js` and again in the module, and keeps it in the browser's Cache API. The choice is remembered in `localStorage`, and a link can carry `?polygraph=1`. The language-model rules, `POLY001` and `POLY002`, are not available here: their 270 MB model is too large to send to a browser.
+
+The model is not in the repository. `make web-model` copies it into `web/site/models/` from the cache that `make polygraph-model` fills, or downloads it from the release, and checks its hash; `make web` does not do this, so run it once before `make web-serve` if you want the checkbox to work locally. A report made with Polygraph is cached under its own key, so turning the checkbox on never shows a report made without it.
+
 ## How a scan works
 
 1. `scan.js` resolves the ref to a commit and lists the commit's files through the forge's API. `forges.js` holds what differs between GitHub, GitLab, and Codeberg: the API calls, the file downloads, the rate limits, and the links back to each file.

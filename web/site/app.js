@@ -2,10 +2,11 @@ import { forgeOf, parseRepository } from "./forges.js";
 import { slopocop } from "./slopocop.js";
 
 const SEVERITIES = ["error", "warning", "info"];
-const MODULES = ["deadweight", "vibecheck", "papertrail"];
+const MODULES = ["deadweight", "vibecheck", "polygraph", "papertrail"];
 const PAGE_SIZE = 250;
 const CONTEXT_LINES = 2;
 const TOKEN_KEY = "slopcop.github-token";
+const POLYGRAPH_KEY = "slopcop.polygraph";
 const REPO_URL = "https://github.com/JGalego/slopcop";
 const MAX_FIELD = 1500;
 const RULES_DOC = `${REPO_URL}/blob/main/docs/rules/README.md`;
@@ -73,7 +74,7 @@ function startScan(target, fresh = false) {
   $("status").hidden = false;
   $("scan-button").disabled = true;
   setProgress("Loading scanner", 0, 0);
-  worker.postMessage({ ...target, token: $("token").value.trim(), fresh });
+  worker.postMessage({ ...target, token: $("token").value.trim(), fresh, polygraph: $("polygraph").checked });
 }
 
 function setProgress(stage, done, total) {
@@ -523,6 +524,22 @@ function saveToken() {
     // Storage can be blocked by the browser; the token then lasts only until the page closes.
   }
   $("token-state").textContent = token ? "(set)" : "(optional)";
+}
+
+$("polygraph").addEventListener("change", () => {
+  try {
+    localStorage.setItem(POLYGRAPH_KEY, $("polygraph").checked ? "1" : "0");
+  } catch {
+    // Storage can be blocked by the browser; the choice then lasts until the page closes.
+  }
+});
+
+// A link can carry ?polygraph=1; otherwise the last choice on this browser applies.
+try {
+  const asked = new URLSearchParams(location.search).get("polygraph");
+  $("polygraph").checked = asked !== null ? asked === "1" : localStorage.getItem(POLYGRAPH_KEY) === "1";
+} catch {
+  $("polygraph").checked = false;
 }
 
 $("token").addEventListener("input", saveToken);

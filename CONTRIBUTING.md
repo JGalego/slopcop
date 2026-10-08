@@ -12,6 +12,15 @@ make bootstrap
 
 This builds the workspace and installs the repository's local pre-commit hook. The bootstrap target uses an existing `pre-commit` executable or runs it through `uvx`.
 
+The `polygraph` and `polygraph-lm` features add rules that need model files. `make check` builds with all features, so run `make polygraph-model` and `make polygraph-lm` once to download them into `~/.cache/slopcop`, then point the tests at them:
+
+```sh
+export SLOPCOP_POLYGRAPH_MODEL=~/.cache/slopcop/polygraph-ec9c31b3ba4a.bin
+export SLOPCOP_POLYGRAPH_LM=~/.cache/slopcop/smollm2-135m
+```
+
+A test that needs a model fails with these instructions instead of skipping the rules.
+
 Run the complete local gate before opening a pull request:
 
 ```sh

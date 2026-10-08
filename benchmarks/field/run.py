@@ -4,6 +4,11 @@
     run.py check   [--only NAME ...]   fail when detections differ from the baseline
     run.py update  [--only NAME ...]   rewrite the baseline from the current detections
 
+With --polygraph the scan runs the embedding rules of the polygraph module and compares with
+baseline-polygraph.json instead. That needs a binary built with `--features polygraph` and the
+model named by SLOPCOP_POLYGRAPH_MODEL. The language-model rules are not part of it: they take
+about a second per ninety tokens and are not bit-identical across CPUs.
+
 Every project is pinned to a commit, so a difference always comes from slopcop.
 """
 
@@ -44,10 +49,10 @@ def fetch(project, cache):
     return dest
 
 
-def scan(slopcop, checkout):
+def scan(slopcop, checkout, extra=()):
     """Run slopcop from inside the checkout so finding paths are repository-relative."""
     result = subprocess.run(
-        [slopcop, ".", "--format", "json"], cwd=checkout, capture_output=True, text=True
+        [slopcop, ".", "--format", "json", *extra], cwd=checkout, capture_output=True, text=True
     )
     # Exit 1 means findings were reported; anything else is a failure to scan.
     if result.returncode not in (0, 1):
@@ -88,6 +93,7 @@ def main():
     parser.add_argument("--cache", type=Path, default=ROOT / "target/field/checkouts")
     parser.add_argument("--out", type=Path, default=ROOT / "target/field/findings")
     parser.add_argument("--only", nargs="*", default=[], help="project names to scan")
+    parser.add_argument("--polygraph", action="store_true", help="also run the polygraph rules")
     args = parser.parse_args()
 
     projects = tomllib.loads(MANIFEST.read_text())["project"]
@@ -99,20 +105,22 @@ def main():
 
     args.cache.mkdir(parents=True, exist_ok=True)
     args.out.mkdir(parents=True, exist_ok=True)
-    baseline = json.loads(BASELINE.read_text()) if BASELINE.exists() else {}
+    baseline_path = HERE / ("baseline-polygraph.json" if args.polygraph else "baseline.json")
+    extra = ["--polygraph"] if args.polygraph else []
+    baseline = json.loads(baseline_path.read_text()) if baseline_path.exists() else {}
     current, errors, changed = dict(baseline), [], []
 
     for project in selected:
         name = project["name"]
         try:
-            report = scan(args.slopcop, fetch(project, args.cache))
+            report = scan(args.slopcop, fetch(project, args.cache), extra)
         except (subprocess.CalledProcessError, RuntimeError) as error:
             errors.append(f"{name}: {error}")
             continue
         summary, keys = summarize(report)
         summary["commit"] = project["commit"]
         current[name] = summary
-        (args.out / f"{name.replace(' ', '-')}.json").write_text(
+        (args.out / f"{name.replace(' ', '-')}{'-polygraph' if args.polygraph else ''}.json").write_text(
             json.dumps(report["findings"], indent=1)
         )
         old = baseline.get(name)
@@ -135,7 +143,7 @@ def main():
     if args.mode == "update":
         if errors:
             sys.exit("not updating the baseline while scans are failing")
-        BASELINE.write_text(json.dumps(dict(sorted(current.items())), indent=2) + "\n")
+        baseline_path.write_text(json.dumps(dict(sorted(current.items())), indent=2) + "\n")
         print(f"baseline written for {len(selected)} project(s)")
         return
 

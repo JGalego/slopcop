@@ -584,7 +584,7 @@ fn boxed(metadata: &'static RuleMetadata, check_fn: super::CheckFn) -> Box<dyn R
     Box::new(BuiltinRule { metadata, check_fn })
 }
 
-fn is_prose(context: &ScanContext<'_>) -> bool {
+pub(crate) fn is_prose(context: &ScanContext<'_>) -> bool {
     !matches!(
         context.source_type,
         SourceType::Configuration | SourceType::Unknown
@@ -593,7 +593,7 @@ fn is_prose(context: &ScanContext<'_>) -> bool {
 
 /// Rhythm and symmetry are properties of continuous prose. Comments and docstrings attached to
 /// separate declarations are independent texts, so their lengths are not compared.
-fn is_running_text(context: &ScanContext<'_>) -> bool {
+pub(crate) fn is_running_text(context: &ScanContext<'_>) -> bool {
     matches!(
         context.source_type,
         SourceType::Documentation | SourceType::Text
@@ -605,7 +605,7 @@ fn is_running_text(context: &ScanContext<'_>) -> bool {
 /// `docs/releases/v1.2.0/en.md`, or one fragment per change, as in `changelog.d/1234.bugfix.md`
 /// or `release-notes/11457.md`: a release directory, such as `release-notes-published`, with a
 /// version or change number below it.
-fn is_release_notes(context: &ScanContext<'_>) -> bool {
+pub(crate) fn is_release_notes(context: &ScanContext<'_>) -> bool {
     let normalize = |name: &str| name.to_ascii_lowercase().replace(['-', '_'], "");
     let stem = context
         .path
@@ -667,7 +667,7 @@ fn is_change_number(name: &str) -> bool {
     })
 }
 
-fn paragraph_index(context: &ScanContext<'_>, offset: usize) -> Option<usize> {
+pub(crate) fn paragraph_index(context: &ScanContext<'_>, offset: usize) -> Option<usize> {
     let paragraphs = context.paragraphs();
     let index = paragraphs.partition_point(|paragraph| paragraph.end <= offset);
     paragraphs
@@ -680,7 +680,7 @@ fn paragraph_index(context: &ScanContext<'_>, offset: usize) -> Option<usize> {
 /// one. Neighboring list entries and table rows are parallel by design, as in changelogs, option
 /// references, and comparison tables, including a list introduced by a lead-in line such as
 /// "This skill enforces only:".
-fn in_list_paragraph(context: &ScanContext<'_>, offset: usize) -> bool {
+pub(crate) fn in_list_paragraph(context: &ScanContext<'_>, offset: usize) -> bool {
     let prose = context.prose();
     let is_entry = |text: &str| {
         let text = text.trim_start();
@@ -1194,7 +1194,7 @@ fn opens_with_code(text: &str) -> bool {
 /// Whether the prose is the comments of source code that links a web or Internet standard. Such
 /// comments quote the specification's algorithm, as in `// If hash is "SHA-384": Set the alg
 /// attribute of jwk to "RSA-OAEP-384".`, so its parallel wording is not the author's.
-fn quotes_specification(context: &ScanContext<'_>) -> bool {
+pub(crate) fn quotes_specification(context: &ScanContext<'_>) -> bool {
     matches!(context.source_type, SourceType::Code(_)) && links_specification(context.source)
 }
 

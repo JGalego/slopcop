@@ -14,19 +14,20 @@ export function resolve(repo, ref, token) {
 }
 
 // Reports progress as `onProgress(stage, done, total)`.
-export async function scanRepository(repo, ref, sha, token, onProgress = () => {}) {
+// `options.polygraph` is the model's bytes when the Polygraph rules should run.
+export async function scanRepository(repo, ref, sha, token, onProgress = () => {}, options = {}) {
   const { forge } = forgeOf(repo);
   const stopWatching = onThrottle((throttled, millis) => {
     if (throttled === forge) onProgress(`${forge.name} is rate-limiting this scan; waiting ${Math.ceil(millis / 1000)} s`);
   });
   try {
-    return await scanCommit(repo, ref, sha, token, onProgress);
+    return await scanCommit(repo, ref, sha, token, onProgress, options);
   } finally {
     stopWatching();
   }
 }
 
-async function scanCommit(repo, ref, sha, token, report) {
+async function scanCommit(repo, ref, sha, token, report, options) {
   const started = performance.now();
   const notices = [];
   const { forge, path } = forgeOf(repo);
@@ -47,6 +48,11 @@ async function scanCommit(repo, ref, sha, token, report) {
     } catch (error) {
       notices.push(`Ignored the repository's ${CONFIG_FILE}: ${error.message}`);
     }
+  }
+
+  if (options.polygraph) {
+    scanner.load_polygraph(options.polygraph);
+    notices.push("Polygraph rules were on, using the Polygraph model.");
   }
 
   const attributes = blobs.filter((blob) => blob.path.split("/").pop() === ".gitattributes");
