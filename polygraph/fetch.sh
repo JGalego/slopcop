@@ -35,10 +35,16 @@ fetch() {
 }
 
 export_variable() {
-    if [ -n "${GITHUB_ENV:-}" ]; then
-        echo "$1=$2" >> "$GITHUB_ENV"
+    value=$2
+    # Git Bash expands $HOME to /c/..., which native Windows programs interpret
+    # relative to the current drive. Export a native absolute path instead.
+    if command -v cygpath >/dev/null 2>&1; then
+        value=$(cygpath -w "$value")
     fi
-    echo "export $1=$2"
+    if [ -n "${GITHUB_ENV:-}" ]; then
+        echo "$1=$value" >> "$GITHUB_ENV"
+    fi
+    echo "export $1=$value"
 }
 
 case "${1:-}" in

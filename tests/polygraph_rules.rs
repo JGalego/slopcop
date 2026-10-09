@@ -47,23 +47,32 @@ fn a_reworded_copy_in_another_file_is_reported_once_at_the_later_file() {
 
 #[test]
 fn distinct_paragraphs_and_same_file_repeats_are_quiet() {
-    assert!(poly004(&[("docs/a.md", INSTALL), ("docs/b.md", UPGRADE)]).is_empty());
+    assert_eq!(
+        poly004(&[("docs/a.md", INSTALL), ("docs/b.md", UPGRADE)]),
+        []
+    );
     let repeated = format!("{INSTALL}\n{INSTALL_REWORDED}");
-    assert!(poly004(&[("docs/a.md", &repeated)]).is_empty());
+    assert_eq!(poly004(&[("docs/a.md", &repeated)]), []);
 }
 
 #[test]
 fn licenses_lists_and_short_paragraphs_are_skipped() {
-    assert!(poly004(&[("docs/a.md", INSTALL), ("LICENSE.md", INSTALL)]).is_empty());
-    assert!(poly004(&[("docs/a.md", INSTALL), ("third_party/notes.md", INSTALL)]).is_empty());
+    assert_eq!(
+        poly004(&[("docs/a.md", INSTALL), ("LICENSE.md", INSTALL)]),
+        []
+    );
+    assert_eq!(
+        poly004(&[("docs/a.md", INSTALL), ("third_party/notes.md", INSTALL)]),
+        []
+    );
     let list = format!("- {}", INSTALL.trim_end());
-    assert!(poly004(&[("docs/a.md", &list), ("docs/b.md", &list)]).is_empty());
-    assert!(
+    assert_eq!(poly004(&[("docs/a.md", &list), ("docs/b.md", &list)]), []);
+    assert_eq!(
         poly004(&[
             ("docs/a.md", "Run setup once.\n"),
             ("docs/b.md", "Run setup once.\n")
-        ])
-        .is_empty()
+        ]),
+        []
     );
 }
 
@@ -71,7 +80,10 @@ fn licenses_lists_and_short_paragraphs_are_skipped() {
 fn a_directive_suppresses_the_paragraph_below_it() {
     let suppressed =
         format!("<!-- slopcop: ignore POLY004 -- shared security note -->\n{INSTALL_REWORDED}");
-    assert!(poly004(&[("docs/a.md", INSTALL), ("docs/b.md", &suppressed)]).is_empty());
+    assert_eq!(
+        poly004(&[("docs/a.md", INSTALL), ("docs/b.md", &suppressed)]),
+        []
+    );
 }
 
 #[test]
