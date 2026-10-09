@@ -41,7 +41,7 @@ const UPGRADE: &str = "Before upgrading across a major version, export your save
 fn a_reworded_copy_in_another_file_is_reported_once_at_the_later_file() {
     assert_eq!(
         poly004(&[("docs/a.md", INSTALL), ("docs/b.md", INSTALL_REWORDED)]),
-        [("docs/b.md".to_owned(), 1)]
+        [(PathBuf::from("docs/b.md").display().to_string(), 1)]
     );
 }
 
