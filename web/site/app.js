@@ -2,10 +2,13 @@ import { forgeOf, parseRepository } from "./forges.js";
 import { slopocop } from "./slopocop.js";
 
 const SEVERITIES = ["error", "warning", "info"];
-const MODULES = ["deadweight", "vibecheck", "papertrail"];
+const MODULES = ["deadweight", "vibecheck", "polygraph", "papertrail"];
 const PAGE_SIZE = 250;
 const CONTEXT_LINES = 2;
 const TOKEN_KEY = "slopcop.github-token";
+const POLYGRAPH_KEY = "slopcop.polygraph";
+const POLYGRAPH_LM_KEY = "slopcop.polygraph-lm";
+const POLYGRAPH_LM_CONSENT_KEY = "slopcop.polygraph-lm-consent-v1";
 const REPO_URL = "https://github.com/JGalego/slopcop";
 const MAX_FIELD = 1500;
 const RULES_DOC = `${REPO_URL}/blob/main/docs/rules/README.md`;
@@ -62,6 +65,15 @@ function targetFromHash() {
 }
 
 function startScan(target, fresh = false) {
+  if ($("polygraph-lm").checked && !confirmLanguageModel()) {
+    $("polygraph-lm").checked = false;
+    try {
+      localStorage.setItem(POLYGRAPH_LM_KEY, "0");
+    } catch {
+      // Storage can be blocked; the checkbox still stays off for this page.
+    }
+    return;
+  }
   $("repo").value = target.repo;
   $("ref").value = target.ref;
   const hash = "#" + target.repo + (target.ref ? "@" + target.ref : "");
@@ -73,7 +85,37 @@ function startScan(target, fresh = false) {
   $("status").hidden = false;
   $("scan-button").disabled = true;
   setProgress("Loading scanner", 0, 0);
-  worker.postMessage({ ...target, token: $("token").value.trim(), fresh });
+  worker.postMessage({
+    ...target,
+    token: $("token").value.trim(),
+    fresh,
+    polygraph: {
+      embeddings: $("polygraph").checked,
+      languageModel: $("polygraph-lm").checked,
+    },
+  });
+}
+
+function confirmLanguageModel() {
+  try {
+    if (localStorage.getItem(POLYGRAPH_LM_CONSENT_KEY) === "1") return true;
+  } catch {
+    // Storage can be blocked; ask again so a large download never starts silently.
+  }
+  const accepted = window.confirm(
+    "Polygraph language-model checks download about 259 MB from a pinned Hugging Face revision, " +
+    "then use substantial CPU and memory. Scans can take several minutes, and informational " +
+    "findings may differ between devices because floating-point inference is not bit-identical. " +
+    "The verified model is cached in this browser. Continue?"
+  );
+  if (accepted) {
+    try {
+      localStorage.setItem(POLYGRAPH_LM_CONSENT_KEY, "1");
+    } catch {
+      // Consent lasts for this scan when storage is unavailable.
+    }
+  }
+  return accepted;
 }
 
 function setProgress(stage, done, total) {
@@ -523,6 +565,34 @@ function saveToken() {
     // Storage can be blocked by the browser; the token then lasts only until the page closes.
   }
   $("token-state").textContent = token ? "(set)" : "(optional)";
+}
+
+$("polygraph").addEventListener("change", () => {
+  try {
+    localStorage.setItem(POLYGRAPH_KEY, $("polygraph").checked ? "1" : "0");
+  } catch {
+    // Storage can be blocked by the browser; the choice then lasts until the page closes.
+  }
+});
+
+$("polygraph-lm").addEventListener("change", () => {
+  try {
+    localStorage.setItem(POLYGRAPH_LM_KEY, $("polygraph-lm").checked ? "1" : "0");
+  } catch {
+    // Storage can be blocked by the browser; the choice then lasts until the page closes.
+  }
+});
+
+// Links can select either tier; otherwise the last choices on this browser apply.
+try {
+  const params = new URLSearchParams(location.search);
+  const asked = params.get("polygraph");
+  const askedLm = params.get("polygraph-lm");
+  $("polygraph").checked = asked !== null ? asked === "1" : localStorage.getItem(POLYGRAPH_KEY) === "1";
+  $("polygraph-lm").checked = askedLm !== null ? askedLm === "1" : localStorage.getItem(POLYGRAPH_LM_KEY) === "1";
+} catch {
+  $("polygraph").checked = false;
+  $("polygraph-lm").checked = false;
 }
 
 $("token").addEventListener("input", saveToken);

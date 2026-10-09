@@ -14,19 +14,20 @@ export function resolve(repo, ref, token) {
 }
 
 // Reports progress as `onProgress(stage, done, total)`.
-export async function scanRepository(repo, ref, sha, token, onProgress = () => {}) {
+// Model options contain bytes returned by the loaders in polygraph.js.
+export async function scanRepository(repo, ref, sha, token, onProgress = () => {}, options = {}) {
   const { forge } = forgeOf(repo);
   const stopWatching = onThrottle((throttled, millis) => {
     if (throttled === forge) onProgress(`${forge.name} is rate-limiting this scan; waiting ${Math.ceil(millis / 1000)} s`);
   });
   try {
-    return await scanCommit(repo, ref, sha, token, onProgress);
+    return await scanCommit(repo, ref, sha, token, onProgress, options);
   } finally {
     stopWatching();
   }
 }
 
-async function scanCommit(repo, ref, sha, token, report) {
+async function scanCommit(repo, ref, sha, token, report, options) {
   const started = performance.now();
   const notices = [];
   const { forge, path } = forgeOf(repo);
@@ -47,6 +48,15 @@ async function scanCommit(repo, ref, sha, token, report) {
     } catch (error) {
       notices.push(`Ignored the repository's ${CONFIG_FILE}: ${error.message}`);
     }
+  }
+
+  if (options.polygraph) {
+    scanner.load_polygraph(options.polygraph);
+    notices.push("POLY003 and POLY004 ran with the deterministic Polygraph embedding model.");
+  }
+  if (options.polygraphLm) {
+    scanner.load_polygraph_lm(options.polygraphLm.weights, options.polygraphLm.tokenizer);
+    notices.push("POLY001 and POLY002 ran with SmolLM2; informational findings may vary between devices.");
   }
 
   const attributes = blobs.filter((blob) => blob.path.split("/").pop() === ".gitattributes");
@@ -95,7 +105,7 @@ async function scanCommit(repo, ref, sha, token, report) {
     notices.push(`${failed.length} file(s) could not be downloaded and were not scanned: ${failed.slice(0, 5).join(", ")}${failed.length > 5 ? ", …" : ""}`);
   }
 
-  report("Scanning", selected.length, selected.length);
+  report(options.polygraphLm ? "Scanning with the Polygraph language model" : "Scanning", selected.length, selected.length);
   const scanStarted = performance.now();
   for (const [path, bytes] of contents) {
     scanner.add(path, bytes);

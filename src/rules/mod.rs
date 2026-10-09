@@ -1,8 +1,9 @@
 mod deadweight;
 mod deadweight_extra;
 pub(crate) mod papertrail;
+pub mod polygraph;
 mod vibecheck;
-mod vibecheck_extra;
+pub(crate) mod vibecheck_extra;
 
 use std::borrow::Cow;
 use std::cell::OnceCell;
@@ -31,6 +32,8 @@ pub struct ScanContext<'a> {
     prose_word_count: OnceCell<usize>,
     sentences: OnceCell<Vec<Span>>,
     paragraphs: OnceCell<Vec<Span>>,
+    #[cfg(feature = "polygraph-lm")]
+    sentence_scores: OnceCell<Option<Vec<crate::polygraph::SentenceScore>>>,
 }
 
 impl ScanContext<'_> {
@@ -51,6 +54,8 @@ impl ScanContext<'_> {
             prose_word_count: OnceCell::new(),
             sentences: OnceCell::new(),
             paragraphs: OnceCell::new(),
+            #[cfg(feature = "polygraph-lm")]
+            sentence_scores: OnceCell::new(),
         }
     }
 
@@ -92,6 +97,16 @@ impl ScanContext<'_> {
     pub fn paragraphs(&self) -> &[Span] {
         self.paragraphs
             .get_or_init(|| paragraph_spans(self.prose()))
+    }
+
+    /// The per-sentence language-model scores of this file, computed once for every rule that
+    /// needs them.
+    #[cfg(feature = "polygraph-lm")]
+    pub(crate) fn sentence_scores(
+        &self,
+        compute: impl FnOnce() -> Option<Vec<crate::polygraph::SentenceScore>>,
+    ) -> Option<&[crate::polygraph::SentenceScore]> {
+        self.sentence_scores.get_or_init(compute).as_deref()
     }
 
     #[must_use]
@@ -199,18 +214,27 @@ pub fn registry() -> Vec<Box<dyn Rule>> {
     ];
     rules.extend(deadweight_extra::rules());
     rules.extend(vibecheck_extra::rules());
+    #[cfg(feature = "polygraph")]
+    rules.extend(crate::polygraph::rules());
     rules.sort_by_key(|rule| rule.metadata().id);
     rules
 }
 
 #[must_use]
 pub fn metadata_registry() -> Vec<&'static RuleMetadata> {
-    let mut metadata: Vec<_> = registry().into_iter().map(|rule| rule.metadata()).collect();
+    let mut metadata: Vec<_> = registry()
+        .into_iter()
+        .map(|rule| rule.metadata())
+        .filter(|metadata| metadata.module != crate::model::Module::Polygraph)
+        .collect();
     metadata.extend(
         papertrail::registry()
             .into_iter()
             .map(|rule| rule.metadata()),
     );
+    // Polygraph metadata is always registered so that configuration, `explain`, and the rule index
+    // work in builds without the feature. The checks themselves need the feature and a model.
+    metadata.extend(polygraph::metadata());
     metadata.sort_by_key(|metadata| metadata.id);
     metadata
 }

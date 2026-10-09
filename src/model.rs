@@ -57,6 +57,7 @@ pub enum Confidence {
 pub enum Module {
     Deadweight,
     Papertrail,
+    Polygraph,
     Vibecheck,
 }
 
@@ -65,6 +66,7 @@ impl std::fmt::Display for Module {
         match self {
             Self::Deadweight => formatter.write_str("deadweight"),
             Self::Papertrail => formatter.write_str("papertrail"),
+            Self::Polygraph => formatter.write_str("polygraph"),
             Self::Vibecheck => formatter.write_str("vibecheck"),
         }
     }

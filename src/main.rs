@@ -26,6 +26,31 @@ struct Cli {
 
     #[arg(long, global = true, value_name = "FILE")]
     config: Option<PathBuf>,
+
+    /// Run the optional polygraph rules, which need a model file.
+    #[arg(long, global = true, conflicts_with = "no_polygraph")]
+    polygraph: bool,
+
+    /// Skip the polygraph rules even when the configuration enables them.
+    #[arg(long, global = true)]
+    no_polygraph: bool,
+
+    /// Model file for the polygraph rules.
+    #[arg(long, global = true, value_name = "FILE")]
+    polygraph_model: Option<PathBuf>,
+
+    /// Directory with the SmolLM2-135M files for the language-model rules, which run only when
+    /// one is given.
+    #[arg(long, global = true, value_name = "DIR")]
+    polygraph_lm: Option<PathBuf>,
+}
+
+#[derive(Debug)]
+struct PolygraphFlags {
+    enable: bool,
+    disable: bool,
+    model: Option<PathBuf>,
+    language_model: Option<PathBuf>,
 }
 
 #[derive(Debug, Subcommand)]
@@ -125,9 +150,15 @@ enum OutputFormat {
 
 fn main() -> ExitCode {
     let cli = Cli::parse();
+    let flags = PolygraphFlags {
+        enable: cli.polygraph,
+        disable: cli.no_polygraph,
+        model: cli.polygraph_model.clone(),
+        language_model: cli.polygraph_lm.clone(),
+    };
     match cli.command {
         Some(Command::Benchmark) => run_benchmark(),
-        Some(Command::Check(args)) => load_and_check(&args, cli.config.as_deref()),
+        Some(Command::Check(args)) => load_and_check(&args, cli.config.as_deref(), &flags),
         Some(Command::CommitMessage(args)) => {
             load_and_check_commit_message(&args, cli.config.as_deref())
         }
@@ -137,7 +168,7 @@ fn main() -> ExitCode {
         #[cfg(feature = "lsp")]
         Some(Command::Lsp) => serve_language_server(),
         Some(Command::Rules) => list_rules(),
-        None => load_and_check(&cli.scan, cli.config.as_deref()),
+        None => load_and_check(&cli.scan, cli.config.as_deref(), &flags),
     }
 }
 
@@ -192,7 +223,11 @@ fn initialize() -> ExitCode {
     }
 }
 
-fn load_and_check(args: &CheckArgs, config_path: Option<&Path>) -> ExitCode {
+fn load_and_check(
+    args: &CheckArgs,
+    config_path: Option<&Path>,
+    flags: &PolygraphFlags,
+) -> ExitCode {
     let config = if let Some(filename) = &args.stdin_filename {
         // Editors pipe buffers from arbitrary working directories, so start beside the file.
         let start = filename
@@ -203,10 +238,47 @@ fn load_and_check(args: &CheckArgs, config_path: Option<&Path>) -> ExitCode {
     } else {
         load_config(config_path)
     };
-    let Ok(config) = config else {
+    let Ok(mut config) = config else {
         return ExitCode::from(2);
     };
+    if let Err(message) = prepare_polygraph(&mut config, flags) {
+        eprintln!("slopcop: {message}");
+        return ExitCode::from(2);
+    }
     run_check(args, config)
+}
+
+/// Applies the polygraph flags, then loads the model when the rules are on. A scan that was asked
+/// to run polygraph never continues without it.
+fn prepare_polygraph(config: &mut Config, flags: &PolygraphFlags) -> Result<(), String> {
+    if flags.disable {
+        config.polygraph_enabled = false;
+    } else if flags.enable {
+        config.polygraph_enabled = true;
+    }
+    if !config.polygraph_enabled {
+        return Ok(());
+    }
+    #[cfg(feature = "polygraph")]
+    {
+        slopcop::polygraph::load_model(flags.model.as_deref(), config.polygraph_model.as_deref())?;
+        let language_model = flags
+            .language_model
+            .as_deref()
+            .or(config.polygraph_language_model.as_deref());
+        if language_model.is_some() || std::env::var_os("SLOPCOP_POLYGRAPH_LM").is_some() {
+            #[cfg(feature = "polygraph-lm")]
+            slopcop::polygraph::load_language_model(language_model)?;
+            #[cfg(not(feature = "polygraph-lm"))]
+            return Err("a language model is configured but this build does not include it; install with `cargo install slopcop --features polygraph-lm`".to_owned());
+        }
+        Ok(())
+    }
+    #[cfg(not(feature = "polygraph"))]
+    {
+        let _ = (&flags.model, &flags.language_model);
+        Err("polygraph is enabled but this build does not include it; install with `cargo install slopcop --features polygraph`".to_owned())
+    }
 }
 
 fn load_and_check_commit_message(args: &CommitMessageArgs, config_path: Option<&Path>) -> ExitCode {
@@ -369,6 +441,11 @@ fn explain(rule_id: &str) -> ExitCode {
     };
     println!("{}: {}", metadata.id, metadata.description);
     println!("module: {}", metadata.module);
+    if metadata.module == slopcop::Module::Polygraph {
+        println!(
+            "requires: a build with the `polygraph` feature, a model file, and `--polygraph` or `[slopcop.polygraph] enabled = true`"
+        );
+    }
     println!("default severity: {}", metadata.default_severity);
     println!("\n{}", metadata.rationale);
     println!("\nExamples:");

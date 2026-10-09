@@ -12,13 +12,22 @@ make bootstrap
 
 This builds the workspace and installs the repository's local pre-commit hook. The bootstrap target uses an existing `pre-commit` executable or runs it through `uvx`.
 
+The `polygraph` and `polygraph-lm` features add rules that need model files. `make check` builds with all features, so run `make polygraph-model` and `make polygraph-lm` once to download them into `~/.cache/slopcop`, then point the tests at them:
+
+```sh
+export SLOPCOP_POLYGRAPH_MODEL=~/.cache/slopcop/polygraph-ec9c31b3ba4a.bin
+export SLOPCOP_POLYGRAPH_LM=~/.cache/slopcop/smollm2-135m
+```
+
+A test that needs a model fails with these instructions instead of skipping the rules.
+
 Run the complete local gate before opening a pull request:
 
 ```sh
 make check
 ```
 
-The gate checks formatting, Clippy with warnings denied, all tests, and self-lint. Use `make benchmark` when scanner or rule-engine work could affect throughput. Use `make field` when a rule or analyzer change could move detections on real code; it scans the pinned projects in `benchmarks/field/projects.toml` and fails on any difference from the baseline. If the difference is intended, run `make field-baseline` and review the diff of `benchmarks/field/baseline.json` in the pull request. CI also tests Rust 1.85, the minimum supported compiler.
+The gate checks formatting, Clippy with warnings denied, all tests, and self-lint. Use `make web-check` when changing the browser demo: it type-checks the WebAssembly crate and runs the site's Node tests without bundling the language-model weights. Use `make benchmark` when scanner or rule-engine work could affect throughput. Use `make field` when a rule or analyzer change could move detections on real code; it scans the pinned projects in `benchmarks/field/projects.toml` and fails on any difference from the baseline. If the difference is intended, run `make field-baseline` and review the diff of `benchmarks/field/baseline.json` in the pull request. CI also tests Rust 1.85, the minimum supported compiler.
 
 ## Changes
 

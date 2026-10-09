@@ -210,7 +210,7 @@
         <code class="endpoint-path">/api/v1/slopcop.js</code>
         <button type="button" class="copy-url secondary" data-copy="https://slopcop.me/api/v1/slopcop.js" aria-label="Copy URL"><svg class="icon"><use href="#i-copy"/></svg></button>
       </header>
-      <p>An ES module that loads the linter's WebAssembly build (about 1 MB) on first use. Import it from a module script or a module Worker in the browser, or from Deno with <code>--allow-net --allow-import</code>. Node cannot import modules from URLs; use the <a href="https://github.com/JGalego/slopcop#getting-started">CLI</a> there.</p>
+      <p>An ES module that loads the linter's WebAssembly build on first use. Import it from a module script or a module Worker in the browser, or from Deno with <code>--allow-net --allow-import</code>. Node cannot import modules from URLs; use the <a href="https://github.com/JGalego/slopcop#getting-started">CLI</a> there.</p>
       <p>The linter runs synchronously once the files are in memory. Large repositories keep the thread busy for a moment, so call the module from a Worker if your page has to stay responsive.</p>
       <div class="example">
         <pre><code>import { scanFiles, scanRepository, rules, version } from "https://slopcop.me/api/v1/slopcop.js";</code></pre>
@@ -229,6 +229,7 @@
         <tbody>
           <tr><td><code>files</code></td><td>object | Map | iterable</td><td>Path to contents, as a plain object, a <code>Map</code>, or <code>[path, contents]</code> pairs. Contents are a string, <code>Uint8Array</code>, or <code>ArrayBuffer</code>.</td></tr>
           <tr><td><code>options.config</code></td><td>string</td><td>The text of a <code>.slopcop.toml</code>. Without it, a <code>.slopcop.toml</code> among the files applies; without either, the defaults do.</td></tr>
+          <tr><td><code>options.polygraph</code></td><td>boolean | object</td><td><code>true</code> runs POLY003–004 and downloads a deterministic 4 MB embedding model once. Use <code>{ embeddings: true, languageModel: true }</code> to also run POLY001–002; their pinned model downloads about 259 MB from Hugging Face and may produce different informational findings across devices. Default <code>false</code>.</td></tr>
         </tbody>
       </table>
       <p>A <code>.gitattributes</code> among the files excludes the paths it marks <code>linguist-vendored</code> or <code>linguist-generated</code>. Binary files, unsupported types, oversized files, dependency directories such as <code>node_modules</code>, and ignored paths count toward <code>summary.skipped_files</code>.</p>
@@ -275,6 +276,7 @@ def test_transfer():
           <tr><td><code>options.ref</code></td><td>string</td><td>Branch, tag, or commit. Overrides a ref in <code>repo</code>. Defaults to the default branch.</td></tr>
           <tr><td><code>options.token</code></td><td>string</td><td>A GitHub token, to raise GitHub's anonymous limit. It is sent only to <code>api.github.com</code>, never to other hosts.</td></tr>
           <tr><td><code>options.onProgress</code></td><td>function</td><td>Called with <code>{ stage, done, total }</code> as the scan resolves the ref, lists files, downloads them, and scans. <code>done</code> and <code>total</code> count downloads.</td></tr>
+          <tr><td><code>options.polygraph</code></td><td>boolean | object</td><td><code>true</code> runs POLY003–004. Use <code>{ embeddings: true, languageModel: true }</code> to also run POLY001–002. The latter downloads about 259 MB, uses substantial CPU/RAM, and is not bit-identical across devices. Default <code>false</code>.</td></tr>
         </tbody>
       </table>
       <table class="fields">
@@ -333,6 +335,8 @@ console.log(await version(), catalog.get("DEAD001").rationale);</code></pre>
           <tr><td><code>rate-limit</code></td><td><code>scanRepository</code></td><td>GitHub's API limit is used up. The message says when it resets.</td></tr>
           <tr><td><code>bad-token</code></td><td><code>scanRepository</code></td><td>GitHub rejected <code>options.token</code>.</td></tr>
           <tr><td><code>host-limit</code></td><td><code>scanRepository</code></td><td>GitLab or Codeberg kept throttling after three retries.</td></tr>
+          <tr><td><code>polygraph-model</code></td><td>both</td><td>The 4 MB embedding model could not be downloaded or did not match its SHA-256.</td></tr>
+          <tr><td><code>polygraph-lm</code></td><td>both</td><td>The SmolLM2 weights or tokenizer could not be downloaded from Hugging Face or did not match their SHA-256.</td></tr>
         </tbody>
       </table>
     </section>

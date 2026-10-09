@@ -1,5 +1,7 @@
 import init, { rules } from "./pkg/slopcop_web.js";
+import { polygraphCacheVariant, polygraphModes } from "./polygraph-options.js";
 import { resolve, scanRepository } from "./scan.js";
+import { loadLanguageModel, loadModel } from "./polygraph.js";
 
 const DATABASE = "slopcop";
 const REPORTS = "reports";
@@ -33,8 +35,11 @@ self.onmessage = async ({ data }) => {
   }
 };
 
-async function scan({ repo, ref, token, fresh }, build) {
-  const key = build && `${build}:${repo.toLowerCase()}@${ref}`;
+async function scan({ repo, ref, token, fresh, polygraph }, build) {
+  const modes = polygraphModes(polygraph);
+  // Reports from each model tier differ, so both choices are part of the key.
+  const variant = polygraphCacheVariant(modes);
+  const key = build && `${build}:polygraph-${variant}:${repo.toLowerCase()}@${ref}`;
   const entry = key && (await cache("readonly", (store) => store.get(key)));
 
   // Reopening a scan shows the cached report at once, then checks whether the ref has moved.
@@ -54,7 +59,12 @@ async function scan({ repo, ref, token, fresh }, build) {
     return;
   }
 
-  const scanned = await scanRepository(repo, ref, sha, token, report);
+  const model = modes.embeddings ? await loadModel(report) : undefined;
+  const languageModel = modes.languageModel ? await loadLanguageModel(report) : undefined;
+  const scanned = await scanRepository(repo, ref, sha, token, report, {
+    polygraph: model,
+    polygraphLm: languageModel,
+  });
   self.postMessage({ type: "done", ...scanned, rules: JSON.parse(rules()) });
   // A scan with failed downloads is incomplete, so it is not cached and the next visit retries.
   if (key && scanned.stats.failed === 0) {

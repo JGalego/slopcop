@@ -11,3 +11,4 @@
 /web/site/api/v1/rules.json
 /web/site/api/v1/version.json
 __pycache__/
+/web/site/models/

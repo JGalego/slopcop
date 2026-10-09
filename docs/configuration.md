@@ -18,6 +18,11 @@ enabled = true
 [slopcop.vibecheck]
 enabled = true
 
+[slopcop.polygraph]
+enabled = false
+model = "models/polygraph-ec9c31b3ba4a.bin"
+language-model = "models/smollm2-135m"
+
 [slopcop.rules]
 VIBE003 = "info"
 DEAD004 = "error"
@@ -45,6 +50,18 @@ exclude = ["docs/archive/**"]
 All modules are enabled by default. `deadweight` and `vibecheck` inspect repository artifacts; `papertrail` inspects commit messages and history through its explicit commands. A module switch prevents all of its rules from running, which avoids their analysis cost as well as their findings. A project may override an individual rule with `info`, `warning`, `error`, or `off`.
 
 Rule IDs are validated while loading configuration. A typo is a usage error rather than a silently ignored setting. Configuration that leaves no enabled rules is also rejected.
+
+## Polygraph
+
+`polygraph` is off by default and needs a build with the `polygraph` feature, so `cargo install slopcop --features polygraph`. Turn it on with `enabled = true` or `--polygraph`; `--no-polygraph` overrides the file. A scan that asks for polygraph and cannot find a valid model exits with code 2.
+
+The embedding model is looked up in this order, and the first source that names a path is the only one used: `--polygraph-model FILE`, the `SLOPCOP_POLYGRAPH_MODEL` environment variable, `model` in this section (relative to the configuration file), and `slopcop/polygraph-<hash>.bin` in the cache directory. `make polygraph-model` downloads it there and checks its SHA-256.
+
+`POLY001` and `POLY002` also need the `polygraph-lm` feature, which needs Rust 1.87 or newer because candle does, and a directory with `model.safetensors` and `tokenizer.json` from HuggingFaceTB/SmolLM2-135M at revision 93efa2f097d58c2a74874c7e644dbc9b0cee75a2, named by `--polygraph-lm DIR`, `SLOPCOP_POLYGRAPH_LM`, or `language-model` in this section. They run only when one is named, because scoring takes roughly a second per 90 tokens on a laptop CPU. `make polygraph-lm` downloads the files. At most 1,024 tokens of each document are scored.
+
+Each file is checked against a pinned SHA-256, and a mismatch is an error. Rule IDs from this module are valid in `[slopcop.rules]` in every build, so one configuration file works with and without the feature.
+
+The website exposes the embedding and language-model tiers as separate opt-ins. The latter warns before downloading about 259 MB from the pinned Hugging Face revision; it runs in the browser's worker, can take several minutes, and may produce slightly different informational findings on different devices.
 
 ## Path selection
 

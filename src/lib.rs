@@ -12,6 +12,8 @@ pub mod language;
 pub mod lsp;
 pub mod model;
 pub mod papertrail;
+#[cfg(feature = "polygraph")]
+pub mod polygraph;
 pub mod reporting;
 pub mod rules;
 pub mod scanner;

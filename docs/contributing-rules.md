@@ -10,6 +10,8 @@ Use `VIBE` for measurable prose structure: phrase clusters, density, repetition,
 
 Use `TRAIL` for deterministic commit-message or history hygiene. Message-file checks must remain compatible with `commit-msg` hooks; history-only checks may inspect commit ranges but must not block creation of temporary autosquash commits.
 
+Use `POLY` only for a check that needs a model file, and read the polygraph section of the architecture notes first. A `POLY` rule on the static embedding model must decide with integer arithmetic only. A rule on the language model is informational, reports the sentences behind its finding instead of a score for the document, and runs only when a language model is configured. Calibrate a threshold by reading a random sample of findings from the field-test projects and record the sample's precision with the rule.
+
 Do not add syntax, formatting, type, or unused-import checks already owned by compilers and mainstream linters.
 
 ## Choose a signal

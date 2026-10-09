@@ -21,6 +21,7 @@
     <symbol id="i-flag" viewBox="0 0 24 24"><path d="M4 15s1-1 4-1 5 2 8 2 4-1 4-1V3s-1 1-4 1-5-2-8-2-4 1-4 1z"/><path d="M4 22v-7"/></symbol>
     <symbol id="i-search-x" viewBox="0 0 24 24"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.3-4.3"/><path d="m13.5 8.5-5 5"/><path d="m8.5 8.5 5 5"/></symbol>
     <symbol id="i-crosshair" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><path d="M22 12h-4"/><path d="M6 12H2"/><path d="M12 6V2"/><path d="M12 22v-4"/></symbol>
+    <symbol id="i-info" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><path d="M12 16v-4"/><path d="M12 8h.01"/></symbol>
     <symbol id="i-bulb" viewBox="0 0 24 24"><path d="M15 14c.2-1 .7-1.7 1.5-2.5 1-.9 1.5-2.2 1.5-3.5A6 6 0 0 0 6 8c0 1 .2 2.2 1.5 3.5.7.7 1.3 1.5 1.5 2.5"/><path d="M9 18h6"/><path d="M10 22h4"/></symbol>
     <symbol id="i-shield" viewBox="0 0 24 24"><path d="M20 13c0 5-3.5 7.5-7.66 8.95a1 1 0 0 1-.67-.01C7.5 20.5 4 18 4 13V6a1 1 0 0 1 1-1c2 0 4.5-1.2 6.24-2.72a1.17 1.17 0 0 1 1.52 0C14.51 3.81 17 5 19 5a1 1 0 0 1 1 1z"/></symbol>
     <symbol id="i-download" viewBox="0 0 24 24"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><path d="m7 10 5 5 5-5"/><path d="M12 15V3"/></symbol>
@@ -35,6 +36,7 @@
     <symbol id="i-review" viewBox="0 0 24 24"><path d="m3 17 2 2 4-4"/><path d="m3 7 2 2 4-4"/><path d="M13 6h8"/><path d="M13 12h8"/><path d="M13 18h8"/></symbol>
     <symbol id="i-deadweight" viewBox="0 0 24 24"><circle cx="6" cy="6" r="3"/><path d="M8.12 8.12 12 12"/><path d="M20 4 8.12 15.88"/><circle cx="6" cy="18" r="3"/><path d="M14.8 14.8 20 20"/></symbol>
     <symbol id="i-vibecheck" viewBox="0 0 24 24"><path d="M22 12h-4l-3 9L9 3l-3 9H2"/></symbol>
+    <symbol id="i-polygraph" viewBox="0 0 24 24"><path d="M3 17l4-8 4 5 3-9 3 7 4-3"/></symbol>
     <symbol id="i-papertrail" viewBox="0 0 24 24"><circle cx="12" cy="12" r="3"/><path d="M3 12h6"/><path d="M15 12h6"/></symbol>
     <symbol id="i-terminal" viewBox="0 0 24 24"><path d="m4 17 6-6-6-6"/><path d="M12 19h8"/></symbol>
   </svg>
@@ -63,7 +65,7 @@
     <section class="intro" id="intro">
       <div class="hero">
       <div class="hero-copy">
-      <p class="eyebrow">Deterministic. No model. No server.</p>
+      <p class="eyebrow">Deterministic by default. No server.</p>
       <h1>Slop stops here.</h1>
       <p class="lede">Point slopcop at a public repository on GitHub, GitLab, or Codeberg. Files are fetched straight from the host and scanned by the real linter compiled to WebAssembly. Nothing leaves your browser.</p>
 
@@ -74,6 +76,26 @@
         <input id="ref" name="ref" type="text" placeholder="ref (optional)" spellcheck="false">
         <button id="scan-button" type="submit"><svg class="icon"><use href="#i-search"/></svg>Scan</button>
       </form>
+      <div class="options" aria-label="Optional Polygraph checks">
+        <p class="option">
+          <label for="polygraph"><input id="polygraph" type="checkbox"> Polygraph embeddings</label>
+          <span class="option-help">
+            <button type="button" class="option-help-button" aria-describedby="polygraph-hint" aria-label="About Polygraph embeddings">
+              <svg class="icon"><use href="#i-info"/></svg>
+            </button>
+            <span id="polygraph-hint" class="option-tip" role="tooltip">POLY003 and POLY004 download a deterministic 4 MB model from this site once.</span>
+          </span>
+        </p>
+        <p class="option">
+          <label for="polygraph-lm"><input id="polygraph-lm" type="checkbox"> Polygraph language model</label>
+          <span class="option-help">
+            <button type="button" class="option-help-button" aria-describedby="polygraph-lm-hint" aria-label="About Polygraph language-model checks">
+              <svg class="icon"><use href="#i-info"/></svg>
+            </button>
+            <span id="polygraph-lm-hint" class="option-tip" role="tooltip">POLY001 and POLY002 download about 259 MB from a pinned Hugging Face revision after a confirmation, then use substantial CPU and memory in this browser. Scans can take several minutes. Informational findings may differ between devices because floating-point inference is not bit-identical. Repository contents still never leave your browser except the download from the forge.</span>
+          </span>
+        </p>
+      </div>
       <p class="examples" id="examples">Try
         <button type="button" data-repo="JGalego/slopcop">JGalego/slopcop</button>
         <button type="button" data-repo="pallets/flask">pallets/flask</button>
@@ -279,7 +301,7 @@
         <div class="step">
           <svg class="icon step-icon"><use href="#i-cpu"/></svg>
           <h2>Scan</h2>
-          <p>The same Rust linter as the CLI, compiled to WebAssembly, runs in a background worker. No account, no model, no upload.</p>
+          <p>The same Rust linter as the CLI, compiled to WebAssembly, runs in a background worker. No account or upload; optional models download only when selected.</p>
         </div>
         <div class="step">
           <svg class="icon step-icon"><use href="#i-review"/></svg>
@@ -302,6 +324,11 @@
           <article class="module" data-module="vibecheck">
             <header><svg class="icon"><use href="#i-vibecheck"/></svg><h3>vibecheck</h3><span class="module-count"></span></header>
             <p>Patterns in prose and comments: stock transitions, assistant framing, hedging, forced symmetry, and uniform rhythm. One “robust” is fine. Density and repetition are not.</p>
+            <ul class="module-rules"></ul>
+          </article>
+          <article class="module" data-module="polygraph">
+            <header><svg class="icon"><use href="#i-polygraph"/></svg><h3>polygraph</h3><span class="module-count"></span></header>
+            <p>Optional model-backed checks for predictable prose, uniform sentence scores, comments that restate code, and paragraphs copied between files. Both model tiers are off by default.</p>
             <ul class="module-rules"></ul>
           </article>
           <article class="module" data-module="papertrail">

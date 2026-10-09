@@ -8,7 +8,11 @@ const STAGES = {
   "Loading scanner": "Booting slopocop",
   "Listing files": "Sweeping the area",
   "Downloading files": "Bringing files in",
+  "Downloading Polygraph embedding model": "Fetching the small detector",
+  "Downloading Polygraph tokenizer": "Fetching the tokenizer",
+  "Downloading Polygraph language model": "Fetching the large detector",
   Scanning: "Targeting",
+  "Scanning with the Polygraph language model": "Interrogating",
 };
 
 const listeners = [];

@@ -13,7 +13,7 @@
 
 We don't care whether AI wrote it. We care whether it's slop.
 
-`slopcop` finds observable quality problems in source code, comments, documentation, and repository configuration. It is deterministic, runs without a network or model, and reports the evidence behind each finding. A human can write slop. AI can write excellent code. Authorship is not the question.
+`slopcop` finds observable quality problems in source code, comments, documentation, and repository configuration. By default it is deterministic, runs without a network or model, and reports the evidence behind each finding. A human can write slop. AI can write excellent code. Authorship is not the question.
 
 ```text
 $ slopcop .
@@ -96,6 +96,8 @@ Exit code `0` means clean or below the configured failure threshold. Findings at
 **papertrail** checks commit messages and branch history for placeholder subjects and autosquash commits that should not reach an integration branch.
 
 **vibecheck** measures patterns in prose and code comments: clustered stock transitions, assistant framing, generic modifier density, repeated sentence openings, forced symmetry, restatement, disclaimer clusters, and unusually uniform rhythm. One use of “robust” or “ultimately” is not a finding. Density and repetition are.
+
+**polygraph** is an optional module for checks that need a small model: comments that restate the code below them, paragraphs copied between files, and, with a language model, runs of unusually predictable prose. It is off by default and compiled only with the `polygraph` feature. See [configuration](docs/configuration.md#polygraph).
 
 The rule index documents every stable rule. `slopcop explain RULE_ID` prints rationale, examples, false-positive notes, and configuration guidance.
 
@@ -182,7 +184,7 @@ The included CI workflow runs formatting, Clippy, tests, package verification, r
 
 ## Performance
 
-Normal scans make no network requests, download no models, and send no telemetry. Discovery respects `.gitignore` and the `linguist-vendored` and `linguist-generated` attributes in `.gitattributes`, skips common dependency, third-party, and build directories, rejects binary, oversized, generated, and minified bundle files early, and scans files in parallel. Rules reuse cached prose, sentence, and paragraph analysis.
+Normal scans make no network requests, download no models, and send no telemetry; polygraph reads a model file you have already downloaded. Discovery respects `.gitignore` and the `linguist-vendored` and `linguist-generated` attributes in `.gitattributes`, skips common dependency, third-party, and build directories, rejects binary, oversized, generated, and minified bundle files early, and scans files in parallel. Rules reuse cached prose, sentence, and paragraph analysis.
 
 Repeated release runs on the development x86_64 Linux host scanned the 4,096-file mixed benchmark in **63.7–78.8 ms** at **51,961–64,286 files/sec**. Treat machine-specific numbers as samples, not promises. Reproduce all five profiles with `slopcop benchmark`; methodology and results live in [benchmarks](benchmarks/README.md).
 

@@ -32,6 +32,15 @@ The catalogs above cite these measurements, which decide whether a word belongs 
 | [slop-forensics](https://github.com/sam-paech/slop-forensics) | A toolkit that derives over-represented words, bigrams, and trigrams from model output | Method for deriving phrase lists from a corpus |
 | [EQ-Bench Slop Score](https://eqbench.com/slop-score.html), with [its word and trigram lists](https://github.com/sam-paech/slop-score/tree/main/data) | A weighted score of slop words (60 percent), "not X, but Y" contrasts (25 percent), and slop trigrams (15 percent), from lists that slop-forensics derived from ten models' essays and stories | The two-sentence contrasts in `VIBE020`; the inflected forms in `VIBE014`, `VIBE022`, `VIBE023`, and `VIBE030`, taken from words that both this list and the Kobak et al. data flag |
 
+## Models
+
+The polygraph module uses two published models, each pinned by SHA-256.
+
+| Model | License | Used for |
+| --- | --- | --- |
+| [potion-base-8M](https://huggingface.co/minishlab/potion-base-8M) by Minish Lab, revision `bf8b056651a2c21b8d2565580b8569da283cab23`, reduced to 128 dimensions and quantized to int8 | MIT | `POLY003` and `POLY004` |
+| [SmolLM2-135M](https://huggingface.co/HuggingFaceTB/SmolLM2-135M) by Hugging Face, revision `93efa2f097d58c2a74874c7e644dbc9b0cee75a2` | Apache-2.0 | `POLY001` and `POLY002` |
+
 ## Pattern coverage
 
 | Pattern | Example | Rule |

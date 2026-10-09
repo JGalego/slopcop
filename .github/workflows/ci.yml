@@ -27,6 +27,16 @@ jobs:
       - uses: actions/checkout@v5
       - uses: dtolnay/rust-toolchain@stable
       - uses: Swatinem/rust-cache@v2
+      - name: Cache the polygraph models
+        uses: actions/cache@v4
+        with:
+          path: ~/.cache/slopcop
+          key: polygraph-models-${{ hashFiles('polygraph/fetch.sh') }}
+      - name: Fetch the polygraph models
+        shell: bash
+        run: |
+          sh polygraph/fetch.sh model
+          sh polygraph/fetch.sh lm
       - run: cargo test --all-targets --all-features --locked
 
   msrv:
@@ -38,7 +48,17 @@ jobs:
         with:
           toolchain: "1.85.0"
       - uses: Swatinem/rust-cache@v2
-      - run: cargo test --all-targets --all-features --locked
+      - name: Cache the polygraph models
+        uses: actions/cache@v4
+        with:
+          path: ~/.cache/slopcop
+          key: polygraph-models-${{ hashFiles('polygraph/fetch.sh') }}
+      - name: Fetch the polygraph models
+        shell: bash
+        run: |
+          sh polygraph/fetch.sh model
+      # candle needs Rust 1.87, so the language-model feature is tested on stable only.
+      - run: cargo test --all-targets --features lsp,polygraph --locked
 
   quality:
     name: Quality and self-lint
@@ -60,6 +80,10 @@ jobs:
         with:
           binary: target/release/slopcop
           mode: all
+      - name: Lint slopcop with slopcop, polygraph included
+        run: |
+          sh polygraph/fetch.sh model
+          cargo run --release --locked --features polygraph -- --polygraph .
       - name: Verify pre-commit integration
         run: |
           python -m pip install pre-commit
