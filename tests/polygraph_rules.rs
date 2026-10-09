@@ -24,12 +24,12 @@ fn files(entries: &[(&str, &str)]) -> Vec<SourceFile> {
         .collect()
 }
 
-fn poly004(entries: &[(&str, &str)]) -> Vec<(String, usize)> {
+fn poly004(entries: &[(&str, &str)]) -> Vec<(PathBuf, usize)> {
     scan_sources(files(entries), &options())
         .findings
         .iter()
         .filter(|finding| finding.rule_id == "POLY004")
-        .map(|finding| (finding.path.display().to_string(), finding.location.line))
+        .map(|finding| (finding.path.clone(), finding.location.line))
         .collect()
 }
 
@@ -41,7 +41,7 @@ const UPGRADE: &str = "Before upgrading across a major version, export your save
 fn a_reworded_copy_in_another_file_is_reported_once_at_the_later_file() {
     assert_eq!(
         poly004(&[("docs/a.md", INSTALL), ("docs/b.md", INSTALL_REWORDED)]),
-        [(PathBuf::from("docs/b.md").display().to_string(), 1)]
+        [(PathBuf::from("docs").join("b.md"), 1)]
     );
 }
 
