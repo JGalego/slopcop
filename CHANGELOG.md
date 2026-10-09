@@ -12,6 +12,7 @@ This project records user-visible changes in this file and follows Semantic Vers
 - `POLY001` reports a run of sentences that a small language model finds unusually predictable, and `POLY002` reports a document whose sentences are almost equally predictable. Both are informational, need the `polygraph-lm` feature and a SmolLM2-135M directory, and run only when one is configured.
 - `--polygraph`, `--no-polygraph`, `--polygraph-model`, and `--polygraph-lm`, and a `[slopcop.polygraph]` configuration section.
 - Rule IDs from this module are valid in `[slopcop.rules]` in every build, and `slopcop explain` describes them without the feature.
+- The browser exposes separate opt-ins for the deterministic embedding rules and the language-model rules. It warns before downloading the pinned 259 MB SmolLM2 model, verifies and caches both tiers, and runs inference in its scan worker.
 
 ## 0.4.0 - 2026-10-08
 

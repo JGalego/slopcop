@@ -9,10 +9,14 @@ use std::path::{Component, Path, PathBuf};
 use std::sync::Arc;
 
 use slopcop::attributes::LinguistExclusions;
-use slopcop::config::{CONFIG_FILE_NAME, Config};
+use slopcop::config::{CONFIG_FILE_NAME, Config, RuleSetting};
 use slopcop::discovery::SKIPPED_DIRECTORIES;
 use slopcop::language::{SourceType, classify};
-use slopcop::polygraph::{MODEL_SHA256, Model, install_model, model_file_name};
+use slopcop::polygraph::{
+    LM_REVISION, LM_TOKENIZER_FILE, LM_TOKENIZER_SHA256, LM_WEIGHTS_FILE, LM_WEIGHTS_SHA256,
+    MODEL_SHA256, LanguageModel, Model, install_language_model, install_model,
+    installed_language_model, installed_model, model_file_name,
+};
 use slopcop::reporting::{HtmlContext, write_html, write_json};
 use slopcop::rules::metadata_registry;
 use slopcop::{ScanOptions, ScanResult, SourceFile, scan_sources};
@@ -52,12 +56,39 @@ pub fn polygraph_model() -> String {
     .expect("model description serializes")
 }
 
+/// Describes the pinned language-model files accepted by this build.
+///
+/// # Panics
+///
+/// Panics if the description cannot be serialized, which would be a programming error.
+#[wasm_bindgen]
+#[must_use]
+pub fn polygraph_language_model() -> String {
+    let base =
+        format!("https://huggingface.co/HuggingFaceTB/SmolLM2-135M/resolve/{LM_REVISION}");
+    serde_json::to_string(&serde_json::json!({
+        "weights": {
+            "file": LM_WEIGHTS_FILE,
+            "url": format!("{base}/{LM_WEIGHTS_FILE}?download=true"),
+            "sha256": LM_WEIGHTS_SHA256,
+        },
+        "tokenizer": {
+            "file": LM_TOKENIZER_FILE,
+            "url": format!("{base}/{LM_TOKENIZER_FILE}?download=true"),
+            "sha256": LM_TOKENIZER_SHA256,
+        },
+    }))
+    .expect("language-model description serializes")
+}
+
 #[wasm_bindgen]
 pub struct Scanner {
     options: ScanOptions,
     attributes: LinguistExclusions,
     sources: Vec<SourceFile>,
     result: Option<ScanResult>,
+    embedding_loaded: bool,
+    language_model_loaded: bool,
 }
 
 #[wasm_bindgen]
@@ -82,6 +113,8 @@ impl Scanner {
             attributes: LinguistExclusions::default(),
             sources: Vec::new(),
             result: None,
+            embedding_loaded: false,
+            language_model_loaded: false,
         })
     }
 
@@ -107,9 +140,34 @@ impl Scanner {
     // wasm-bindgen passes JavaScript arrays in as owned values.
     #[allow(clippy::needless_pass_by_value)]
     pub fn load_polygraph(&mut self, bytes: Vec<u8>) -> Result<(), JsError> {
-        let model = Model::from_bytes(&bytes).map_err(|error| JsError::new(&error.to_string()))?;
-        install_model(Arc::new(model));
+        if installed_model().is_none() {
+            let model =
+                Model::from_bytes(&bytes).map_err(|error| JsError::new(&error.to_string()))?;
+            install_model(Arc::new(model));
+        }
         self.options.config.polygraph_enabled = true;
+        self.embedding_loaded = true;
+        Ok(())
+    }
+
+    /// Turns `POLY001` and `POLY002` on with the pinned weights and tokenizer.
+    ///
+    /// # Errors
+    ///
+    /// Returns an error when either file does not match the model this build accepts.
+    #[allow(clippy::needless_pass_by_value)]
+    pub fn load_polygraph_lm(
+        &mut self,
+        weights: Vec<u8>,
+        tokenizer: Vec<u8>,
+    ) -> Result<(), JsError> {
+        if installed_language_model().is_none() {
+            let model = LanguageModel::from_verified_bytes(&weights, &tokenizer)
+                .map_err(|error| JsError::new(&error))?;
+            install_language_model(Arc::new(model));
+        }
+        self.options.config.polygraph_enabled = true;
+        self.language_model_loaded = true;
         Ok(())
     }
 
@@ -126,6 +184,26 @@ impl Scanner {
     ///
     /// Panics if the report cannot be serialized, which would be a programming error.
     pub fn finish(&mut self) -> String {
+        for rule in if self.embedding_loaded {
+            &[][..]
+        } else {
+            &["POLY003", "POLY004"]
+        } {
+            self.options
+                .config
+                .rules
+                .insert((*rule).to_owned(), RuleSetting::Disabled);
+        }
+        for rule in if self.language_model_loaded {
+            &[][..]
+        } else {
+            &["POLY001", "POLY002"]
+        } {
+            self.options
+                .config
+                .rules
+                .insert((*rule).to_owned(), RuleSetting::Disabled);
+        }
         let result = scan_sources(std::mem::take(&mut self.sources), &self.options);
         let mut output = Vec::new();
         write_json(&mut output, &result).expect("report serializes");
@@ -197,6 +275,141 @@ mod tests {
         let report: serde_json::Value =
             serde_json::from_str(&scanner(None).finish()).expect("valid JSON");
         assert_eq!(report["version"], version());
+    }
+
+    #[test]
+    fn model_descriptions_pin_every_browser_download() {
+        let embedding: serde_json::Value =
+            serde_json::from_str(&polygraph_model()).expect("valid model description");
+        assert_eq!(embedding["sha256"], MODEL_SHA256);
+        let language: serde_json::Value =
+            serde_json::from_str(&polygraph_language_model()).expect("valid LM description");
+        assert_eq!(language["weights"]["sha256"], LM_WEIGHTS_SHA256);
+        assert_eq!(language["tokenizer"]["sha256"], LM_TOKENIZER_SHA256);
+        assert!(language["weights"]["url"].as_str().unwrap().contains(LM_REVISION));
+    }
+
+    #[test]
+    fn browser_model_tiers_are_independent() {
+        let mut embedding = scanner(Some("[slopcop.polygraph]\nenabled = true\n"));
+        embedding.embedding_loaded = true;
+        embedding.finish();
+        assert!(!embedding.options.config.rules.contains_key("POLY003"));
+        assert_eq!(
+            embedding.options.config.rules.get("POLY001"),
+            Some(&RuleSetting::Disabled)
+        );
+
+        let mut language = scanner(Some("[slopcop.polygraph]\nenabled = true\n"));
+        language.language_model_loaded = true;
+        language.finish();
+        assert!(!language.options.config.rules.contains_key("POLY001"));
+        assert_eq!(
+            language.options.config.rules.get("POLY003"),
+            Some(&RuleSetting::Disabled)
+        );
+    }
+
+    #[test]
+    fn language_model_rejects_unpinned_bytes_before_loading() {
+        let error = LanguageModel::from_verified_bytes(b"not weights", b"not a tokenizer")
+            .err()
+            .expect("bad weights are rejected");
+        assert!(error.contains(LM_WEIGHTS_SHA256));
+    }
+
+    #[test]
+    fn rules_list_includes_every_polygraph_id() {
+        let listed: Vec<serde_json::Value> =
+            serde_json::from_str(&super::rules()).expect("valid JSON");
+        let ids: Vec<&str> = listed
+            .iter()
+            .filter_map(|rule| rule["id"].as_str())
+            .collect();
+        for id in ["POLY001", "POLY002", "POLY003", "POLY004"] {
+            assert!(ids.contains(&id), "{id}");
+        }
+    }
+
+    #[test]
+    fn embedding_model_rejects_unpinned_bytes() {
+        assert!(Model::from_bytes(b"not a model").is_err());
+    }
+
+    #[test]
+    fn embedding_rules_report_poly003_from_the_slop_fixture() {
+        let bytes = embedding_model_bytes();
+        let mut scanner = scanner(None);
+        scanner.load_polygraph(bytes).expect("pinned embedding model");
+        scanner.add(
+            "poly003.py".to_owned(),
+            include_bytes!("../../tests/fixtures/slop/poly003.py").to_vec(),
+        );
+        let report: serde_json::Value =
+            serde_json::from_str(&scanner.finish()).expect("valid JSON");
+        assert!(
+            report["findings"]
+                .as_array()
+                .expect("findings")
+                .iter()
+                .any(|finding| finding["rule_id"] == "POLY003"),
+            "{report}"
+        );
+    }
+
+    #[test]
+    fn embedding_rules_stay_quiet_on_the_clean_poly003_fixture() {
+        let bytes = embedding_model_bytes();
+        let mut scanner = scanner(None);
+        scanner.load_polygraph(bytes).expect("pinned embedding model");
+        scanner.add(
+            "poly003.py".to_owned(),
+            include_bytes!("../../tests/fixtures/clean/poly003.py").to_vec(),
+        );
+        let report: serde_json::Value =
+            serde_json::from_str(&scanner.finish()).expect("valid JSON");
+        assert_eq!(report["findings"].as_array().expect("findings").len(), 0);
+    }
+
+    #[test]
+    fn embedding_rules_report_poly004_across_two_files() {
+        let bytes = embedding_model_bytes();
+        let mut scanner = scanner(None);
+        scanner.load_polygraph(bytes).expect("pinned embedding model");
+        scanner.add(
+            "docs/a.md".to_owned(),
+            include_bytes!("../../tests/fixtures/slop/poly004-a.md").to_vec(),
+        );
+        scanner.add(
+            "docs/b.md".to_owned(),
+            include_bytes!("../../tests/fixtures/slop/poly004-b.md").to_vec(),
+        );
+        let report: serde_json::Value =
+            serde_json::from_str(&scanner.finish()).expect("valid JSON");
+        assert!(
+            report["findings"]
+                .as_array()
+                .expect("findings")
+                .iter()
+                .any(|finding| finding["rule_id"] == "POLY004"),
+            "{report}"
+        );
+    }
+
+    fn embedding_model_bytes() -> Vec<u8> {
+        let named = std::env::var_os("SLOPCOP_POLYGRAPH_MODEL").map(PathBuf::from);
+        let cached = slopcop::polygraph::cached_model_path();
+        let bundled = PathBuf::from(env!("CARGO_MANIFEST_DIR"))
+            .join("site/models")
+            .join(model_file_name());
+        let path = [named, cached, Some(bundled)]
+            .into_iter()
+            .flatten()
+            .find(|path| path.is_file())
+            .unwrap_or_else(|| {
+                panic!("run make web-model or make polygraph-model before testing the web crate")
+            });
+        std::fs::read(&path).unwrap_or_else(|error| panic!("read {}: {error}", path.display()))
     }
 
     #[test]

@@ -78,7 +78,7 @@ Rules that count specific expressions carry a replacement for each one. A findin
 
 ## polygraph
 
-These rules need the `polygraph` cargo feature and a model file, and they are off unless `--polygraph` or `[slopcop.polygraph] enabled = true` turns them on. `POLY003` and `POLY004` decide with integer arithmetic over a static embedding model, so their findings are identical on every platform. `POLY001` and `POLY002` also need the `polygraph-lm` feature and a language model; they are reproducible on one build and CPU family but not across CPUs. The rule IDs are valid in `[slopcop.rules]` in every build. See [configuration](../configuration.md#polygraph).
+These rules need the `polygraph` cargo feature and a model file, and they are off unless `--polygraph` or `[slopcop.polygraph] enabled = true` turns them on. `POLY003` and `POLY004` decide with integer arithmetic over a static embedding model, so their findings are identical on every platform. `POLY001` and `POLY002` also need the `polygraph-lm` feature and a language model; they are reproducible on one build and CPU family but not across CPUs. The website offers the same four rules as two independent opt-ins; the language-model tier warns before downloading about 259 MB. The rule IDs are valid in `[slopcop.rules]` in every build. See [configuration](../configuration.md#polygraph).
 
 | Rule | Default | Confidence | Trigger | Quiet boundary |
 | --- | --- | --- | --- | --- |

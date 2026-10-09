@@ -27,7 +27,7 @@ Run the complete local gate before opening a pull request:
 make check
 ```
 
-The gate checks formatting, Clippy with warnings denied, all tests, and self-lint. Use `make benchmark` when scanner or rule-engine work could affect throughput. Use `make field` when a rule or analyzer change could move detections on real code; it scans the pinned projects in `benchmarks/field/projects.toml` and fails on any difference from the baseline. If the difference is intended, run `make field-baseline` and review the diff of `benchmarks/field/baseline.json` in the pull request. CI also tests Rust 1.85, the minimum supported compiler.
+The gate checks formatting, Clippy with warnings denied, all tests, and self-lint. Use `make web-check` when changing the browser demo: it type-checks the WebAssembly crate and runs the site's Node tests without bundling the language-model weights. Use `make benchmark` when scanner or rule-engine work could affect throughput. Use `make field` when a rule or analyzer change could move detections on real code; it scans the pinned projects in `benchmarks/field/projects.toml` and fails on any difference from the baseline. If the difference is intended, run `make field-baseline` and review the diff of `benchmarks/field/baseline.json` in the pull request. CI also tests Rust 1.85, the minimum supported compiler.
 
 ## Changes
 

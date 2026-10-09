@@ -1,4 +1,4 @@
-.PHONY: benchmark bootstrap check field field-baseline field-polygraph field-polygraph-baseline polygraph-lm polygraph-model self-lint web web-model web-serve
+.PHONY: benchmark bootstrap check field field-baseline field-polygraph field-polygraph-baseline polygraph-lm polygraph-model self-lint web web-check web-model web-serve
 
 bootstrap:
 	cargo build --locked
@@ -34,6 +34,10 @@ field-baseline:
 web:
 	cd web && wasm-pack build --target web --out-dir site/pkg --no-pack --no-typescript --release
 	node web/build-api.mjs
+
+web-check:
+	cargo check --manifest-path web/Cargo.toml --target wasm32-unknown-unknown --locked
+	node --test web/test/*.mjs
 
 web-serve: web
 	python3 -m http.server --directory web/site 8000

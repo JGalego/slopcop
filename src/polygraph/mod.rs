@@ -1,7 +1,8 @@
-//! The optional polygraph module: rules that need a small, fixed embedding model.
+//! The optional polygraph module: rules that need a pinned model.
 //!
-//! Everything here is integer arithmetic over a quantized static model, so a finding is
-//! bit-identical on every platform. See `docs/architecture.md`.
+//! Embedding rules use integer arithmetic over a quantized static model, so those findings are
+//! bit-identical on every platform. Language-model rules score `f32` surprisal and are
+//! informational. See `docs/architecture.md`.
 
 mod comments;
 mod discover;
@@ -24,8 +25,9 @@ pub use duplicates::{Paragraph, collect as collect_paragraphs, find as find_dupl
 pub use embed::{Vector, at_least};
 #[cfg(feature = "polygraph-lm")]
 pub use lm::{
-    LM_ENV, LM_TOKENIZER_SHA256, LM_WEIGHTS_SHA256, LanguageModel, TokenScore,
-    installed_language_model, load_language_model,
+    LM_ENV, LM_REVISION, LM_TOKENIZER_FILE, LM_TOKENIZER_SHA256, LM_WEIGHTS_FILE,
+    LM_WEIGHTS_SHA256, LanguageModel, TokenScore, install_language_model, installed_language_model,
+    load_language_model,
 };
 pub use model::{MODEL_SHA256, Model, ModelError, short_hash};
 #[cfg(feature = "polygraph-lm")]

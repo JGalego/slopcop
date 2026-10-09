@@ -16,9 +16,11 @@ Open <http://localhost:8000>. Append `#owner/repo` or `#owner/repo@ref` to the U
 
 ## Polygraph in the browser
 
-The Polygraph checkbox runs the optional embedding rules (`POLY003` and `POLY004`) in the same WebAssembly module. It is unchecked by default. Checking it downloads a 4 MB model from `models/` on the site once, checks its SHA-256 in `polygraph.js` and again in the module, and keeps it in the browser's Cache API. The choice is remembered in `localStorage`, and a link can carry `?polygraph=1`. The language-model rules, `POLY001` and `POLY002`, are not available here: their 270 MB model is too large to send to a browser.
+The browser offers two independent, unchecked Polygraph options. **Polygraph embeddings** runs `POLY003` and `POLY004`; it downloads a deterministic 4 MB model from `models/` on this site. **Polygraph language model** runs `POLY001` and `POLY002`; it downloads about 259 MB of SmolLM2-135M weights plus its tokenizer from the pinned Hugging Face revision. Before that first large download the page asks for confirmation and explains that inference is slow, CPU/RAM intensive, and not bit-identical across devices.
 
-The model is not in the repository. `make web-model` copies it into `web/site/models/` from the cache that `make polygraph-model` fills, or downloads it from the release, and checks its hash; `make web` does not do this, so run it once before `make web-serve` if you want the checkbox to work locally. A report made with Polygraph is cached under its own key, so turning the checkbox on never shows a report made without it.
+`polygraph.js` checks every SHA-256 before passing bytes to WebAssembly, which verifies them again, and keeps successful responses in the browser's Cache API. Choices and language-model consent are remembered in `localStorage`; links can carry `?polygraph=1` and `?polygraph-lm=1`. Reports are cached under separate keys for each model combination.
+
+The embedding model is not in the repository. `make web-model` copies it into `web/site/models/` from the cache that `make polygraph-model` fills, or downloads it from the release, and checks its hash; `make web` does not do this, so run it once before `make web-serve` if you want embedding checks locally. The language model is never bundled into the site deployment: browsers fetch it directly from the pinned Hugging Face revision after consent.
 
 ## How a scan works
 
@@ -42,7 +44,7 @@ The demo calls `scan.js` from `worker.js`, off the page's main thread, and the w
 
 ## Cached reports
 
-The worker keeps the 10 most recent complete reports in IndexedDB, keyed by repository and ref. A key also carries a hash of the WebAssembly module, so a deploy that changes any rule invalidates every cached report.
+The worker keeps the 10 most recent complete reports in IndexedDB, keyed by repository, ref, and which Polygraph model tiers ran. A key also carries a hash of the WebAssembly module, so a deploy that changes any rule invalidates every cached report.
 
 Opening or reloading a repository link shows the cached report at once and labels it with its age. The worker then makes one API request to resolve the ref, and if the branch has moved since the scan, a notice offers a rescan. A ref given as a full commit hash cannot move, so it is never checked. The Scan button always resolves the ref, and downloads and rescans files only when the commit has changed. A scan where any download failed is not cached, so the next visit tries again. When IndexedDB is blocked or full, scans run as before without a cache.
 

@@ -55,13 +55,13 @@ Timing appears only in the benchmark command. Normal JSON, SARIF, and HTML outpu
 
 ## Polygraph
 
-`polygraph` is an opt-in module for checks that need a model. The `polygraph` cargo feature compiles it, `[slopcop.polygraph] enabled = true` or `--polygraph` turns it on, and a scan that asks for it without a model exits with code 2 instead of skipping it. Nothing is downloaded during a scan.
+`polygraph` is an opt-in module for checks that need a model. The `polygraph` cargo feature compiles it, `[slopcop.polygraph] enabled = true` or `--polygraph` turns it on, and a CLI scan that asks for it without a model exits with code 2 instead of skipping it. The CLI never downloads during a scan. The website downloads only the model tiers the user explicitly selects, after an additional confirmation for the large language model.
 
 The embedding rules use a static embedding model, potion-base-8M, reduced to 128 dimensions and quantized to int8 with one global scale. The file is pinned by SHA-256. A text's vector is the element-wise sum of its tokens' rows, found by a pure-Rust reimplementation of the BERT tokenizer. Similarity compares two integer vectors by squaring both sides of the cosine inequality in 128-bit integers, so the decision path has no floating-point type and gives the same answer on every CPU and in WebAssembly. Golden tests pin the tokenizer and the dot products to the reference implementation.
 
 `POLY004` compares files, so each file hands its comparable paragraphs to one pass after the scan. Up to a fixed paragraph count every pair is compared; above it, fixed integer hyperplanes pick candidate pairs and the exact cosine decides.
 
-The language-model rules need the `polygraph-lm` feature and a directory with SmolLM2-135M, which candle runs in `f32` on the CPU. Their scores are reproducible on one build and CPU family but not bit for bit across CPUs, so the rules are informational. Inference runs on its own thread pool, one pass at a time: sharing the scanner's pool would deadlock, because its workers wait for the model lock while candle waits for them.
+The language-model rules need the `polygraph-lm` feature and SmolLM2-135M, which candle runs in `f32` on the CPU. Their scores are reproducible on one build and CPU family but not bit for bit across CPUs, so the rules are informational. Native inference runs on its own thread pool, one pass at a time: sharing the scanner's pool would deadlock, because its workers wait for the model lock while candle waits for them. The WebAssembly build has no OS threads by default, so it runs inference synchronously inside the website's dedicated scan worker instead.
 
 ## Performance choices
 

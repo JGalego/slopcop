@@ -165,9 +165,26 @@ main { max-width: 1280px; margin: 0 auto; padding: 0 16px; }
 }
 .examples button:hover { border-style: solid; border-color: var(--ink); }
 
-.option { margin: 12px 0 0; font-size: 14px; color: var(--muted); }
-.option label { cursor: pointer; display: inline-flex; gap: 6px; align-items: center; flex-wrap: wrap; }
+.option { position: relative; margin: 12px 0 0; font-size: 14px; color: var(--muted); display: flex; align-items: center; gap: 6px; }
+.option label { cursor: pointer; display: inline-flex; gap: 6px; align-items: center; }
 .option input { accent-color: var(--ink); }
+.option-help { display: inline-flex; }
+.option-help-button {
+  display: inline-flex; align-items: center; justify-content: center;
+  width: 22px; height: 22px; padding: 0; border: 0; border-radius: 50%;
+  background: transparent; color: var(--muted);
+}
+.option-help-button:hover, .option-help:focus-within .option-help-button { color: var(--ink); }
+.option-tip {
+  position: absolute; z-index: 3; left: 0; top: calc(100% + 8px); width: 100%; box-sizing: border-box;
+  padding: 8px 10px; font-size: 13px; line-height: 1.4; color: var(--ink); text-align: left;
+  background: var(--surface); border: 1px solid var(--line); border-radius: 6px;
+  box-shadow: 0 8px 24px -12px rgb(0 0 0 / 0.35);
+  opacity: 0; visibility: hidden; pointer-events: none;
+}
+.option-help:hover .option-tip, .option-help:focus-within .option-tip {
+  opacity: 1; visibility: visible;
+}
 .token-panel { margin-top: 12px; font-size: 14px; color: var(--muted); }
 .token-panel summary { cursor: pointer; width: fit-content; }
 .token-panel summary .icon { margin: 0 4px 0 2px; }

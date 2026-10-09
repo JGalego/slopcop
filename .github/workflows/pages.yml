@@ -42,11 +42,12 @@ jobs:
       - uses: taiki-e/install-action@v2
         with:
           tool: wasm-pack
+      - run: make web-model
+      - run: make web-check
       - run: cargo test --locked
         working-directory: web
       - run: cargo clippy --locked --all-targets -- -W clippy::all -W clippy::pedantic -D warnings
         working-directory: web
-      - run: make web-model
       - run: make web
       - uses: actions/upload-pages-artifact@v5
         with:

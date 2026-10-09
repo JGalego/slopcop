@@ -14,7 +14,7 @@ export function resolve(repo, ref, token) {
 }
 
 // Reports progress as `onProgress(stage, done, total)`.
-// `options.polygraph` is the model's bytes when the Polygraph rules should run.
+// Model options contain bytes returned by the loaders in polygraph.js.
 export async function scanRepository(repo, ref, sha, token, onProgress = () => {}, options = {}) {
   const { forge } = forgeOf(repo);
   const stopWatching = onThrottle((throttled, millis) => {
@@ -52,7 +52,11 @@ async function scanCommit(repo, ref, sha, token, report, options) {
 
   if (options.polygraph) {
     scanner.load_polygraph(options.polygraph);
-    notices.push("Polygraph rules were on, using the Polygraph model.");
+    notices.push("POLY003 and POLY004 ran with the deterministic Polygraph embedding model.");
+  }
+  if (options.polygraphLm) {
+    scanner.load_polygraph_lm(options.polygraphLm.weights, options.polygraphLm.tokenizer);
+    notices.push("POLY001 and POLY002 ran with SmolLM2; informational findings may vary between devices.");
   }
 
   const attributes = blobs.filter((blob) => blob.path.split("/").pop() === ".gitattributes");
@@ -101,7 +105,7 @@ async function scanCommit(repo, ref, sha, token, report, options) {
     notices.push(`${failed.length} file(s) could not be downloaded and were not scanned: ${failed.slice(0, 5).join(", ")}${failed.length > 5 ? ", …" : ""}`);
   }
 
-  report("Scanning", selected.length, selected.length);
+  report(options.polygraphLm ? "Scanning with the Polygraph language model" : "Scanning", selected.length, selected.length);
   const scanStarted = performance.now();
   for (const [path, bytes] of contents) {
     scanner.add(path, bytes);

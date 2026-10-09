@@ -5,7 +5,10 @@
 
 use std::fs;
 use std::path::Path;
-use std::sync::{Arc, Mutex, OnceLock, mpsc};
+use std::sync::{Arc, Mutex, OnceLock};
+
+#[cfg(not(target_arch = "wasm32"))]
+use std::sync::mpsc;
 
 use candle_core::{D, DType, Device, IndexOp, Tensor};
 use candle_nn::VarBuilder;
@@ -15,6 +18,9 @@ use tokenizers::Tokenizer;
 
 /// SHA-256 of `model.safetensors` and `tokenizer.json` from HuggingFaceTB/SmolLM2-135M at
 /// revision 93efa2f097d58c2a74874c7e644dbc9b0cee75a2, the only files this build accepts.
+pub const LM_REVISION: &str = "93efa2f097d58c2a74874c7e644dbc9b0cee75a2";
+pub const LM_WEIGHTS_FILE: &str = "model.safetensors";
+pub const LM_TOKENIZER_FILE: &str = "tokenizer.json";
 pub const LM_WEIGHTS_SHA256: &str =
     "80521b40281d6ce74e35c9282c22539e75aa0ac8578892b2a59955ef78d55da1";
 pub const LM_TOKENIZER_SHA256: &str =
@@ -68,18 +74,21 @@ struct Network {
 }
 
 /// One window of token ids to score, and where to send the surprisals.
+#[cfg(not(target_arch = "wasm32"))]
 struct Request {
     ids: Vec<u32>,
     reply: mpsc::Sender<Result<Vec<f32>, String>>,
 }
 
-/// Inference runs on one dedicated thread with a rayon pool of its own, and callers wait on a
-/// channel. A caller must not wait on a lock or on a rayon call into another pool: a scanner
-/// worker that does either steals another file's job while it waits, and that job needs the same
-/// model, which deadlocks.
+/// Native inference runs on one dedicated thread with a rayon pool of its own. Browser inference
+/// runs synchronously inside the website's worker because `wasm32-unknown-unknown` has no OS
+/// threads by default.
 pub struct LanguageModel {
     tokenizer: Tokenizer,
+    #[cfg(not(target_arch = "wasm32"))]
     requests: Mutex<mpsc::Sender<Request>>,
+    #[cfg(target_arch = "wasm32")]
+    network: Mutex<Network>,
 }
 
 static LM: OnceLock<Arc<LanguageModel>> = OnceLock::new();
@@ -113,28 +122,29 @@ pub fn load_language_model(directory: Option<&Path>) -> Result<Arc<LanguageModel
                  name it with --polygraph-lm, {LM_ENV}, or `language-model` under [slopcop.polygraph]"
             )
         })?;
-    let read = |name: &str, expected: &str| -> Result<Vec<u8>, String> {
+    let read = |name: &str| -> Result<Vec<u8>, String> {
         let path = directory.join(name);
-        let bytes = fs::read(&path)
-            .map_err(|error| format!("could not read {}: {error}", path.display()))?;
-        let actual = hex(&Sha256::digest(&bytes));
-        if actual == expected {
-            Ok(bytes)
-        } else {
-            Err(format!(
-                "{} has SHA-256 {actual}, expected {expected}",
-                path.display()
-            ))
-        }
+        fs::read(&path).map_err(|error| format!("could not read {}: {error}", path.display()))
     };
-    let weights = read("model.safetensors", LM_WEIGHTS_SHA256)?;
-    let tokenizer = read("tokenizer.json", LM_TOKENIZER_SHA256)?;
-    let model = LanguageModel::from_bytes(&weights, &tokenizer)
-        .map_err(|error| format!("could not load the polygraph language model: {error}"))?;
+    let weights = read(LM_WEIGHTS_FILE)?;
+    let tokenizer = read(LM_TOKENIZER_FILE)?;
+    let model = LanguageModel::from_verified_bytes(&weights, &tokenizer)?;
     Ok(install_language_model(Arc::new(model)))
 }
 
 impl LanguageModel {
+    /// Verifies and loads the pinned `SmolLM2` weights and tokenizer from memory.
+    ///
+    /// # Errors
+    ///
+    /// Returns a message when either checksum differs or the model cannot be loaded.
+    pub fn from_verified_bytes(weights: &[u8], tokenizer: &[u8]) -> Result<Self, String> {
+        verify_bytes(LM_WEIGHTS_FILE, weights, LM_WEIGHTS_SHA256)?;
+        verify_bytes(LM_TOKENIZER_FILE, tokenizer, LM_TOKENIZER_SHA256)?;
+        Self::from_bytes(weights, tokenizer)
+            .map_err(|error| format!("could not load the polygraph language model: {error}"))
+    }
+
     fn from_bytes(weights: &[u8], tokenizer: &[u8]) -> candle_core::Result<Self> {
         let device = Device::Cpu;
         let tokenizer = Tokenizer::from_bytes(tokenizer)
@@ -198,26 +208,36 @@ impl LanguageModel {
             sin,
             device,
         };
-        let pool = rayon::ThreadPoolBuilder::new()
-            .build()
-            .map_err(|error| candle_core::Error::Msg(error.to_string()))?;
-        let (requests, queue) = mpsc::channel::<Request>();
-        std::thread::Builder::new()
-            .name("polygraph-lm".to_owned())
-            .spawn(move || {
-                for request in queue {
-                    let bits = pool
-                        .install(|| network.window_bits(&request.ids))
-                        .map_err(|error| error.to_string());
-                    // The caller may have given up; its reply channel is then closed.
-                    let _ = request.reply.send(bits);
-                }
+        #[cfg(target_arch = "wasm32")]
+        {
+            Ok(Self {
+                tokenizer,
+                network: Mutex::new(network),
             })
-            .map_err(|error| candle_core::Error::Msg(error.to_string()))?;
-        Ok(Self {
-            tokenizer,
-            requests: Mutex::new(requests),
-        })
+        }
+        #[cfg(not(target_arch = "wasm32"))]
+        {
+            let pool = rayon::ThreadPoolBuilder::new()
+                .build()
+                .map_err(|error| candle_core::Error::Msg(error.to_string()))?;
+            let (requests, queue) = mpsc::channel::<Request>();
+            std::thread::Builder::new()
+                .name("polygraph-lm".to_owned())
+                .spawn(move || {
+                    for request in queue {
+                        let bits = pool
+                            .install(|| network.window_bits(&request.ids))
+                            .map_err(|error| error.to_string());
+                        // The caller may have given up; its reply channel is then closed.
+                        let _ = request.reply.send(bits);
+                    }
+                })
+                .map_err(|error| candle_core::Error::Msg(error.to_string()))?;
+            Ok(Self {
+                tokenizer,
+                requests: Mutex::new(requests),
+            })
+        }
     }
 
     /// The surprisal of every token of `text`, up to `max_tokens` tokens. The text is scored in
@@ -237,16 +257,26 @@ impl LanguageModel {
         let mut scores = Vec::with_capacity(count);
         for window in (0..count).step_by(WINDOW) {
             let end = (window + WINDOW).min(count);
-            let (reply, answer) = mpsc::channel();
-            self.requests
+            #[cfg(not(target_arch = "wasm32"))]
+            let bits = {
+                let (reply, answer) = mpsc::channel();
+                self.requests
+                    .lock()
+                    .map_err(|error| error.to_string())?
+                    .send(Request {
+                        ids: ids[window..end].to_vec(),
+                        reply,
+                    })
+                    .map_err(|error| error.to_string())?;
+                answer.recv().map_err(|error| error.to_string())??
+            };
+            #[cfg(target_arch = "wasm32")]
+            let bits = self
+                .network
                 .lock()
                 .map_err(|error| error.to_string())?
-                .send(Request {
-                    ids: ids[window..end].to_vec(),
-                    reply,
-                })
+                .window_bits(&ids[window..end])
                 .map_err(|error| error.to_string())?;
-            let bits = answer.recv().map_err(|error| error.to_string())??;
             for (position, bits) in bits.into_iter().enumerate() {
                 let (start, stop) = offsets[window + position];
                 scores.push(TokenScore {
@@ -361,6 +391,15 @@ fn rotary_tables(length: usize, device: &Device) -> candle_core::Result<(Tensor,
         Tensor::from_vec(cos, (length, half), device)?,
         Tensor::from_vec(sin, (length, half), device)?,
     ))
+}
+
+fn verify_bytes(name: &str, bytes: &[u8], expected: &str) -> Result<(), String> {
+    let actual = hex(&Sha256::digest(bytes));
+    if actual == expected {
+        Ok(())
+    } else {
+        Err(format!("{name} has SHA-256 {actual}, expected {expected}"))
+    }
 }
 
 fn hex(bytes: &[u8]) -> String {

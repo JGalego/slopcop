@@ -61,6 +61,8 @@ The embedding model is looked up in this order, and the first source that names 
 
 Each file is checked against a pinned SHA-256, and a mismatch is an error. Rule IDs from this module are valid in `[slopcop.rules]` in every build, so one configuration file works with and without the feature.
 
+The website exposes the embedding and language-model tiers as separate opt-ins. The latter warns before downloading about 259 MB from the pinned Hugging Face revision; it runs in the browser's worker, can take several minutes, and may produce slightly different informational findings on different devices.
+
 ## Path selection
 
 Discovery honors `.gitignore` and the conventional global Git excludes. It also skips `.git`, dependency and third-party directories, virtual environments, caches, build output, binaries, invalid UTF-8, files above the size limit, and common generated-file headers.
